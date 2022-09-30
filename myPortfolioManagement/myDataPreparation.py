@@ -62,7 +62,7 @@ def smooth_series_LowessSmoother(df:pd.DataFrame or pd.Series,
     for i in range(len(df.columns)):
         df_sm.iloc[:,i] = df_smoothed.smooth_data[i]
     
-    df_sm.columns =  df.columns + '_smooth'
+    df_sm.columns =  df.columns + '_smooth_Lowess'
     return df_sm
 
 def HPfilter(x:pd.Series, freq:str = 'daily', rescaled_lambda = True) -> pd.DataFrame:
@@ -224,7 +224,7 @@ def denoise_series_fft(x: pd.Series, n_components:float= 100):
     x = x.dropna()
     den_noised = fft_denoiser(x, n_components = n_components)
     
-    x_name_sm = x.name + '_smoothed'
+    x_name_sm = x.name + '_smoothed_fft'
     dfx = x.to_frame() 
     dfx[x_name_sm] = den_noised
     
@@ -253,7 +253,7 @@ def denoise_series_welvet(x:pd.Series,
     reconstructed_signal = pywt.waverec(coefficients, wavelet, mode='per') 
     
     dfx = x.to_frame()
-    name = x.name + '_smooth'
+    name = x.name + '_smooth_welvet'
     dfx[name] = reconstructed_signal
 
     return dfx 
