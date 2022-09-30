@@ -273,7 +273,7 @@ def denoise_series_kf(x:pd.Series) -> pd.DataFrame:
     filter_series = state_means 
     
     dfx = x.dropna().to_frame() 
-    name = x.name + '_smooth'
+    name = x.name + '_smooth_KF'
     dfx[name] = filter_series
     
     return dfx 
