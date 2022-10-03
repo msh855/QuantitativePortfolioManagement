@@ -17,9 +17,9 @@ from sklearn.preprocessing import normalize
 
 
 
-def ts_clustering(df, number_of_clusters = None,  
-                  algo = ['dtw', 'softdtw'][0], 
-                  plot_bar_center = None):
+def ts_clustering(df:pd.DataFrame, number_of_clusters:int = None,  
+                  algo:str = ['dtw', 'softdtw'][0], 
+                  plot_bar_center:bool = True):
     
    # if number_of_clusters != None:
    #     raise ValueError('Number of clusters missing')
@@ -60,7 +60,17 @@ def ts_clustering(df, number_of_clusters = None,
             if yi == 1:
                 plt.title("Euclidean $k$-means")
     
-    return df_clusters
+    df_cluster_centers = []
+    for yi in range(number_of_clusters):
+        series_temp = pd.Series(model.cluster_centers_[yi].ravel())
+        df_cluster_centers.append(series_temp)
+    
+    df_cluster_centers = pd.concat(df_cluster_centers, axis = 1)
+    df_cluster_centers.columns = df_cluster_centers.columns+1
+    df_cluster_centers.index = df.index
+    df_cluster_centers.index = pd.to_datetime(df_cluster_centers.index, format="%d/%m/%Y")
+    
+    return df_clusters, df_cluster_centers
 
 
 
