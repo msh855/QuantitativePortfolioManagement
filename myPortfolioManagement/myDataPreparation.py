@@ -16,7 +16,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from statsmodels.tsa.filters.hp_filter import hpfilter
 from statsmodels.tsa.filters.cf_filter import cffilter  # Christiano Fitzgerald
 import pywt
-
+from statsmodels.tsa.stattools import adfuller
 
 from pykalman import KalmanFilter
 
@@ -412,4 +412,40 @@ def ts_standarise(x:pd.Series, window:int, mode = 'rolling') ->pd.Series:
     return x_scaled
 
 
+def remove_outliers(dta):
+    # Compute the mean and interquartile range
+    mean = dta.mean()
+    iqr = dta.quantile([0.25, 0.75]).diff().T.iloc[:, 1]
+    
+    # Replace entries that are more than 10 times the IQR
+    # away from the mean with NaN (denotes a missing entry)
+    mask = np.abs(dta) > mean + 10 * iqr
+    treated = dta.copy()
+    treated[mask] = np.nan
+
+    return treated
+
+def adf_statistics(time_series):
+    """
+    Augmented Dickey-Fuller test for stationarity
+    """
+    result = adfuller(time_series.values)
+    if result[1] < 0.0500:             # result[1] contains the p-value
+        return 0                       # returns 0 value if p-value of test is under 5%
+    else:
+        return 1
+
+def adf_tests(df):
+    """
+    Augmented Dickey-Fuller test applied to every column in DataFrame
+    """
+    results = df.apply(adf_statistics, axis=0) # Output is a Pandas series
+    if sum(results)==0:
+        print('Null hypothesis of non-stationarity is rejected for ALL series with p-values < 5%')
+    else:
+        for i, v in results.items():
+            if v == 1:
+                print(f'Null hypothesis of non-stationarity of {i} series is NOT rejected')
+            else:
+                print(f'Null hypothesis of non-stationarity of {i} series is rejected')    
 
