@@ -837,3 +837,46 @@ def download_fred_data(fred_sumbol:list, freq:str, print_info:bool = False,
     df.index.names = ['Date']
     return df
 
+def get_yield_curve_factors(df:pd.DataFrame = None, 
+                            date_col_name:str = 'Date', 
+                            prefix:str = None) -> pd.DataFrame:
+    """
+    
+
+    Args:
+        start_date (str, optional): DESCRIPTION. Defaults to None.
+        freq (str, optional): DESCRIPTION. Defaults to 'd'.
+
+    Returns:
+        principalDf (TYPE): DESCRIPTION.
+
+    """
+    
+    df = df.dropna()
+    if date_col_name in df.columns:    
+        df = df.set_index(date_col_name)
+        
+    rem_col = df.columns
+    
+    # PCA 
+    pca_yield = PCA(n_components=3)
+    
+    # Standardizing the features
+    x = StandardScaler().fit_transform(df)
+    principalComponents = pca_yield.fit_transform(x)
+    principalDf = pd.DataFrame(data = principalComponents, 
+                               columns = ['_ShiftFactor', 
+                                          '_Slope', 
+                                          '_Curvature'])  
+    df = df.reset_index()
+    principalDf = pd.merge(principalDf, df,
+                           left_index=True,right_index = True)
+    
+    principalDf = principalDf.set_index(date_col_name)
+    
+    principalDf = principalDf.drop(rem_col, axis= 1)
+    
+    if prefix:
+        principalDf.columns = prefix + principalDf.columns
+    
+    return principalDf
