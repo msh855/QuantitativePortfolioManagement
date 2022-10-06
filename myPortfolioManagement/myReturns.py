@@ -19,7 +19,7 @@ import quantstats as qs
 
 
 #from myPortfolioManagement.myReturns import download_returns
-from myPortfolioManagement import myPortfolioOptimisation
+# from myPortfolioManagement import myPortfolioOptimisation
 
 
 #calculate portfolio returns 
@@ -209,7 +209,7 @@ def calculate_returns(df_prices: pd.DataFrame, log_returns:bool = False,
     
     return ret 
 
-def _expected_returns(returns:pd.DataFrame or pd.Series, 
+def average_returns(returns:pd.DataFrame or pd.Series, 
                       method:str = 'hist', 
                       benchmark_returns:pd.Series or pd.DataFrame=None,
                       span=500, 
