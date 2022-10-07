@@ -19,7 +19,7 @@ import pywt
 from statsmodels.tsa.stattools import adfuller
 
 from pykalman import KalmanFilter
-
+from sklearn.preprocessing import MinMaxScaler
 
 # function that denoises 
 def smooth_series_LowessSmoother(df:pd.DataFrame or pd.Series, 
@@ -449,3 +449,11 @@ def adf_tests(df):
             else:
                 print(f'Null hypothesis of non-stationarity of {i} series is rejected')    
 
+
+def normalise_df(df:pd.DataFrame or pd.Series = None)->pd.DataFrame:
+    x = df.values #returns a numpy array
+    min_max_scaler = MinMaxScaler()
+    x_scaled = min_max_scaler.fit_transform(x)
+    df_normalised = pd.DataFrame(x_scaled, index=df.index)
+    df_normalised.columns = df.columns
+    return df_normalised 
