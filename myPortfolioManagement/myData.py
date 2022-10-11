@@ -286,7 +286,7 @@ def download_etf_prices(etf_name:str, country:str,
 @timebudget
 def get_stock_prices(yahoo_tickers:list, start_date:str = '1950-01-01',
                      end_date:str = None, 
-                     time_interval:str = 'daily', long_format:bool = False, 
+                     time_interval:str = 'daily', wide_format:bool = False, 
                      num_cpus:int = 1) -> pd.DataFrame:
     """
     This is the main function to download stock prices 
@@ -366,7 +366,7 @@ def get_stock_prices(yahoo_tickers:list, start_date:str = '1950-01-01',
     df['current_market_cap'] = round(df['current_market_cap']/1000000000, 4)
     
     
-    if long_format:
+    if wide_format:
       df = df.pivot_table(index='Date', 
                                 columns='symbol', 
                                 values='adjclose')
