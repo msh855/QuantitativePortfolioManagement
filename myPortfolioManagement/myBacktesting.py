@@ -5,33 +5,24 @@ Created on Sat Jan 22 19:23:54 2022
 
 @author: safishajjouz
 """
-import pandas as pd
-from myPortfolioManagement.myReturns import average_returns
-from myPortfolioManagement.myPerformanceAnalytics import *
-from myPortfolioManagement.myUtils import balance_dates
-from myPortfolioManagement.myReports import metrics 
-from myPortfolioManagement.myPerformanceAnalytics import *
-from myPortfolioManagement.myPlots import * 
-
-import empyrical as ep
-
-import quantstats as qs
-import numpy as np
-import pyfolio as pf
-
-import ffn 
-
-from timebudget import timebudget
 from collections import OrderedDict
-
-import matplotlib.pyplot as plt 
-#import matplotlib.ticker as ticker
-#import matplotlib.dates as mdates
+# import matplotlib.ticker as ticker
+# import matplotlib.dates as mdates
 from typing import Tuple
 
-from IPython.core.display import  display as iDisplay
+import empyrical as ep
+import pandas as pd
+import pyfolio as pf
+from IPython.core.display import display as iDisplay
+from timebudget import timebudget
 
-@timebudget 
+from myPortfolioManagement.myPerformanceAnalytics import *
+from myPortfolioManagement.myPlots import *
+from myPortfolioManagement.myReports import metrics
+from myPortfolioManagement.myReturns import average_returns
+
+
+@timebudget
 def bootstrap_stats(returns:pd.Series, 
                     returns_benchmark:pd.Series =None, 
                     rf:float = 0.02, 
@@ -611,8 +602,8 @@ def backtest_report(returns:pd.DataFrame,
     
     if isinstance(benchmark, type(None)) == False:
         print('Bull and Bear Market correlations')
-        iDisplay(alpha_beta_table(returns, benchmark, 
-                                   rf = rf, **kwargs)) 
+        iDisplay(alpha_beta_table(returns, benchmark,
+                                   rf = rf, **kwargs))
         
     print('Monte Carlo Simulations')
     bootstrap_portfolio_performance_stats  = bootstrap_portfolio_performance(returns = returns, 
@@ -650,9 +641,9 @@ def backtest_report(returns:pd.DataFrame,
         df3 = df_full_sample.transpose().style.set_table_attributes("style='display:inline'").set_caption('Full Sample')
         
         
-        iDisplay(df1) 
-        iDisplay(df2) 
-        iDisplay(df3) 
+        iDisplay(df1)
+        iDisplay(df2)
+        iDisplay(df3)
         
     else:
         
@@ -691,7 +682,7 @@ def backtest_report(returns:pd.DataFrame,
     print("--------------------------------------------")
     print(" [Monthly Returns] \n ")
    
-    iDisplay(monthly_heatmap(returns.squeeze(),figsize=(8, 16), 
+    iDisplay(monthly_heatmap(returns.squeeze(),figsize=(8, 16),
                              cbar=True, eoy = True))
    
     # df_monthly_returns = qs.stats.monthly_returns(returns)

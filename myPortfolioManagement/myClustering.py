@@ -5,8 +5,7 @@ Created on Mon Apr  4 20:35:08 2022
 
 @author: safishajjouz
 """
-import  pandas as pd
-
+import pandas as pd
 
 from tslearn.clustering import TimeSeriesKMeans
 from tslearn.preprocessing import TimeSeriesScalerMeanVariance
