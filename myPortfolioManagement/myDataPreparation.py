@@ -21,6 +21,8 @@ from statsmodels.tsa.stattools import adfuller
 from pykalman import KalmanFilter
 from sklearn.preprocessing import MinMaxScaler
 
+import quantstats
+
 # function that denoises 
 def smooth_series_LowessSmoother(df:pd.DataFrame or pd.Series, 
                                  smoothing_parameter:float = 0.1) -> pd.DataFrame:
@@ -412,17 +414,9 @@ def ts_standarise(x:pd.Series, window:int, mode = 'rolling') ->pd.Series:
     return x_scaled
 
 
-def remove_outliers(dta):
-    # Compute the mean and interquartile range
-    mean = dta.mean()
-    iqr = dta.quantile([0.25, 0.75]).diff().T.iloc[:, 1]
-    
-    # Replace entries that are more than 10 times the IQR
-    # away from the mean with NaN (denotes a missing entry)
-    mask = np.abs(dta) > mean + 10 * iqr
-    treated = dta.copy()
-    treated[mask] = np.nan
-
+def remove_outliers(dta: pd.DataFrame or pd.Series) -> pd.DataFrame or pd.Series:
+    assert isinstance(dta, pd.DataFrame or pd.Series)
+    treated = quantstats.stats.remove_outliers(dta)
     return treated
 
 def adf_statistics(time_series):
