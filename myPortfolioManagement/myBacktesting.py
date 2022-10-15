@@ -6,8 +6,6 @@ Created on Sat Jan 22 19:23:54 2022
 @author: safishajjouz
 """
 from collections import OrderedDict
-# import matplotlib.ticker as ticker
-# import matplotlib.dates as mdates
 from typing import Tuple
 
 import empyrical as ep
