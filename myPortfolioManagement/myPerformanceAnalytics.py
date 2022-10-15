@@ -259,7 +259,7 @@ def beta_Co_Moments(returns, returns_benchmark, p1 =1 , p2 = 2):
                            the comoment without standardization''')
     
     temp = [centered_co_moments( returns = returns[x], 
-                                returns_benchmark =returns_benchmark,  p1 =1 , p2 = p2) 
+                                returns_benchmark =returns_benchmark,  p1 =p1 , p2 = p2)
             for x in returns.columns]
     if p2 == 1:
         beta_name = 'BetaCoVariance'
