@@ -634,7 +634,7 @@ def backtest_report(returns: pd.DataFrame,
     print(" Monthly Returns (%) ")
 
     # produce fan chart 
-    if out_of_sample_date == None:
+    if out_of_sample_date is None:
         out_of_sample_date = '2020-01-01'
 
     fan_chart(returns=returns,
