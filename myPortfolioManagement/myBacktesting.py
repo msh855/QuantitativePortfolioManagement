@@ -41,7 +41,7 @@ def bootstrap_stats(returns: pd.Series,
     """
 
     if not isinstance(returns_benchmark, pd.Series):
-        if returns_benchmark == None:
+        if returns_benchmark is None:
             returns_benchmark = pd.Series(dtype='int64')
 
     # metrics to calculate 
