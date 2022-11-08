@@ -453,3 +453,22 @@ def normalise_df(df: pd.DataFrame or pd.Series = None, **kwarg) -> pd.DataFrame:
     df_normalised = pd.DataFrame(x_scaled, index=df.index)
     df_normalised.columns = df.columns
     return df_normalised
+
+
+def create_credit_impulse(freq="q"):
+    credit_impulse = ['CRDQXMAPABIS',  # Euro Area
+                      'QUSPAM770A',  # US
+                     # 'QCNPAM770A',  # China
+                      'QGBPAM770A',  # United Kingdom
+                      'CRDQJPAPABIS']  # Japan
+    gdp = ['GDP', # US
+           'EUNNGDP', # Euro
+          # 'MKTGDPCNA646NWDB', #China
+           'JPNNGDP', #Japan
+           'UKNGDP' ] # United Kingdom
+
+    symbols = gdp + credit_impulse
+
+    data = download_fred_data(fred_sumbol=symbols, freq=freq)
+    data.columns = ['EUR', 'US', 'CHN', 'GB', 'JP']
+    return data
