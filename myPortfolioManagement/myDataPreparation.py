@@ -472,3 +472,18 @@ def create_credit_impulse(freq="q"):
     data = download_fred_data(fred_sumbol=symbols, freq=freq)
     data.columns = ['EUR', 'US', 'CHN', 'GB', 'JP']
     return data
+
+# proxy fund rate data
+# source: https://www.kansascityfed.org/Economic%20Review/documents/319/2016-Measuring%20the%20Stance%20of%20Monetary%20Policy%20on%20and%20off%20the%20Zero%20Lower%20Bound.pdf
+#       : https://www.frbsf.org/wp-content/uploads/sites/4/el2022-30.pdf
+
+# 1. MORTGAGE30US - weekly, 30-year fixed Mortage rate
+# 2. DGS2         - daily, 2-year Treasuries
+# 3. DGS5         - daily, 5-year Treasuries
+# 4. DGS7         - daily, 7-year Treasuries
+# 5. DGS10        - daily, 10-year Treasuries
+# 6. Bond buyer index: state/local bonds, 20-year, general obligation --- N/A
+# 7. AAA          - Monthly, Moody's Seasoned Aaa Corporate Bond Yield
+# 8. DBAA         - Daily, Moody's Seasoned Baa Corporate Bond Yield
+# Spreads: Mortgage rates and 10-year Treasury spread , Two-year and 10-year Treasury spread,
+#          Aaa corporate bond yield and 10-year Treasury spread, Baa corporate bond yield and 10-year Treasury spread
