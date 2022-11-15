@@ -6,7 +6,7 @@ Created on Sun May 15 10:41:20 2022
 @author: safishajjouz
 """
 import pandas as pd
-import numpy as np 
+import numpy as np
 
 from tsmoothie.smoother import LowessSmoother
 from scipy.signal import filtfilt
@@ -21,9 +21,12 @@ from statsmodels.tsa.stattools import adfuller
 from pykalman import KalmanFilter
 from sklearn.preprocessing import MinMaxScaler
 
-# function that denoises 
-def smooth_series_LowessSmoother(df:pd.DataFrame or pd.Series, 
-                                 smoothing_parameter:float = 0.1) -> pd.DataFrame:
+import quantstats
+
+
+# function that denoises
+def smooth_series_LowessSmoother(df: pd.DataFrame or pd.Series,
+                                 smoothing_parameter: float = 0.1) -> pd.DataFrame:
     """
     ref: https://github.com/cerlymarco/MEDIUM_NoteBook/blob/master/TimeSeries_Smoothing_Clustering/TimeSeries_Smoothing_Clustering.ipynb 
 
@@ -35,8 +38,7 @@ def smooth_series_LowessSmoother(df:pd.DataFrame or pd.Series,
         df_sm (TYPE): DESCRIPTION.
 
     """
-    
-    
+
     '''
     df: Time-Series Dataframe Dates are the index of the df 
     smoothing_parameter: Hyperparameter that controls the smoothing degree. 
@@ -44,28 +46,30 @@ def smooth_series_LowessSmoother(df:pd.DataFrame or pd.Series,
     '''
     if isinstance(df, pd.Series):
         df = df.to_frame()
-    
+
     df = df.dropna()
     df.index = pd.to_datetime(df.index, format='%Y/%m/%d')
-    #df.interpolate(method='time', inplace=True)
-    
+    # df.interpolate(method='time', inplace=True)
+
     # smooth Series 
     data_series = df.transpose().to_numpy()
-    df_smoothed = LowessSmoother(smooth_fraction=smoothing_parameter)  # higher values for smooth fraction more smooth (trend)
+    df_smoothed = LowessSmoother(
+        smooth_fraction=smoothing_parameter)  # higher values for smooth fraction more smooth (trend)
     df_smoothed.smooth(data_series)
-    
+
     # Check smoothed series intervals
-    #low, up = df_smoothed.get_intervals('prediction_interval')
-    
+    # low, up = df_smoothed.get_intervals('prediction_interval')
+
     # generate smoothed DataFrame 
     df_sm = df.copy()
     for i in range(len(df.columns)):
-        df_sm.iloc[:,i] = df_smoothed.smooth_data[i]
-    
-    df_sm.columns =  df.columns + '_smooth_Lowess'
+        df_sm.iloc[:, i] = df_smoothed.smooth_data[i]
+
+    df_sm.columns = df.columns + '_smooth_Lowess'
     return df_sm
 
-def HPfilter(x:pd.Series, freq:str = 'daily', rescaled_lambda = True) -> pd.DataFrame:
+
+def HPfilter(x: pd.Series, freq: str = 'daily', rescaled_lambda=True) -> pd.DataFrame:
     """
     # Ravn–Uhlig rule sets lambda to 1600p^4, where pq is the number of periods per quarter
     # https://home.uchicago.edu/~huhlig/papers/uhlig.ravn.res.2002.pdf 
@@ -80,41 +84,40 @@ def HPfilter(x:pd.Series, freq:str = 'daily', rescaled_lambda = True) -> pd.Data
         dfx (TYPE): DESCRIPTION.
 
     """
-    
-        
-    if rescaled_lambda: 
+
+    if rescaled_lambda:
         if freq == 'daily':
-            Lambda = 1600*((365/4)**4)
+            Lambda = 1600 * ((365 / 4) ** 4)
         if freq == 'weekly':
-            Lambda = 1600*(12**4)
+            Lambda = 1600 * (12 ** 4)
         if freq == 'monthly':
-            Lambda = 129600 
+            Lambda = 129600
         if freq == 'quarterly':
             Lambda = 1600
         if freq == 'yearly':
             Lambda = 6.25
     else:
-       if freq == 'daily':
-           Lambda = 1600*((365/4)**4)
-       if freq == 'weekly':
-           Lambda = 1600*(12**4)
-       if freq == 'monthly':
-           Lambda = 14400
-       if freq == 'quarterly':
-           Lambda = 1600
-       if freq == 'yearly':
-           Lambda = 100
-    
+        if freq == 'daily':
+            Lambda = 1600 * ((365 / 4) ** 4)
+        if freq == 'weekly':
+            Lambda = 1600 * (12 ** 4)
+        if freq == 'monthly':
+            Lambda = 14400
+        if freq == 'quarterly':
+            Lambda = 1600
+        if freq == 'yearly':
+            Lambda = 100
 
-    x_cycle = hpfilter(x.dropna(), lamb=Lambda)[0] 
+    x_cycle = hpfilter(x.dropna(), lamb=Lambda)[0]
     x_trend = hpfilter(x.dropna(), lamb=Lambda)[1]
-    
-    dfx = pd.concat([x, x_cycle, x_trend], axis = 1)
-    
+
+    dfx = pd.concat([x, x_cycle, x_trend], axis=1)
+
     return dfx
 
-def CFfilter(x: pd.Series, low:int = 6, high:int =  32, 
-             drift:bool = True) ->pd.DataFrame: 
+
+def CFfilter(x: pd.Series, low: int = 6, high: int = 32,
+             drift: bool = True) -> pd.DataFrame:
     """
     https://www.statsmodels.org/dev/generated/statsmodels.tsa.filters.cf_filter.cffilter.html
 
@@ -128,32 +131,28 @@ def CFfilter(x: pd.Series, low:int = 6, high:int =  32,
         TYPE: DESCRIPTION.
 
     """
-    
+
     x_cycle = cffilter(x.dropna(), low=low, high=high, drift=drift)[0]
     x_trend = cffilter(x.dropna(), low=low, high=high, drift=drift)[1]
-    
-    return pd.concat([x, x_cycle, x_trend], axis = 1)
+
+    return pd.concat([x, x_cycle, x_trend], axis=1)
 
 
-
-## function that denoises 
-def freq_sampling_filter(x: pd.Series or np.array, 
+## function that denoises
+def freq_sampling_filter(x: pd.Series or np.array,
                          n_components: float = 100) -> np.array:
     """
-    
-
     Args:
         x (pd.Series or np.array): DESCRIPTION.
         n_components (float, optional): DESCRIPTION. Defaults to 100  Higher values more smoothed series 
 
     Returns:
         _coff (TYPE): DESCRIPTION.
-
     """
-    
+
     if isinstance(x, type(pd.Series)) == True:
         x = x.to_numpy()
-        
+
     n = len(x)
 
     # compute the fft
@@ -161,17 +160,18 @@ def freq_sampling_filter(x: pd.Series or np.array,
 
     # compute power spectrum density
     # squared magnitud of each fft coefficient
-    PSD = fft * np.conj(fft) / n 
-    
+    PSD = fft * np.conj(fft) / n
+
     # keep frequencies with large contributions 
     _mask = PSD > n_components
     _coff = np.fft.fftshift(np.real(np.fft.ifft(_mask)))
-  
+
     return _coff
 
-# function that denoises 
-def fft_denoiser(x: pd.Series or np.array, 
-                         n_components: float = 100) -> np.array:
+
+# function that denoises
+def fft_denoiser(x: pd.Series or np.array,
+                 n_components: float = 100) -> np.array:
     """
     This function wraps up a process to denoise time series data using the 
     fourier transform 
@@ -188,19 +188,18 @@ def fft_denoiser(x: pd.Series or np.array,
         cleaned (TYPE): DESCRIPTION.
 
     """
-    
+
     if isinstance(x, type(pd.Series)) == True:
         x = x.to_numpy()
-    
-    
+
     coff = freq_sampling_filter(x, n_components)
-    cleaned = filtfilt(coff, 1, x, padlen=len(x)-1, padtype='constant')
-    
-    
+    cleaned = filtfilt(coff, 1, x, padlen=len(x) - 1, padtype='constant')
+
     return cleaned
 
-# function that denoises 
-def denoise_series_fft(x: pd.Series, n_components:float= 100):
+
+# function that denoises
+def denoise_series_fft(x: pd.Series, n_components: float = 100):
     """
     
 
@@ -216,23 +215,23 @@ def denoise_series_fft(x: pd.Series, n_components:float= 100):
         dfx (TYPE): DESCRIPTION.
 
     """
-    
-    if isinstance(x, pd.Series) == False:  
-      raise f"you passed {type(x)} instead you need pd.Series"
-    
-    
-    x = x.dropna()
-    den_noised = fft_denoiser(x, n_components = n_components)
-    
-    x_name_sm = x.name + '_smoothed_fft'
-    dfx = x.to_frame() 
-    dfx[x_name_sm] = den_noised
-    
-    return dfx 
 
-def denoise_series_welvet(x:pd.Series, 
-                          smoothing_scale:float = 0.5, wavelet:str = 'db6',
-                          mode:str = 'per' ) -> pd.DataFrame: 
+    if isinstance(x, pd.Series) == False:
+        raise f"you passed {type(x)} instead you need pd.Series"
+
+    x = x.dropna()
+    den_noised = fft_denoiser(x, n_components=n_components)
+
+    x_name_sm = x.name + '_smoothed_fft'
+    dfx = x.to_frame()
+    dfx[x_name_sm] = den_noised
+
+    return dfx
+
+
+def denoise_series_welvet(x: pd.Series,
+                          smoothing_scale: float = 0.5, wavelet: str = 'db6',
+                          mode: str = 'per') -> pd.DataFrame:
     """
     ref: https://pywavelets.readthedocs.io/en/latest/ref/dwt-discrete-wavelet-transform.html 
 
@@ -247,37 +246,36 @@ def denoise_series_welvet(x:pd.Series,
 
     """
     x = x.dropna()
-    
+
     coefficients = pywt.wavedec(x, wavelet, mode='per')
-    coefficients[1:] = [pywt.threshold(i, value=smoothing_scale*x.max(), mode='soft') for i in coefficients[1:]]
-    reconstructed_signal = pywt.waverec(coefficients, wavelet, mode='per') 
-    
+    coefficients[1:] = [pywt.threshold(i, value=smoothing_scale * x.max(), mode='soft') for i in coefficients[1:]]
+    reconstructed_signal = pywt.waverec(coefficients, wavelet, mode='per')
+
     dfx = x.to_frame()
     name = x.name + '_smooth_welvet'
     dfx[name] = reconstructed_signal
 
-    return dfx 
+    return dfx
 
-def denoise_series_kf(x:pd.Series) -> pd.DataFrame:
 
+def denoise_series_kf(x: pd.Series) -> pd.DataFrame:
     x_array = x.dropna().to_numpy()
-    
+
     # initial guesses 
-    kf = KalmanFilter(transition_matrices = [1],
-                  observation_matrices = [1],
-                  initial_state_mean = 0,
-                  initial_state_covariance = 1,
-                  observation_covariance=1,
-                  transition_covariance=.01) 
-    state_means, _ = kf.filter(x_array) 
-    filter_series = state_means 
-    
-    dfx = x.dropna().to_frame() 
+    kf = KalmanFilter(transition_matrices=[1],
+                      observation_matrices=[1],
+                      initial_state_mean=0,
+                      initial_state_covariance=1,
+                      observation_covariance=1,
+                      transition_covariance=.01)
+    state_means, _ = kf.filter(x_array)
+    filter_series = state_means
+
+    dfx = x.dropna().to_frame()
     name = x.name + '_smooth_KF'
     dfx[name] = filter_series
-    
-    return dfx 
 
+    return dfx
 
 
 class RollingStandardScaler(BaseEstimator, TransformerMixin):
@@ -305,22 +303,22 @@ class RollingStandardScaler(BaseEstimator, TransformerMixin):
     w_std : pandas.Series
         Series of std. values.
     """
+
     def __init__(self, window, mode='rolling'):
-        
         '''mode = [rolling or expanding]"'''
-        
+
         self.window = window
         self.mode = mode
-        
+
         # to fill in code
         self.pd_object = None
         self.w_mean = None
         self.w_std = None
         self.__fitted__ = False
-        
+
     def __repr__(self):
         return f"RollingStandardScaler(window={self.window}, mode={self.mode})"
-        
+
     def fit(self, X, y=None):
         """Fits.
         
@@ -338,9 +336,9 @@ class RollingStandardScaler(BaseEstimator, TransformerMixin):
         self.w_mean = self.pd_object.mean()
         self.w_std = self.pd_object.std()
         self.__fitted__ = True
-        
+
         return self
-    
+
     def transform(self, X):
         """Transforms.
         
@@ -358,10 +356,10 @@ class RollingStandardScaler(BaseEstimator, TransformerMixin):
             Transformed data.
         """
         self._check_fitted()
-        
+
         standardized = X.copy()
         return (standardized - self.w_mean) / self.w_std
-    
+
     def inverse_transform(self, X):
         """Inverse transform
         
@@ -378,19 +376,18 @@ class RollingStandardScaler(BaseEstimator, TransformerMixin):
             Transformed (original) data.
         """
         self._check_fitted()
-        
+
         unstandardized = X.copy()
-        return  (unstandardized * self.w_std) + self.w_mean
-        
+        return (unstandardized * self.w_std) + self.w_mean
+
     def _check_fitted(self):
         """ Checks if the algorithm is fitted. """
         if not self.__fitted__:
             raise ValueError("Please, fit the algorithm first.")
 
-def ts_standarise(x:pd.Series, window:int, mode = 'rolling') ->pd.Series:
-    """
-    
 
+def ts_standarise(x: pd.Series, window: int, mode='rolling') -> pd.Series:
+    """
     Args:
         x (pd.Series): DESCRIPTION.
         window (int): DESCRIPTION.
@@ -403,57 +400,90 @@ def ts_standarise(x:pd.Series, window:int, mode = 'rolling') ->pd.Series:
     """
     x = x.dropna()
     # set parameters 
-    xrolling = RollingStandardScaler(window=window)
+    xrolling = RollingStandardScaler(window=window, mode=mode)
     # fit series 
-    xrolling.fit(X = x)
+    xrolling.fit(X=x)
     # transform series 
-    x_scaled = xrolling.transform(X = x)
-    
+    x_scaled = xrolling.transform(X=x)
+
     return x_scaled
 
 
-def remove_outliers(dta):
-    # Compute the mean and interquartile range
-    mean = dta.mean()
-    iqr = dta.quantile([0.25, 0.75]).diff().T.iloc[:, 1]
-    
-    # Replace entries that are more than 10 times the IQR
-    # away from the mean with NaN (denotes a missing entry)
-    mask = np.abs(dta) > mean + 10 * iqr
-    treated = dta.copy()
-    treated[mask] = np.nan
+def ts_standarise_df(df: pd.DataFrame, window: int, mode: str = 'rolling') -> pd.DataFrame:
+    df_stz = df.apply(lambda x: ts_standarise(x, window=window, mode=mode))
+    return df_stz
 
+
+def remove_outliers(dta: pd.DataFrame or pd.Series) -> pd.DataFrame or pd.Series:
+    assert isinstance(dta, pd.DataFrame or pd.Series)
+    treated = quantstats.stats.remove_outliers(dta)
     return treated
+
 
 def adf_statistics(time_series):
     """
     Augmented Dickey-Fuller test for stationarity
     """
     result = adfuller(time_series.values)
-    if result[1] < 0.0500:             # result[1] contains the p-value
-        return 0                       # returns 0 value if p-value of test is under 5%
+    if result[1] < 0.0500:  # result[1] contains the p-value
+        return 0  # returns 0 value if p-value of test is under 5%
     else:
         return 1
+
 
 def adf_tests(df):
     """
     Augmented Dickey-Fuller test applied to every column in DataFrame
     """
-    results = df.apply(adf_statistics, axis=0) # Output is a Pandas series
-    if sum(results)==0:
+    results = df.apply(adf_statistics, axis=0)  # Output is a Pandas series
+    if sum(results) == 0:
         print('Null hypothesis of non-stationarity is rejected for ALL series with p-values < 5%')
     else:
         for i, v in results.items():
             if v == 1:
                 print(f'Null hypothesis of non-stationarity of {i} series is NOT rejected')
             else:
-                print(f'Null hypothesis of non-stationarity of {i} series is rejected')    
+                print(f'Null hypothesis of non-stationarity of {i} series is rejected')
 
 
-def normalise_df(df:pd.DataFrame or pd.Series = None, **kwarg)->pd.DataFrame:
-    x = df.values #returns a numpy array
+def normalise_df(df: pd.DataFrame or pd.Series = None, **kwarg) -> pd.DataFrame:
+    x = df.values  # returns a numpy array
     min_max_scaler = MinMaxScaler(**kwarg)
     x_scaled = min_max_scaler.fit_transform(x)
     df_normalised = pd.DataFrame(x_scaled, index=df.index)
     df_normalised.columns = df.columns
-    return df_normalised 
+    return df_normalised
+
+
+def create_credit_impulse(freq="q"):
+    credit_impulse = ['CRDQXMAPABIS',  # Euro Area
+                      'QUSPAM770A',  # US
+                     # 'QCNPAM770A',  # China
+                      'QGBPAM770A',  # United Kingdom
+                      'CRDQJPAPABIS']  # Japan
+    gdp = ['GDP', # US
+           'EUNNGDP', # Euro
+          # 'MKTGDPCNA646NWDB', #China
+           'JPNNGDP', #Japan
+           'UKNGDP' ] # United Kingdom
+
+    symbols = gdp + credit_impulse
+
+    data = download_fred_data(fred_sumbol=symbols, freq=freq)
+    data.columns = ['EUR', 'US', 'CHN', 'GB', 'JP']
+    return data
+
+# proxy fund rate data
+# source: https://www.kansascityfed.org/Economic%20Review/documents/319/2016-Measuring%20the%20Stance%20of%20Monetary%20Policy%20on%20and%20off%20the%20Zero%20Lower%20Bound.pdf
+#       : https://www.frbsf.org/wp-content/uploads/sites/4/el2022-30.pdf
+
+# 1. MORTGAGE30US - weekly, 30-year fixed Mortage rate
+# 2. DGS2         - daily, 2-year Treasuries
+# 3. DGS5         - daily, 5-year Treasuries
+# 4. DGS7         - daily, 7-year Treasuries
+# 5. DGS10        - daily, 10-year Treasuries
+# 6. Bond buyer index: state/local bonds, 20-year, general obligation --- N/A
+# 7. AAA          - Monthly, Moody's Seasoned Aaa Corporate Bond Yield
+# 8. DBAA         - Daily, Moody's Seasoned Baa Corporate Bond Yield
+# Spreads: Mortgage rates and 10-year Treasury spread , Two-year and 10-year Treasury spread,
+#          Aaa corporate bond yield and 10-year Treasury spread, Baa corporate bond yield and 10-year Treasury spread
