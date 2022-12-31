@@ -2,6 +2,7 @@ import pandas as pd
 import ffn
 import quantstats as qs
 from scipy import stats as scipy_stats
+import numpy as np
 
 
 def probabilistic_sharpe_ratio(returns, returns_bench=None, sr_benchmark=False):
