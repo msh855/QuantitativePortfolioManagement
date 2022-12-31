@@ -12,13 +12,10 @@ from timebudget import timebudget  # to time functions
 import ray  # to parallelise
 
 import investpy  # to download mutual fund and trust prices
-from yahoofinancials import YahooFinancials  # to download prices from Yahoo 
-import yfinance as yf  # to download prices and other info from yahoo
+from yahoofinancials import YahooFinancials  # to download prices from Yahoo
 
 from os import path
 import glob
-
-# import quandl # for for economic, financial and other data
 
 
 from sklearn.decomposition import PCA
@@ -27,7 +24,6 @@ from sklearn.preprocessing import StandardScaler
 from myPortfolioManagement.myUtils import which_in_investpy  # from my library
 
 from finvizfinance.screener.overview import Overview
-# import quantstats as qs
 
 from fredapi import Fred
 
@@ -112,39 +108,6 @@ def yahoo_data(data: dict, ticker: str) -> pd.DataFrame:
         df_temp['yahoo_ticker'] = ticker
         df_temp['instrumentType'] = data[ticker]['instrumentType']
 
-        # use yahoo finance to get other information 
-        stock = yf.Ticker(ticker)  # this calls yfinance
-
-        # get isin number
-        df_temp['isin'] = stock.isin
-
-        # get more info 
-        info = stock.info
-
-        df_temp['quoteType'] = info['quoteType']
-        df_temp['stock'] = info['shortName']
-        df_temp['symbol'] = info['symbol']
-
-        if info['marketCap'] != None:
-            df_temp['current_market_cap'] = info['marketCap']
-        else:
-            df_temp['current_market_cap'] = np.nan
-
-        if "beta" in info:
-            df_temp['beta'] = info['beta']
-        else:
-            df_temp['beta'] = np.nan
-
-        if "sector" in info:
-            df_temp['sector'] = info["sector"]
-        else:
-            df_temp['sector'] = 'unclassified'
-
-        if 'industry' in info:
-            df_temp['industry'] = info["industry"]
-        else:
-            df_temp['industry'] = 'unclassified'
-
         return df_temp
     except:
         return print('did not find this ticker:', ticker)
@@ -190,87 +153,6 @@ def download_etf_prices(etf_name: str, country: str,
     return etf_prices
 
 
-# @ray.remote 
-# def download_indeces(index_name, country, start_date, end_date):
-
-#  try:
-#      temp_prices = investpy.get_index_historical_data(index=index_name,
-#                                                       country=country,
-#                                                       from_date=start_date,
-#                                                       to_date=end_date)
-
-#      # fix faulty yahoo data that jumps 100x
-#      jumps_up   = temp_prices['Close'] / temp_prices['Close'].shift() >  50
-#      jumps_down = temp_prices['Close'] / temp_prices['Close'].shift() < .02
-#      correction_factor = 100.**(jumps_down.cumsum() - jumps_up.cumsum())
-#      temp_prices['Close'] *= correction_factor
-
-#      temp_prices["index"] = index_name 
-#      temp_prices["country"] = country
-#      return temp_prices
-#  except:
-#          pass
-
-
-# @timebudget
-# def get_indices(start_date = '1990-01-01', end_date=None, currency = None): 
-
-#     # convert to date objects 
-#     start_date = dt.datetime.strptime(start_date, '%Y-%m-%d').date()
-#     start_date = start_date.strftime("%d/%m/%Y") 
-
-
-#     if end_date ==None:
-#         end_date = date.today() -  timedelta(days=1)
-#         end_date = end_date.strftime("%d/%m/%Y") 
-
-
-#     df_index = investpy.indices.get_indices(country= None)
-
-#     if currency is None:
-#         df_index = df_index[ (df_index.currency =="USD") |
-#                             (df_index.currency =="GBP")  | 
-#                             (df_index.currency =="EUR") ]
-#     else:
-#         df_index = df_index[df_index.currency == currency] 
-
-#     # Database with Prices 
-#     df_temp_index = []
-#     for index_name in df_index["name"]:
-#         country = pd.Series.to_string(df_index.country[df_index.name == index_name],
-#                                       index=False).lstrip(' ').rstrip(' ')
-
-#         try:
-#             temp_prices = investpy.get_index_historical_data(index=index_name,
-#                                                              country=country,
-#                                                              from_date=start_date,
-#                                                              to_date=end_date)
-
-#             # fix faulty yahoo data that jumps 100x
-#             jumps_up   = temp_prices['Close'] / temp_prices['Close'].shift() >  50
-#             jumps_down = temp_prices['Close'] / temp_prices['Close'].shift() < .02
-#             correction_factor = 100.**(jumps_down.cumsum() - jumps_up.cumsum())
-#             temp_prices['Close'] *= correction_factor
-
-#             temp_prices["index"] = index_name 
-#             temp_prices["country"] = country
-#             temp_prices["symbol"] = str.strip(pd.Series.to_string(df_index[df_index.name == index_name]['symbol'], index=False))
-
-#             df_temp_index.append(temp_prices)
-#         except:
-#                 pass
-
-
-#     df_index = pd.concat(df_temp_index)    
-#     df_index = df_index.drop(columns = ['Open', 'High', 'Low'])
-#     df_index = df_index.dropna(how = "all")
-#     df_index["type"] = "index"
-#     df_index.index = df_index.index.strftime('%Y/%m/%d')
-#     df_index = df_index[df_index.Volume>=500000]
-
-#     return df_index
-
-
 # function to get prices for a list of stocks
 @timebudget
 def get_stock_prices(yahoo_tickers: list, start_date: str = '1950-01-01',
@@ -286,7 +168,7 @@ def get_stock_prices(yahoo_tickers: list, start_date: str = '1950-01-01',
         start_date (str, optional): DESCRIPTION. Defaults to '1950-01-01'.
         end_date (str, optional): DESCRIPTION. Defaults to None.
         time_interval (str, optional): DESCRIPTION. Defaults to 'daily'.
-        long_format (bool, optional): DESCRIPTION. Defaults to False.
+        wide_format (bool, optional): DESCRIPTION. Defaults to False.
         num_cpus (int, optional): DESCRIPTION. Defaults to 1.
 
     Returns:
@@ -315,13 +197,13 @@ def get_stock_prices(yahoo_tickers: list, start_date: str = '1950-01-01',
     """
 
     if end_date == None:
-        end_date = end_date = date.today() - timedelta(days=1)
+        end_date = date.today() - timedelta(days=1)
         end_date = end_date.strftime("%Y-%m-%d")
 
-        # removes duplicates
+    # removes duplicates
     yahoo_tickers = list(set(yahoo_tickers))
 
-    # loads price data 
+    # loads price data
     yahoo_financials = YahooFinancials(yahoo_tickers)
     data = yahoo_financials.get_historical_price_data(start_date=start_date,
                                                       end_date=end_date,
@@ -335,28 +217,24 @@ def get_stock_prices(yahoo_tickers: list, start_date: str = '1950-01-01',
                       for ticker in yahoo_tickers])
     ray.shutdown()
 
-    # merge dataframes 
+    # merge dataframes
     df = pd.concat(mydata)
 
-    # rename columns 
+    # rename columns
     df = df.rename(columns={'formatted_date': 'Date'})
 
-    # drop date column 
+    # drop date column
     df = df.drop('date', axis=1)
 
-    # Convert to date object 
+    # Convert to date object
     df['Date'] = pd.to_datetime(df['Date'], infer_datetime_format=True)
 
-    # set Date as index 
+    # set Date as index
     df = df.set_index('Date')
-
-    # convert to Billions (in $)
-    df["current_market_cap"] = df["current_market_cap"].astype(float)
-    df['current_market_cap'] = round(df['current_market_cap'] / 1000000000, 4)
 
     if wide_format:
         df = df.pivot_table(index='Date',
-                            columns='symbol',
+                            columns='yahoo_ticker',
                             values='adjclose')
 
     return df
@@ -640,13 +518,13 @@ def load_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
 
 def get_US_yields(freq: str = 'd', add_fed_rate: bool = False) -> pd.DataFrame:
     """
-    
-
     Args:
         freq (TYPE, optional): DESCRIPTION. Defaults to 'd'.
 
     Yields:
         df_USyields (TYPE): DESCRIPTION.
+        :param freq:
+        :param add_fed_rate:
 
     """
     treasuries = ['DGS1MO', 'DGS3MO', 'DGS6MO', 'DGS1', 'DGS2', 'DGS3',
@@ -785,7 +663,7 @@ def download_fred_data(fred_sumbol: list, freq: str, print_info: bool = False,
 
     Args:
         fred_sumbol (list): DESCRIPTION.
-        freq (str): DESCRIPTION.
+        freq (str): DESCRIPTION. # fred = ['d', 'm', 'q', 'a'][0]
         print_info (bool, optional): DESCRIPTION. Defaults to False.
         my_fred_API (str, optional): DESCRIPTION. Defaults to 'cc628b51e21828ae6b98c06f4eef6714'.
 
@@ -793,8 +671,6 @@ def download_fred_data(fred_sumbol: list, freq: str, print_info: bool = False,
         df (TYPE): DESCRIPTION.
 
     """
-
-    # fred = ['d', 'm', 'q', 'a'][0]
 
     fred = Fred(api_key=my_fred_API)
 
@@ -808,6 +684,7 @@ def download_fred_data(fred_sumbol: list, freq: str, print_info: bool = False,
         df[series_id] = fred.get_series(series_id, frequency=freq)
     df = pd.DataFrame(df)
     df.index.names = ['Date']
+    df.index = pd.DatetimeIndex(df.index)
     return df
 
 
