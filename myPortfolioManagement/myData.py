@@ -1,7 +1,5 @@
 import pandas as pd  # to work datafranes
 
-pd.options.mode.use_inf_as_na = True  # this is instead of inf to show NAs
-
 import numpy as np  # to work with vectors
 
 import datetime as dt  # to handle dates
@@ -17,7 +15,6 @@ from yahoofinancials import YahooFinancials  # to download prices from Yahoo
 from os import path
 import glob
 
-
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
@@ -26,6 +23,8 @@ from myPortfolioManagement.myUtils import which_in_investpy  # from my library
 from finvizfinance.screener.overview import Overview
 
 from fredapi import Fred
+
+pd.options.mode.use_inf_as_na = True  # this is instead of inf to show NAs
 
 
 @ray.remote
@@ -76,44 +75,6 @@ def download_mutual_funds_prices(mutual_fund_name: str, country: str,
 
 
 @ray.remote
-def yahoo_data(data: dict, ticker: str) -> pd.DataFrame:
-    """
-    This is a wrapper function around `YahooFinancials` and 'yfinance'
-    to download stock prices. Takes as inputs dictionries with various info 
-    and prices of the stocks and returns a pandas dataframes with historical 
-    prices and other info related to the stock.
-    ...
-    
-    Args:
-         data (dictionary): A dictionary with historical prices per ticker 
-         ticker (string) : the yahoo ticker 
-      
-    Returns:
-      pandas Dataframe: Returns a pandas dataframe
-    """
-
-    try:
-        df_temp = pd.DataFrame.from_dict(data[ticker]['prices'])
-
-        # fix faulty yahoo data that jumps 100x
-        df_temp = df_temp.dropna(subset=['adjclose'])
-        df_temp = df_temp[df_temp['adjclose'] != 0]
-
-        jumps_up = df_temp['adjclose'] / df_temp['adjclose'].shift() > 50
-        jumps_down = df_temp['adjclose'] / df_temp['adjclose'].shift() < .02
-        correction_factor = 100. ** (jumps_down.cumsum() - jumps_up.cumsum())
-        df_temp['adjclose'] *= correction_factor
-
-        # put info 
-        df_temp['yahoo_ticker'] = ticker
-        df_temp['instrumentType'] = data[ticker]['instrumentType']
-
-        return df_temp
-    except:
-        return print('did not find this ticker:', ticker)
-
-
-@ray.remote
 def download_etf_prices(etf_name: str, country: str,
                         start_date: str, end_date: str) -> pd.DataFrame:
     """
@@ -157,46 +118,8 @@ def download_etf_prices(etf_name: str, country: str,
 @timebudget
 def get_stock_prices(yahoo_tickers: list, start_date: str = '1950-01-01',
                      end_date: str = None,
-                     time_interval: str = 'daily', wide_format: bool = False,
-                     num_cpus: int = 1) -> pd.DataFrame:
-    """
-    This is the main function to download stock prices 
-    loops over the 'get_stock_data' function 
-
-    Args:
-        yahoo_tickers (list): DESCRIPTION.
-        start_date (str, optional): DESCRIPTION. Defaults to '1950-01-01'.
-        end_date (str, optional): DESCRIPTION. Defaults to None.
-        time_interval (str, optional): DESCRIPTION. Defaults to 'daily'.
-        wide_format (bool, optional): DESCRIPTION. Defaults to False.
-        num_cpus (int, optional): DESCRIPTION. Defaults to 1.
-
-    Returns:
-        df (TYPE): DESCRIPTION.
-
-    """
-
-    """
-    This is the main function to download stock prices 
-    loops over the 'get_stock_data' function 
-    ...
-    
-    Args:
-          tickers (list): A list of yahoo tickers 
-           num_cpus(int): The number of CPUs you want to use 
-           
-           start_date(string): Date that prices start. 
-                               Is a string with this '%Y-%m-%d' date format 
-             end_date(string): Date that prices end. 
-                               Is a string with this '%Y-%m-%d' date format
-           time_interval(string): an option from ['daily', 'weekly','monthly']
-                                  Default is daily  
-      
-    Returns:
-      pandas Dataframe: Returns a pandas dataframe with stock prices and other info 
-    """
-
-    if end_date == None:
+                     time_interval: str = 'daily', wide_format: bool = False, fix_data: bool = False) -> pd.DataFrame:
+    if end_date is None:
         end_date = date.today() - timedelta(days=1)
         end_date = end_date.strftime("%Y-%m-%d")
 
@@ -209,32 +132,31 @@ def get_stock_prices(yahoo_tickers: list, start_date: str = '1950-01-01',
                                                       end_date=end_date,
                                                       time_interval=time_interval)
 
-    # loop over tickers block
-    ray.shutdown()
-    ray.init(ignore_reinit_error=True, num_cpus=num_cpus)
-    mydata = ray.get([yahoo_data.remote(data,
-                                        ticker)
-                      for ticker in yahoo_tickers])
-    ray.shutdown()
+    df = pd.DataFrame(
+        [{**p, 'yahooTicker': k, 'instrumentType': v['instrumentType']} for k, v in data.items() for p in
+         v['prices']]).drop(columns=['date']).set_index('formatted_date')
 
-    # merge dataframes
-    df = pd.concat(mydata)
+    if fix_data:
+        df_temp = df.copy()
+
+        # fix faulty yahoo data that jumps 100x
+        df_temp = df_temp.dropna(subset=['adjclose'])
+        df_temp = df_temp[df_temp['adjclose'] != 0]
+
+        jumps_up = df_temp['adjclose'] / df_temp['adjclose'].shift() > 50
+        jumps_down = df_temp['adjclose'] / df_temp['adjclose'].shift() < .02
+        correction_factor = 100. ** (jumps_down.cumsum() - jumps_up.cumsum())
+        df_temp['adjclose'] *= correction_factor
+        df = df_temp
 
     # rename columns
-    df = df.rename(columns={'formatted_date': 'Date'})
-
-    # drop date column
-    df = df.drop('date', axis=1)
-
+    df.index.name = 'Date'
     # Convert to date object
-    df['Date'] = pd.to_datetime(df['Date'], infer_datetime_format=True)
-
-    # set Date as index
-    df = df.set_index('Date')
+    df.index = pd.to_datetime(df.index, infer_datetime_format=True)
 
     if wide_format:
         df = df.pivot_table(index='Date',
-                            columns='yahoo_ticker',
+                            columns='yahooTicker',
                             values='adjclose')
 
     return df
