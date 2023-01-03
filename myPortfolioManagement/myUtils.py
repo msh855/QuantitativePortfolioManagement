@@ -122,8 +122,8 @@ def which_in_investpy(list_to_check: list, what_to_check='isin'):
     return assets_all
 
 
-def rebase(df: pd.DataFrame or pd.Series, initial_value=1):
-    if not isinstance(df.index, pd.DatetimeIndex):
+def rebase(df_prices: pd.DataFrame or pd.Series, initial_value=1):
+    if not isinstance(df_prices.index, pd.DatetimeIndex):
         raise ValueError('Index not a date')
-    df = df.interpolate(method='time', limit_direction='both')
-    return ffn.core.rebase(df, value=initial_value)
+    df_prices = df_prices.interpolate(method='time', limit_direction='both')
+    return ffn.core.rebase(df_prices, value=initial_value)

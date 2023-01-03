@@ -97,8 +97,6 @@ def create_portfolios(returns: pd.DataFrame, weights: pd.DataFrame) -> pd.DataFr
 
 def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
     """
-    
-
     Args:
         ret (pd.DataFrame): DESCRIPTION.
         convert_to (str): DESCRIPTION.
@@ -108,7 +106,6 @@ def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
 
     Returns:
         ret (TYPE): DESCRIPTION.
-
     """
 
     if convert_to != None:
@@ -157,21 +154,19 @@ def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
 
 def calculate_returns(df_prices: pd.DataFrame, log_returns: bool = False,
                       convert_to: str = None,
-                      rolling_window: int = None,
-                      annualize_factor=None,
+                      annualize_factor: int = None,
                       add_portfolio: bool = False, **kwargs) -> pd.DataFrame:
     """
     function to compute returns. Can be simple returns or log returns. It 
     also allows aggregation of retunrs from daily to ['weekly', 'monthly', 
                                                       quarterly, 'yearly']
-    
-    The useer can also calculate returns on a rolling basis. 
+
+    The user can also calculate returns on a rolling basis.
 
     Args:
         df_prices (pd.DataFrame): DESCRIPTION.
         log_returns (bool, optional): DESCRIPTION. Defaults to False.
         convert_to (str, optional): DESCRIPTION. Defaults to None.
-        rolling_window (int, optional): DESCRIPTION. Defaults to None.
         add_portfolio (bool, optional): DESCRIPTION. Defaults to False.
         **kwargs (TYPE): DESCRIPTION.
 
@@ -180,7 +175,6 @@ def calculate_returns(df_prices: pd.DataFrame, log_returns: bool = False,
 
     Returns:
         ret (TYPE): DESCRIPTION.
-
     """
 
     ret = returns_from_prices(df_prices, log_returns=log_returns)
@@ -196,11 +190,6 @@ def calculate_returns(df_prices: pd.DataFrame, log_returns: bool = False,
         # memo: 252 for daily, 52 for weekly, 12 for monthly
         # output from fnn is in 100 so I devide with 100 
         ret = ffn.core.annualize(ret, annualize_factor, one_year=365) / 100
-
-    if rolling_window != None:
-        ret = pd.concat([ffn.core.rollapply(ret[col], rolling_window,
-                                            statistics.mean)
-                         for col in list(ret.columns)], axis=1)
 
     return ret
 
@@ -261,20 +250,21 @@ def average_returns(returns: pd.DataFrame or pd.Series,
 
 
 def get_benchmark_porfolios(rebalance=None):
-    # All-Weather-Porfolio
+
+    # All-Weather-Porfolio based on weights
     tickers = {'VTI': 0.30,
                'VGLT': 0.40,
                'VGIT': 0.15,
-               'IAU': 0.08,
+               'GLD': 0.08,
                'DJP': 0.07}
 
-    ret_all_weather_US = qs.utils.make_index(ticker_weights=tickers,
+    ret_all_weather_dalio = qs.utils.make_index(ticker_weights=tickers,
                                              rebalance=rebalance,
                                              period='max',
                                              returns=None,
                                              match_dates=False)
 
-    ret_all_weather_US = pd.Series(ret_all_weather_US,
+    ret_all_weather_dalio = pd.Series(ret_all_weather_dalio,
                                    name='All_Weather_Dalio')
 
     # # All-Weather-Porfolio UK version 
@@ -297,11 +287,11 @@ def get_benchmark_porfolios(rebalance=None):
 
     # ret_all_weather_UK = pd.Series(ret_all_weather_US, name = 'All_Weather_UK')
 
-    # 60/40 porfolio 
+    # 60/40 based on BlackRock
     ret_60_40 = pd.Series(qs.utils.download_returns('BAGPX'),
                           name='Port_60/40_BlackRock')
 
-    retun_bench_port = pd.concat([ret_all_weather_US, ret_60_40], axis=1)
+    retun_bench_port = pd.concat([ret_all_weather_dalio, ret_60_40], axis=1)
 
     return retun_bench_port
 
