@@ -202,8 +202,6 @@ def generate_rp_portfolios(returns_training=None,
                            rf=0.02, risk_measure=[],
                            weight_max=[]):
     """
-    
-
     Args:
         returns_training (TYPE, optional): DESCRIPTION. Defaults to None.
         rf (TYPE, optional): DESCRIPTION. Defaults to 0.02.
@@ -376,7 +374,7 @@ def port_GMV(returns_training=None, S=None, periods=252, weight_min=0.02,
     return weights
 
 
-# Maximise returns_training_training for a given level of volatility 
+# Maximise returns_training for a given level of volatility
 def port_target_volatility(returns_training, market_returns=None,
                            S=None,
                            average_returns_method='hist',
@@ -610,13 +608,13 @@ def port_CVAR(returns_training, market_returns=None,
 @ray.remote
 def HRP_ray(model: str = 'HRP',
             returns_training: pd.DataFrame = None,
-            covariance: str ="hist",
-            codependence: str ='pearson',
-            rm: str ='MV',
-            linkage: str ='single',
-            weight_max: float =None,
-            weight_min: float =None,
-            leaf_order: bool =False, **kwargs):
+            covariance: str = "hist",
+            codependence: str = 'pearson',
+            rm: str = 'MV',
+            linkage: str = 'single',
+            weight_max: float = None,
+            weight_min: float = None,
+            leaf_order: bool = False, **kwargs):
     # sanity checks
     if not isinstance(returns_training, pd.DataFrame):
         raise ValueError("you must pass a Pandas DataFrame")
@@ -818,10 +816,10 @@ def generate_HRP_portfolios(returns=None, weight_max=None,
 #     return df_all_weights
 
 
-def make_standard_portfolios(returns_training, target_return=None,
-                             target_volatility=None,
-                             weight_min=0, weight_max=1,
-                             rebalance=None):
+def make_standard_portfolios(returns_training: pd.DataFrame, target_return: float = None,
+                             target_volatility: float = None,
+                             weight_min: float = 0, weight_max: float = 1,
+                             rebalance: str = None):
     """
     
 

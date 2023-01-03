@@ -23,6 +23,7 @@ from myPortfolioManagement.myUtils import which_in_investpy  # from my library
 from finvizfinance.screener.overview import Overview
 
 from fredapi import Fred
+import quantstats as qs
 
 pd.options.mode.use_inf_as_na = True  # this is instead of inf to show NAs
 
@@ -653,3 +654,14 @@ def get_yield_curve_factors(df: pd.DataFrame = None,
         principalDf.columns = prefix + principalDf.columns
 
     return principalDf
+
+
+def download_stock_returns(yahoo_tickers: list) -> pd.DataFrame:
+    ret_bench = list()
+    for tick, names in zip(yahoo_tickers, yahoo_tickers):
+        ret = pd.Series(qs.utils.download_returns(tick), name=names)
+        ret_bench.append(ret)
+
+    ret_bench = pd.concat(ret_bench, axis=1)
+
+    return ret_bench

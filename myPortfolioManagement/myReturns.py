@@ -15,6 +15,8 @@ import ffn
 import statistics
 from pypfopt import expected_returns
 import quantstats as qs
+from myPortfolioManagement.myData import download_stock_returns
+import myPortfolioOptimisation
 
 
 # from myPortfolioManagement.myReturns import download_returns
@@ -331,17 +333,6 @@ def get_benchmark_returns(choose_bench: str = 'S&P500') -> pd.DataFrame:
     return ret_bench
 
 
-def download_returns(yahoo_tickers: list) -> pd.DataFrame:
-    ret_bench = list()
-    for tick, names in zip(yahoo_tickers, yahoo_tickers):
-        ret = pd.Series(qs.utils.download_returns(tick), name=names)
-        ret_bench.append(ret)
-
-    ret_bench = pd.concat(ret_bench, axis=1)
-
-    return ret_bench
-
-
 def get_multi_asset_returns() -> pd.DataFrame:
     # - EEM  # iShares Emerging Markets - Emering Markets
     # - VNQ  # Vangaurd Real Estate  - Real Estate          
@@ -361,7 +352,7 @@ def get_multi_asset_returns() -> pd.DataFrame:
                            'AGG',
                            'DJP', 'BIL']
 
-    df_multi_asset = download_returns(multi_asset_tickers)
+    df_multi_asset = download_stock_returns(multi_asset_tickers)
 
     df_multi_asset = df_multi_asset.dropna()
 
