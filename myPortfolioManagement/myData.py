@@ -289,7 +289,6 @@ def data_overview(df: pd.DataFrame,
     df_overview = df
 
     if type(df_overview.index) == pd.DatetimeIndex:
-        # my_date_col_name = df_overview.index.name
         df_overview = df_overview.reset_index()
 
     df_overview[my_date_col_name] = pd.to_datetime(df_overview[my_date_col_name], format='%Y/%m/%d')
