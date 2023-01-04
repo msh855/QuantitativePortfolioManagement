@@ -25,15 +25,15 @@ from myPortfolioManagement.myReturns import average_returns
 
 
 # Hierarchical Risk Parity Default option
-def HRP(model='HRP',
-        returns_training=None,
-        covariance="hist",
-        codependence='pearson',
-        rm='MV',
-        linkage='single',
-        weight_max=None,
-        weight_min=None,
-        leaf_order=False, **kwargs):
+def HRP(model: str = 'HRP',
+        returns_training: str = None,
+        covariance: str = "hist",
+        codependence: str = 'pearson',
+        rm: str = 'MV',
+        linkage: str = 'single',
+        weight_max: float = None,
+        weight_min: float = None,
+        leaf_order: bool = False, **kwargs):
     '''
 
     model : str, can be {'HRP', 'HERC' or 'HERC2'}

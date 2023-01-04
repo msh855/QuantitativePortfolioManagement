@@ -9,18 +9,13 @@ Created on Wed Mar 16 07:09:13 2022
 import pandas as pd
 import numpy as np
 
-from pypfopt.expected_returns import returns_from_prices
+from pypfopt.expected_returns import returns_from_prices, mean_historical_return, capm_return, ema_historical_return
 from empyrical.stats import aggregate_returns
 import ffn
-import statistics
-from pypfopt import expected_returns
+
 import quantstats as qs
 from myPortfolioManagement.myData import download_stock_returns
-import myPortfolioOptimisation
-
-
-# from myPortfolioManagement.myReturns import download_returns
-# from myPortfolioManagement import myPortfolioOptimisation
+from myPortfolioManagement.myPortfolioOptimisation import equal_weight_portfolio
 
 
 # calculate portfolio returns
@@ -222,37 +217,36 @@ def average_returns(returns: pd.DataFrame or pd.Series,
     """
 
     if method == 'hist':
-        mu = expected_returns.mean_historical_return(prices=returns,
-                                                     returns_data=True,
-                                                     compounding=True,
-                                                     frequency=periods,
-                                                     log_returns=log_returns)
+        mu = mean_historical_return(prices=returns,
+                                    returns_data=True,
+                                    compounding=True,
+                                    frequency=periods,
+                                    log_returns=log_returns)
 
     if method == 'capm':
         if isinstance(benchmark_returns, type(None)):
             raise ValueError('benchmark_returns is missing')
 
-        mu = expected_returns.capm_return(returns,
-                                          market_prices=benchmark_returns,
-                                          returns_data=True,
-                                          risk_free_rate=rf,
-                                          compounding=True,
-                                          frequency=periods,
-                                          log_returns=log_returns)
+        mu = capm_return(returns,
+                         market_prices=benchmark_returns,
+                         returns_data=True,
+                         risk_free_rate=rf,
+                         compounding=True,
+                         frequency=periods,
+                         log_returns=log_returns)
 
     if method == 'ema':
-        mu = expected_returns.ema_historical_return(returns,
-                                                    returns_data=True,
-                                                    compounding=True,
-                                                    span=span,
-                                                    frequency=periods,
-                                                    log_returns=log_returns)
+        mu = ema_historical_return(returns,
+                                   returns_data=True,
+                                   compounding=True,
+                                   span=span,
+                                   frequency=periods,
+                                   log_returns=log_returns)
 
     return mu
 
 
 def get_benchmark_porfolios(rebalance=None):
-
     # All-Weather-Porfolio based on weights
     tickers = {'VTI': 0.30,
                'VGLT': 0.40,
@@ -261,13 +255,13 @@ def get_benchmark_porfolios(rebalance=None):
                'DJP': 0.07}
 
     ret_all_weather_dalio = qs.utils.make_index(ticker_weights=tickers,
-                                             rebalance=rebalance,
-                                             period='max',
-                                             returns=None,
-                                             match_dates=False)
+                                                rebalance=rebalance,
+                                                period='max',
+                                                returns=None,
+                                                match_dates=False)
 
     ret_all_weather_dalio = pd.Series(ret_all_weather_dalio,
-                                   name='All_Weather_Dalio')
+                                      name='All_Weather_Dalio')
 
     # # All-Weather-Porfolio UK version 
     # tickers_UK = {'VUSA.L': 0.10,
@@ -357,7 +351,7 @@ def get_multi_asset_returns() -> pd.DataFrame:
     df_multi_asset = df_multi_asset.dropna()
 
     # naive or equal weight portfolio allocation 
-    df_naive = myPortfolioOptimisation.equal_weight_portfolio(df_multi_asset)
+    df_naive = equal_weight_portfolio(df_multi_asset)
 
     port_returns = calculate_portfolio_returns(df_multi_asset,
                                                myassets_list=multi_asset_tickers,
