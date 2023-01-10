@@ -122,8 +122,25 @@ def which_in_investpy(list_to_check: list, what_to_check='isin'):
     return assets_all
 
 
-def rebase(df_prices: pd.DataFrame or pd.Series, initial_value=1):
-    if not isinstance(df_prices.index, pd.DatetimeIndex):
-        raise ValueError('Index not a date')
-    df_prices = df_prices.interpolate(method='time', limit_direction='both')
-    return ffn.core.rebase(df_prices, value=initial_value)
+#
+# def rebase(df_prices: pd.DataFrame or pd.Series, initial_value=1):
+#     if not isinstance(df_prices.index, pd.DatetimeIndex):
+#         raise ValueError('Index not a date')
+#     df_prices = df_prices.interpolate(method='time', limit_direction='both')
+#     return ffn.core.rebase(df_prices, value=initial_value)
+
+
+def rebase(df):
+    # Find the minimum starting date among all the series
+    min_start = df.apply(lambda x: x.first_valid_index()).min()
+    # Create a new dataframe with the aligned index
+    aligned_df = pd.DataFrame(index=pd.date_range(start=min_start, end=df.index[-1]))
+    # Interpolate missing values and fill them
+    for col in df.columns:
+        series = df[col].reindex(aligned_df.index).ffill()
+        first_valid_idx = series.first_valid_index()
+        if first_valid_idx:
+            series = series / series[first_valid_idx]
+        aligned_df[col] = series
+    aligned_df.index.name = df.index.name
+    return aligned_df
