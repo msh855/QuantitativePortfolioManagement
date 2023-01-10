@@ -15,7 +15,7 @@ import ffn
 
 import quantstats as qs
 from myPortfolioManagement.myData import download_stock_returns
-from myPortfolioManagement.myPortfolioOptimisation import equal_weight_portfolio
+
 
 
 # calculate portfolio returns
@@ -350,7 +350,8 @@ def get_multi_asset_returns() -> pd.DataFrame:
 
     df_multi_asset = df_multi_asset.dropna()
 
-    # naive or equal weight portfolio allocation 
+    # naive or equal weight portfolio allocation
+    from myPortfolioManagement.myPortfolioOptimisation import equal_weight_portfolio
     df_naive = equal_weight_portfolio(df_multi_asset)
 
     port_returns = calculate_portfolio_returns(df_multi_asset,
