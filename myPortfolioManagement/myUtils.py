@@ -1,10 +1,7 @@
-import pandas as pd  # to work datafranes
-
-import numpy as np  # work with vectors
-
-import investpy  # Mutual Fund info
+import pandas as pd
+import numpy as np
+import investpy
 import quantstats as qs
-import ffn
 
 pd.options.mode.use_inf_as_na = True  # show NAs instead of inf
 
