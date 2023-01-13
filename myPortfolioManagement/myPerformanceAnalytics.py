@@ -14,7 +14,6 @@ from myPortfolioManagement.myData import data_overview
 from myPortfolioManagement.myUtils import balance_dates
 from sklearn.preprocessing import minmax_scale
 
-
 import ffn
 from pypfopt.expected_returns import returns_from_prices
 
@@ -53,8 +52,7 @@ def alpha_beta_table(returns, returns_benchmark, my_date_col_name=None,
     if isinstance(returns, pd.DataFrame) == False:
         returns = pd.DataFrame(returns)
 
-    if isinstance(returns_benchmark
-            , pd.DataFrame) == False:
+    if isinstance(returns_benchmark, pd.DataFrame) == False:
         returns_benchmark = pd.DataFrame(returns_benchmark)
 
     myassets = returns.columns.to_list()
@@ -96,8 +94,7 @@ def alpha_beta_bull(returns, returns_benchmark, my_date_col_name=None,
     if isinstance(returns, pd.DataFrame) == False:
         returns = pd.DataFrame(returns)
 
-    if isinstance(returns_benchmark
-            , pd.DataFrame) == False:
+    if isinstance(returns_benchmark, pd.DataFrame) == False:
         returns_benchmark = pd.DataFrame(returns_benchmark)
 
     myassets = returns.columns.to_list()
@@ -127,8 +124,7 @@ def alpha_beta_bear(returns, returns_benchmark, my_date_col_name=None,
     if isinstance(returns, pd.DataFrame) == False:
         returns = pd.DataFrame(returns)
 
-    if isinstance(returns_benchmark
-            , pd.DataFrame) == False:
+    if isinstance(returns_benchmark, pd.DataFrame) == False:
         returns_benchmark = pd.DataFrame(returns_benchmark)
 
     # myassets = returns.drop([benchmark], axis = 1).columns.to_list()
@@ -151,8 +147,7 @@ def alpha_beta_bear(returns, returns_benchmark, my_date_col_name=None,
     return round(temp, 2)
 
 
-
-def performance_overview(df, prices=False):
+def performance_overview(df, prices=False, short=True):
     '''
     df: a wide dataframe of either returns or prices  
     '''
@@ -171,6 +166,12 @@ def performance_overview(df, prices=False):
         df_stats.append(df_stats_temp)
 
     df_perf = pd.concat(df_stats)
+
+    if short:
+        keep = ['start', 'end', 'rf', 'total_return', 'cagr', 'max_drawdown', 'yearly_sharpe', 'yearly_sortino',
+                'calmar']
+
+        df_perf = df_perf[keep]
 
     return df_perf
 
@@ -476,7 +477,3 @@ def risk_contributions(port_weights=None, returns=None,
         risk_cont = rk.Risk_Contribution(port_weights, cov=cov, returns=returns,
                                          rm=risk_measure)
         return np.round(risk_cont, 3)
-
-
-
-
