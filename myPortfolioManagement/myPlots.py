@@ -11,49 +11,50 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import quantstats as qs
+import phik
 
 
-def scatter_plot_simple(df, x:str ,y:str):
-    
+def scatter_plot_simple(df, x: str, y: str):
     if not isinstance(df, pd.DataFrame):
         raise ValueError("you must pass a Pandas DataFrame")
-    
+
     # expects as index the labels 
-    
-    plt.figure(figsize=[15,7])
-    sns.regplot(data=df, x=x, y=y,
-            fit_reg=False, marker="o", 
-            color="skyblue", scatter_kws={'s':400})
-    
-    # add annotations one by one with a loop
-    for line in range(0,df.shape[0]):
-        plt.text(df[x][line], 
-              df[y][line], df.index[line], 
-              horizontalalignment='left', 
-              size='medium', 
-              color='black', 
-              weight='semibold')
-    
-    plt.show()
-    
 
-def correlation_matrix(df, corr_limit = None, *kwargs):
-    
-    # check if df is a dataframe 
+    plt.figure(figsize=[15, 7])
+    sns.regplot(data=df, x=x, y=y,
+                fit_reg=False, marker="o",
+                color="skyblue", scatter_kws={'s': 400})
+
+    # add annotations one by one with a loop
+    for line in range(0, df.shape[0]):
+        plt.text(df[x][line],
+                 df[y][line], df.index[line],
+                 horizontalalignment='left',
+                 size='medium',
+                 color='black',
+                 weight='semibold')
+
+    plt.show()
+
+
+def correlation_matrix(df: pd.DataFrame, corr_limit: float = None, phi_correlation: bool = True, *kwargs):
+    # check if df is a dataframe
     if not isinstance(df, pd.DataFrame):
         raise ValueError("you must pass a Pandas DataFrame")
-    
-    
-    df_corr = df.corr()
-    
+
+    if phi_correlation:
+        df_corr = df.phik_matrix()
+    else:
+        df_corr = df.corr()
+
+    df_corr = round(df_corr, 2)
+
     if corr_limit:
-        df_corr = df_corr[df_corr<corr_limit]
-    
+        df_corr = df_corr[df_corr < corr_limit]
+
     plt.figure(figsize=(18, 10))
     heatmap = sns.heatmap(df_corr, vmin=-1, vmax=1, annot=True, cmap='BrBG', *kwargs)
-    heatmap.set_title('Correlation Heatmap', fontdict={'fontsize':18}, pad=12);
-
-
+    heatmap.set_title('Correlation Heatmap', fontdict={'fontsize': 18}, pad=12);
 
 
 def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
@@ -61,12 +62,11 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
                     compounded=True, eoy=True,
                     grayscale=False, fontname='Arial',
                     ylabel=True, savefig=None, show=True):
-
     # colors, ls, alpha = _core._get_colors(grayscale)
     cmap = 'gray' if grayscale else 'RdYlGn'
 
     returns = qs.stats.monthly_returns(returns, eoy=eoy,
-                                     compounded=compounded) * 100
+                                       compounded=compounded) * 100
 
     fig_height = len(returns) / 3
 
@@ -77,12 +77,10 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
     figsize = (figsize[0], max([fig_height, figsize[1]]))
 
     if cbar:
-        figsize = (figsize[0]*1.04, max([fig_height, figsize[1]]))
-       
-        
-   
+        figsize = (figsize[0] * 1.04, max([fig_height, figsize[1]]))
+
     fig, ax = plt.subplots(figsize=figsize)
-    
+
     # plt.rcParams['xtick.bottom'] = plt.rcParams['xtick.labelbottom'] = False
     # plt.rcParams['xtick.top'] = plt.rcParams['xtick.labeltop'] = True
 
@@ -94,20 +92,20 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
     fig.set_facecolor('white')
     ax.set_facecolor('white')
 
-    ax.set_title('Monthly Returns (%)\n', 
+    ax.set_title('Monthly Returns (%)\n',
                  fontsize=14, y=.995,
-                 fontname=fontname, 
-                 fontweight='bold', 
-                 color='black', 
+                 fontname=fontname,
+                 fontweight='bold',
+                 color='black',
                  pad=20)
 
     # _sns.set(font_scale=.9)
-    
+
     ax = sns.heatmap(returns, ax=ax, annot=True, center=0,
-                      annot_kws={"size": annot_size},
-                      fmt="0.2f", linewidths=0.5,
-                      square=square, cbar=cbar, cmap=cmap,
-                      cbar_kws={'format': '%.0f%%'})
+                     annot_kws={"size": annot_size},
+                     fmt="0.2f", linewidths=0.5,
+                     square=square, cbar=cbar, cmap=cmap,
+                     cbar_kws={'format': '%.0f%%'})
     # _sns.set(font_scale=1)
 
     # align plot to match other
@@ -117,8 +115,8 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
         ax.yaxis.set_label_coords(-.1, .5)
 
     ax.tick_params(colors="#808080")
-    plt.xticks(rotation=0, fontsize=annot_size*1.2)
-    plt.yticks(rotation=0, fontsize=annot_size*1.2)
+    plt.xticks(rotation=0, fontsize=annot_size * 1.2)
+    plt.yticks(rotation=0, fontsize=annot_size * 1.2)
 
     try:
         plt.subplots_adjust(hspace=0, bottom=0, top=1)
@@ -143,7 +141,7 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
     if not show:
         return fig
 
-    return 
+    return
 
 # fig = px.scatter(df_perf_python, x="AnnualizedStandardDeviation", y="AnnualizedReturn", 
 #                 color = 'AnnualizedSharpe', size ='AnnualizedSharpe', template='plotly_dark',
@@ -153,24 +151,23 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
 # fig.write_html("s_p_perf.html")
 
 
-#rp.plot_dendrogram(returns=ret_log, codependence='pearson',
+# rp.plot_dendrogram(returns=ret_log, codependence='pearson',
 #                        linkage='ward', max_k=20, bins_info = 3,
 #                        leaf_order=True, ax=None)
 
 
-
 ### Quick Check on Correlations (linear and Tails)
-#df_corr = df_rolling.corr()
-#df_corr = df_corr[df_corr<0.4]
-#plt.figure(figsize=(18, 10))
-#heatmap = sns.heatmap(df_corr, vmin=-1, vmax=1, annot=True, cmap='BrBG')
-#heatmap.set_title('Correlation Heatmap', fontdict={'fontsize':18}, pad=12);
+# df_corr = df_rolling.corr()
+# df_corr = df_corr[df_corr<0.4]
+# plt.figure(figsize=(18, 10))
+# heatmap = sns.heatmap(df_corr, vmin=-1, vmax=1, annot=True, cmap='BrBG')
+# heatmap.set_title('Correlation Heatmap', fontdict={'fontsize':18}, pad=12);
 
 ### Hierarchical Clustering 
-#rp.plot_clusters(returns=ret, codependence="spearman",
- #                     linkage='ward', max_k=10,
-  #                    leaf_order=True, dendrogram=True, ax=None)
-  
+# rp.plot_clusters(returns=ret, codependence="spearman",
+#                     linkage='ward', max_k=10,
+#                    leaf_order=True, dendrogram=True, ax=None)
+
 # rp.plot_clusters(returns=df_rolling, codependence="pearson",
 #                       linkage='ward', max_k=20,
 #                       leaf_order=True, dendrogram=True, ax=None)

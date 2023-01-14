@@ -330,8 +330,8 @@ def load_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
     file_type = 'csv'
     seperator = ','
 
-    path_to_funds = '/Users/safishajjouz/GitHub/myPortfolioManagement/files/FidelityPrices/funds'
-    path_to_etf_trusts = '/Users/safishajjouz/GitHub/myPortfolioManagement/files/FidelityPrices/trusts_etfs'
+    path_to_funds = '/Users/safishajjouz/Google Drive/myFinancialManagement/files/FidelityPrices/funds'
+    path_to_etf_trusts = '/Users/safishajjouz/Google Drive/myFinancialManagement/files/FidelityPrices/trusts_etfs'
 
     # asset classes 
     subfolder_class_equity = 'Equity'
