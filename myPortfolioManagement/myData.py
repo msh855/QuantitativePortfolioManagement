@@ -399,7 +399,7 @@ def get_US_yields(freq: str = 'd', add_fed_rate: bool = False) -> pd.DataFrame:
         renames = renames + ['EFFR']
 
     # yield spreads 
-    df_USyields = download_fred_data(treasuries, freq=freq)
+    df_USyields = get_fred_data(treasuries, freq=freq)
     df_USyields.columns = renames
 
     return df_USyields
@@ -424,7 +424,7 @@ def get_US_yield_spreads(freq: str = 'd', add_fed_rate: bool = False) -> pd.Data
 
     # get spread with fed rate 
     spreads = ['T10Y2Y', 'T10Y3M', 'T10YFF'][2]
-    df_10y_fed_rate = download_fred_data([spreads], freq=freq)
+    df_10y_fed_rate = get_fred_data([spreads], freq=freq)
 
     # get spreads  
     for col in list(df_USyields.columns.drop("10Y")):
