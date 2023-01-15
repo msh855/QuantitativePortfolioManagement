@@ -29,7 +29,10 @@ def alpha_beta_table(returns, returns_benchmark, my_date_col_name=None,
                      my_assets_col_name='asset', rf=0.02,
                      period='daily'):
     """
-    
+    # TODO Alpha's and Beta's are often calculated with OLS. For a more general Treatment
+          that account for outliers you can use humbert regressions
+
+    # TODO this whole function needs redesign
 
     Args:
         returns (TYPE): DESCRIPTION.

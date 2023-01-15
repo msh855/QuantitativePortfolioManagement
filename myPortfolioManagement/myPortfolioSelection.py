@@ -58,5 +58,3 @@ def possible_combinations(assets_to_consider:list , min_assets=3,
     return all_portf
 
 
-# to do choose best portfolio per cluster 
-
