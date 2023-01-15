@@ -263,70 +263,7 @@ def get_etf_prices(etf_isins: list, start_date: str, end_date: str = None,
     return myetfs_data
 
 
-def data_overview(df: pd.DataFrame,
-                  my_assets_col_name: str,
-                  my_date_col_name: str,
-                  price_col_name: str) -> pd.DataFrame:
-    """
-    This function expects a dataframe in long-format and a date column  
-    and returns a pandas dataframe that shows the period of available data 
-    that are available for each asset 
-    ...
-    
-    Args:
-          df (dataframe): A list of yahoo tickers 
-          my_assets_col_name(str): the name of the column of 
-                                   your dataframe with 
-                                   asset names (e.g tickers, names etc..) 
-          my_date_col_name (str): the name of the column of your dataframe with the dates 
-                                  which column in your dataframe. 
-                                  Can be your index name 
-      
-    Returns:
-      pandas Dataframe: Returns a pandas dataframe with stock prices and other info 
-    """
-
-    df_overview = df
-
-    if type(df_overview.index) == pd.DatetimeIndex:
-        df_overview = df_overview.reset_index()
-
-    df_overview[my_date_col_name] = pd.to_datetime(df_overview[my_date_col_name], format='%Y/%m/%d')
-
-    df1 = df_overview[df_overview.groupby(my_assets_col_name).Date.transform('min') == df_overview[my_date_col_name]][
-        [my_assets_col_name, my_date_col_name]]
-    df2 = df_overview[df_overview.groupby(my_assets_col_name).Date.transform('max') == df_overview[my_date_col_name]][
-        [my_assets_col_name, my_date_col_name]]
-    df1 = df1.rename(columns={my_date_col_name: "Date_min"})
-    df2 = df2.rename(columns={my_date_col_name: "Date_max"})
-
-    # merge datafranes 
-    df_overview = df1.merge(df2, how="left")
-
-    df_overview["trading_days"] = df_overview["Date_max"] - df_overview["Date_min"]
-    df_overview['years_available'] = df_overview['trading_days'] / np.timedelta64(1, 'Y')
-
-    df_overview = df_overview.rename(columns={'Stock': my_assets_col_name})
-    df_overview = df_overview.drop_duplicates()
-
-    # from long to wide 
-
-    df.groupby(my_assets_col_name)
-
-    df_wide = df.pivot_table(index=my_date_col_name,
-                             columns=my_assets_col_name,
-                             values=price_col_name)
-
-    df_NAs = pd.DataFrame(pd.Series(df_wide.isnull().mean().round(4).mul(100).sort_values(ascending=False),
-                                    name='percentage_of_NAs'))
-
-    df_overview = df_overview.merge(df_NAs, on=my_assets_col_name)
-    df_overview = df_overview.set_index(my_assets_col_name)
-
-    return df_overview.sort_values('years_available', ascending=False)
-
-
-def load_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
+def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
     file_type = 'csv'
     seperator = ','
 
@@ -542,43 +479,7 @@ def get_USyield_curve_factors(start_date: str = None, freq: str = 'd') -> pd.Dat
     return principalDf
 
 
-def get_sp500_tickers() -> pd.DataFrame:
-    """
-    
-
-    Returns:
-        df (TYPE): DESCRIPTION.
-
-    """
-
-    # for filtering: https://finviz.com/screener.ashx
-    foverview = Overview()
-    filters_dict = {'Index': 'S&P 500'}
-    foverview.set_filter(filters_dict=filters_dict)
-    df = foverview.screener_view()
-
-    return df
-
-
-def get_nasdaq_tickers() -> pd.DataFrame:
-    """
-    
-
-    Returns:
-        df (TYPE): DESCRIPTION.
-
-    """
-
-    # for filtering: https://finviz.com/screener.ashx
-    foverview = Overview()
-    filters_dict = {'Exchange': 'NASDAQ'}
-    foverview.set_filter(filters_dict=filters_dict)
-    df = foverview.screener_view()
-
-    return df
-
-
-def download_fred_data(fred_sumbol: list, freq: str, print_info: bool = False,
+def get_fred_data(fred_sumbol: list, freq: str, print_info: bool = False,
                        my_fred_API: str = 'cc628b51e21828ae6b98c06f4eef6714') -> pd.DataFrame:
     """
     
@@ -655,7 +556,7 @@ def get_yield_curve_factors(df: pd.DataFrame = None,
     return principalDf
 
 
-def download_stock_returns(yahoo_tickers: list) -> pd.DataFrame:
+def get_stock_returns(yahoo_tickers: list) -> pd.DataFrame:
     ret_bench = list()
     for tick, names in zip(yahoo_tickers, yahoo_tickers):
         ret = pd.Series(qs.utils.download_returns(tick), name=names)
@@ -664,3 +565,39 @@ def download_stock_returns(yahoo_tickers: list) -> pd.DataFrame:
     ret_bench = pd.concat(ret_bench, axis=1)
 
     return ret_bench
+
+
+def get_sp500_tickers() -> pd.DataFrame:
+    """
+
+
+    Returns:
+        df (TYPE): DESCRIPTION.
+
+    """
+
+    # for filtering: https://finviz.com/screener.ashx
+    foverview = Overview()
+    filters_dict = {'Index': 'S&P 500'}
+    foverview.set_filter(filters_dict=filters_dict)
+    df = foverview.screener_view()
+
+    return df
+
+
+def get_nasdaq_tickers() -> pd.DataFrame:
+    """
+
+
+    Returns:
+        df (TYPE): DESCRIPTION.
+
+    """
+
+    # for filtering: https://finviz.com/screener.ashx
+    foverview = Overview()
+    filters_dict = {'Exchange': 'NASDAQ'}
+    foverview.set_filter(filters_dict=filters_dict)
+    df = foverview.screener_view()
+
+    return df
