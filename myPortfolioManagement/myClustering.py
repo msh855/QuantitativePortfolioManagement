@@ -100,7 +100,7 @@ def detect_regimes(df: pd.DataFrame, series: str, optimal_clusters: int = 3,
     return X
 
 
-def dendrogram(df: pd.DataFrame, method='ward', metric='euclidean', title: str = 'Dendrogram'):
+def kMeansClusterSeries(df: pd.DataFrame, method='ward', metric='euclidean', title: str = 'Dendrogram', **kwargs):
     '''
      This function produce a dendrogram based on the average of each columns
     :param df:
@@ -129,11 +129,7 @@ def dendrogram(df: pd.DataFrame, method='ward', metric='euclidean', title: str =
     plt.ylabel('Stock', fontsize=10)
     dendrogram(
         hier_ward,
-        orientation='right',
-        #   leaf_rotation=90.,
-        leaf_font_size=20,
         labels=X_scaled.index.values,
-        color_threshold=3
-    )
+        color_threshold=3, **kwargs)
     plt.yticks(fontsize=11)
     plt.show()
