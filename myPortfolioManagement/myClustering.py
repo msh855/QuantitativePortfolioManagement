@@ -100,10 +100,9 @@ def detect_regimes(df: pd.DataFrame, series: str, optimal_clusters: int = 3,
     return X
 
 
-def dendrogram(df: pd.DataFrame, title: str = 'Dendrogram'):
+def dendrogram(df: pd.DataFrame, method='ward', metric='euclidean', title: str = 'Dendrogram'):
     '''
      This function produce a dendrogram based on the average of each columns
-
     :param df:
     :param title:
     :return:
@@ -117,10 +116,12 @@ def dendrogram(df: pd.DataFrame, title: str = 'Dendrogram'):
     # Transformed the arrays of scaled values into a DataFrame
     X_scaled = pd.DataFrame(X_scaled, columns=X.columns, index=X.index)
 
-    # find best
+    # TODO: Optimise this function based on standard clustering See if you can merge with PyCaret or Other low code ML
+
+    hier_ward = linkage(X_scaled, method=method, metric=metric)
     # hier_comp = linkage(X_scaled, method='complete', metric='euclidean')
     # hier_average = linkage(X_scaled, method='average', metric='euclidean')
-    hier_ward = linkage(X_scaled, method='ward', metric='euclidean')
+    # hier_ward = linkage(X_scaled, method='ward', metric='euclidean')
 
     plt.figure(figsize=(10, 8))
     plt.title(title, fontsize=14)
