@@ -14,7 +14,7 @@ from empyrical.stats import aggregate_returns
 import ffn
 
 import quantstats as qs
-from myPortfolioManagement.myData import download_stock_returns
+from myPortfolioManagement.myData import get_stock_returns
 
 
 
@@ -346,7 +346,7 @@ def get_multi_asset_returns() -> pd.DataFrame:
                            'AGG',
                            'DJP', 'BIL']
 
-    df_multi_asset = download_stock_returns(multi_asset_tickers)
+    df_multi_asset = get_stock_returns(multi_asset_tickers)
 
     df_multi_asset = df_multi_asset.dropna()
 
