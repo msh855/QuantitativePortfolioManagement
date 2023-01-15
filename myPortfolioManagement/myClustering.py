@@ -14,6 +14,16 @@ import matplotlib.pyplot as plt
 
 from sklearn.preprocessing import normalize
 
+# libraries for dendrogram
+
+import scipy.stats as stats
+from sklearn import cluster, metrics
+from sklearn.cluster import AgglomerativeClustering
+from scipy.cluster.hierarchy import dendrogram, linkage, cophenet, fcluster
+from sklearn.preprocessing import StandardScaler
+from scipy.spatial.distance import pdist
+from sklearn.metrics import silhouette_samples, silhouette_score
+
 
 def ts_clustering(df: pd.DataFrame, number_of_clusters: int = None,
                   algo: str = ['dtw', 'softdtw'][0],
@@ -88,3 +98,41 @@ def detect_regimes(df: pd.DataFrame, series: str, optimal_clusters: int = 3,
                   fontsize=20)
 
     return X
+
+
+def dendrogram(df: pd.DataFrame, title: str = 'Dendrogram'):
+    '''
+     This function produce a dendrogram based on the average of each columns
+
+    :param df:
+    :param title:
+    :return:
+    '''
+
+    # Standardising the data
+    X = pd.DataFrame(df.mean())
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(pd.DataFrame(X))
+
+    # Transformed the arrays of scaled values into a DataFrame
+    X_scaled = pd.DataFrame(X_scaled, columns=X.columns, index=X.index)
+
+    # find best
+    # hier_comp = linkage(X_scaled, method='complete', metric='euclidean')
+    # hier_average = linkage(X_scaled, method='average', metric='euclidean')
+    hier_ward = linkage(X_scaled, method='ward', metric='euclidean')
+
+    plt.figure(figsize=(10, 8))
+    plt.title(title, fontsize=14)
+    plt.xlabel('Distance', fontsize=10)
+    plt.ylabel('Stock', fontsize=10)
+    dendrogram(
+        hier_ward,
+        orientation='right',
+        #   leaf_rotation=90.,
+        leaf_font_size=20,
+        labels=X_scaled.index.values,
+        color_threshold=3
+    )
+    plt.yticks(fontsize=11)
+    plt.show()

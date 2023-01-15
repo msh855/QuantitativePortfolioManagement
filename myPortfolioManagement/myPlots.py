@@ -11,6 +11,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 import quantstats as qs
+import numpy as np
 import phik
 
 
@@ -37,24 +38,30 @@ def scatter_plot_simple(df, x: str, y: str):
     plt.show()
 
 
-def correlation_matrix(df: pd.DataFrame, corr_limit: float = None, phi_correlation: bool = True, *kwargs):
+def correlation_matrix(df: pd.DataFrame, corr_limit: float = None, phi_correlation: bool = False,
+                       figsize: tuple = (18, 10), diagonal=True, **kwargs):
     # check if df is a dataframe
     if not isinstance(df, pd.DataFrame):
         raise ValueError("you must pass a Pandas DataFrame")
+    df_corr = df.corr()
 
     if phi_correlation:
         df_corr = df.phik_matrix()
-    else:
-        df_corr = df.corr()
 
     df_corr = round(df_corr, 2)
 
     if corr_limit:
         df_corr = df_corr[df_corr < corr_limit]
 
-    plt.figure(figsize=(18, 10))
-    heatmap = sns.heatmap(df_corr, vmin=-1, vmax=1, annot=True, cmap='BrBG', *kwargs)
-    heatmap.set_title('Correlation Heatmap', fontdict={'fontsize': 18}, pad=12);
+    # Generate a mask for the upper triangle
+    if diagonal:
+        mask = np.triu(np.ones_like(df_corr, dtype=bool))
+    else:
+        mask = None
+
+    plt.figure(figsize=figsize)
+    heatmap = sns.heatmap(df_corr, mask=mask, vmin=-1, vmax=1, annot=True, cmap='BrBG', **kwargs)
+    heatmap.set_title('Correlation Heatmap', fontdict={'fontsize': 18}, pad=12)
 
 
 def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
