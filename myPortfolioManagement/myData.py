@@ -437,9 +437,8 @@ def get_US_yield_spreads(freq: str = 'd', add_fed_rate: bool = False) -> pd.Data
 
 
 def get_USyield_curve_factors(start_date: str = None, freq: str = 'd') -> pd.DataFrame:
-    """
-    
 
+    """
     Args:
         start_date (str, optional): DESCRIPTION. Defaults to None.
         freq (str, optional): DESCRIPTION. Defaults to 'd'.
@@ -514,9 +513,8 @@ def get_fred_data(fred_sumbol: list, freq: str, print_info: bool = False,
 def get_yield_curve_factors(df: pd.DataFrame = None,
                             date_col_name: str = 'Date',
                             prefix: str = None) -> pd.DataFrame:
-    """
-    
 
+    """
     Args:
         start_date (str, optional): DESCRIPTION. Defaults to None.
         freq (str, optional): DESCRIPTION. Defaults to 'd'.
@@ -539,9 +537,9 @@ def get_yield_curve_factors(df: pd.DataFrame = None,
     x = StandardScaler().fit_transform(df)
     principalComponents = pca_yield.fit_transform(x)
     principalDf = pd.DataFrame(data=principalComponents,
-                               columns=['_ShiftFactor',
-                                        '_Slope',
-                                        '_Curvature'])
+                               columns=['ShiftFactor',
+                                        'Slope',
+                                        'Curvature'])
     df = df.reset_index()
     principalDf = pd.merge(principalDf, df,
                            left_index=True, right_index=True)
