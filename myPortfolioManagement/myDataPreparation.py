@@ -259,6 +259,9 @@ def denoise_series_welvet(x: pd.Series,
 
 
 def denoise_series_kf(x: pd.Series) -> pd.DataFrame:
+    if isinstance(x,pd.DataFrame):
+        raise 'You passed a dataframe. Pass pandas series'
+
     x_array = x.dropna().to_numpy()
 
     # initial guesses 
