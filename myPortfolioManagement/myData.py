@@ -1,16 +1,12 @@
-import pandas as pd  # to work datafranes
+import pandas as pd
 
-import numpy as np  # to work with vectors
+import numpy as np
 
-import datetime as dt  # to handle dates
 from datetime import date, timedelta
 
-from timebudget import timebudget  # to time functions
+from timebudget import timebudget
 
-import ray  # to parallelise
-
-import investpy  # to download mutual fund and trust prices
-from yahoofinancials import YahooFinancials  # to download prices from Yahoo
+from yahoofinancials import YahooFinancials
 
 from os import path
 import glob
@@ -18,101 +14,12 @@ import glob
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-from myPortfolioManagement.myUtils import which_in_investpy  # from my library
-
 from finvizfinance.screener.overview import Overview
 
 from fredapi import Fred
 import quantstats as qs
 
-pd.options.mode.use_inf_as_na = True  # this is instead of inf to show NAs
-
-
-@ray.remote
-def download_mutual_funds_prices(mutual_fund_name: str, country: str,
-                                 start_date: str, end_date: str) -> pd.DataFrame:
-    """
-    This is a wrapper function around `investpy.get_fund_historical_data`
-    from the investpy library. 
-    See this link: https://investpy.readthedocs.io/ 
-    ...
-    
-    Args:
-      fund_name (string): the name of the mutual fund. 
-        country (string): The country of the mutual fund 
-      start_date(string): Date that prices start. Is a string with this '%Y-%m-%d' date format 
-        end_date(string): Date that prices end. Is a string with this '%Y-%m-%d' date format
-     
-    Returns:
-      pandas Dataframe: Returns a pandas dataframe
-    """
-
-    # convert to date objects 
-    start_date = dt.datetime.strptime(start_date, '%Y-%m-%d').date()
-    end_date = dt.datetime.strptime(end_date, '%Y-%m-%d').date()
-
-    # set correct date format for investpy library 
-    start_date = start_date.strftime("%d/%m/%Y")
-    end_date = end_date.strftime("%d/%m/%Y")
-
-    # download the data from investpy 
-    try:
-        fund_prices = investpy.get_fund_historical_data(fund=mutual_fund_name,
-                                                        country=country,
-                                                        from_date=start_date,
-                                                        to_date=end_date)
-        # add a column with funds name 
-        fund_prices["fund"] = mutual_fund_name
-
-        # convert column to lower case (this to integrate with other dataframe)
-        fund_prices.columns = fund_prices.columns.str.lower()
-
-        # rename columns 
-        fund_prices = fund_prices.rename(columns={'close': 'adjclose'})
-
-        return fund_prices
-    except:
-        return print('Fund not fund or API problems with Investpy')
-
-
-@ray.remote
-def download_etf_prices(etf_name: str, country: str,
-                        start_date: str, end_date: str) -> pd.DataFrame:
-    """
-    This is a wrapper function around `investpy.get_etf_historical_data`
-    from the investpy library. 
-    See this link: https://investpy.readthedocs.io/ 
-    ...
-    
-    Args:
-      fund_name (string): the name of the mutual fund. 
-        country (string): The country of the mutual fund 
-      start_date(string): Date that prices start. Is a string with this '%Y-%m-%d' date format 
-        end_date(string): Date that prices end. Is a string with this '%Y-%m-%d' date format
-     
-    Returns:
-      pandas Dataframe: Returns a pandas dataframe
-    """
-
-    # convert to date objects 
-    start_date = dt.datetime.strptime(start_date, '%Y-%m-%d').date()
-    end_date = dt.datetime.strptime(end_date, '%Y-%m-%d').date()
-
-    # set correct date format for investpy library 
-    start_date = start_date.strftime("%d/%m/%Y")
-    end_date = end_date.strftime("%d/%m/%Y")
-
-    # download the data from investpy 
-    etf_prices = investpy.get_etf_historical_data(etf=etf_name,
-                                                  country=country,
-                                                  from_date=start_date,
-                                                  to_date=end_date,
-                                                  as_json=False,
-                                                  order='ascending')
-
-    # add a column with funds name 
-    etf_prices["ETF"] = etf_name
-    return etf_prices
+pd.options.mode.use_inf_as_na = True
 
 
 # function to get prices for a list of stocks
@@ -161,106 +68,6 @@ def get_stock_prices(yahoo_tickers: list, start_date: str = '1950-01-01',
                             values='adjclose')
 
     return df
-
-
-# function to ger prices for a list of mutual funds 
-@timebudget
-def get_mutual_funds_prices(mutual_fund_isin: list, start_date: str,
-                            end_date: str = None, num_cpus: int = 1) -> pd.DataFrame:
-    """
-    This function downloads mutual fund prices 
-    is an investpy wrapper
-    ...
-    
-    Args:
-          mutual_fund_isin (list): a list of ISIN strings 
-         
-           
-           start_date(string): Date that prices start. 
-                               Is a string with this '%Y-%m-%d' date format 
-             end_date(string): Date that prices end. 
-                               Is a string with this '%Y-%m-%d' date format
-                                  
-          num_cpus(int): The number of CPUs you want to use 
-      
-    Returns:
-      pandas Dataframe: Returns a pandas dataframe 
-    """
-    if end_date == None:
-        end_date = end_date = date.today() - timedelta(days=1)
-        end_date = end_date.strftime("%Y-%m-%d")
-
-    funds = which_in_investpy(mutual_fund_isin, what_to_check='isin')
-
-    if len(funds.index) == 0:
-        raise ValueError(' None of these ISINs exist in the database')
-
-    # create a zip object to speed up looping below 
-    fund_zipped = zip(funds.name, funds.country)
-
-    ray.shutdown()
-    ray.init(ignore_reinit_error=True, num_cpus=num_cpus)
-    mydata = ray.get([download_mutual_funds_prices.remote(fund_name,
-                                                          country_name,
-                                                          start_date=start_date,
-                                                          end_date=end_date)
-                      for fund_name, country_name in fund_zipped])
-    ray.shutdown()
-
-    # collect results and clean     
-    df_funds = pd.concat(mydata)
-
-    return df_funds
-
-
-# function to get prices for a list of ETFs
-@timebudget
-def get_etf_prices(etf_isins: list, start_date: str, end_date: str = None,
-                   num_cpus: int = 1) -> pd.DataFrame:
-    """
-    This function downloads ETF prices 
-    is an investpy wrapper
-    ...
-    
-    Args:
-          mutual_fund_isin (list): a list of ISIN strings 
-         
-           
-           start_date(string): Date that prices start. 
-                               Is a string with this '%Y-%m-%d' date format 
-             end_date(string): Date that prices end. 
-                               Is a string with this '%Y-%m-%d' date format
-                                  
-          num_cpus(int): The number of CPUs you want to use 
-      
-    Returns:
-      pandas Dataframe: Returns a pandas dataframe 
-    """
-    if end_date == None:
-        end_date = end_date = date.today() - timedelta(days=1)
-        end_date = end_date.strftime("%Y-%m-%d")
-
-        # search ETFs
-    df_etfs = investpy.etfs.get_etfs(country=None)
-
-    # slice according to your ETFs 
-    df_etfs = df_etfs[df_etfs['symbol'].isin(etf_isins)]
-
-    if df_etfs.empty:
-        raise ValueError('No ETFs in the database')
-
-    # create a zip object to speed up looping below 
-    etf_zipped = zip(df_etfs.name, df_etfs.country)
-
-    # loop over ETFs
-    ray.init(ignore_reinit_error=True, num_cpus=num_cpus)
-    myetfs_data = ray.get([download_etf_prices.remote(item1, item2,
-                                                      start_date,
-                                                      end_date)
-                           for item1, item2 in etf_zipped])
-    ray.shutdown()
-
-    return myetfs_data
 
 
 def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
@@ -437,7 +244,6 @@ def get_US_yield_spreads(freq: str = 'd', add_fed_rate: bool = False) -> pd.Data
 
 
 def get_USyield_curve_factors(start_date: str = None, freq: str = 'd') -> pd.DataFrame:
-
     """
     Args:
         start_date (str, optional): DESCRIPTION. Defaults to None.
@@ -479,7 +285,7 @@ def get_USyield_curve_factors(start_date: str = None, freq: str = 'd') -> pd.Dat
 
 
 def get_fred_data(fred_sumbol: list, freq: str, print_info: bool = False,
-                       my_fred_API: str = 'cc628b51e21828ae6b98c06f4eef6714') -> pd.DataFrame:
+                  my_fred_API: str = 'cc628b51e21828ae6b98c06f4eef6714') -> pd.DataFrame:
     """
     
 
@@ -513,7 +319,6 @@ def get_fred_data(fred_sumbol: list, freq: str, print_info: bool = False,
 def get_yield_curve_factors(df: pd.DataFrame = None,
                             date_col_name: str = 'Date',
                             prefix: str = None) -> pd.DataFrame:
-
     """
     Args:
         start_date (str, optional): DESCRIPTION. Defaults to None.
@@ -601,7 +406,6 @@ def get_nasdaq_tickers() -> pd.DataFrame:
     return df
 
 
-
 def data_overview(df: pd.DataFrame,
                   my_assets_col_name: str,
                   my_date_col_name: str,
@@ -639,7 +443,7 @@ def data_overview(df: pd.DataFrame,
     df1 = df1.rename(columns={my_date_col_name: "Date_min"})
     df2 = df2.rename(columns={my_date_col_name: "Date_max"})
 
-    # merge datafranes
+    # merge dataframes
     df_overview = df1.merge(df2, how="left")
 
     df_overview["trading_days"] = df_overview["Date_max"] - df_overview["Date_min"]
