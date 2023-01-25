@@ -17,7 +17,6 @@ import quantstats as qs
 from myPortfolioManagement.myData import get_stock_returns
 
 
-
 # calculate portfolio returns
 def calculate_portfolio_returns(returns: pd.DataFrame,
                                 myassets_list: list,
@@ -105,7 +104,7 @@ def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
         ret (TYPE): DESCRIPTION.
     """
 
-    if convert_to != None:
+    if convert_to is not None:
         first_date = ret.index[0]
         last_date = ret.index[-1]
 
@@ -262,26 +261,6 @@ def get_benchmark_porfolios(rebalance=None):
 
     ret_all_weather_dalio = pd.Series(ret_all_weather_dalio,
                                       name='All_Weather_Dalio')
-
-    # # All-Weather-Porfolio UK version 
-    # tickers_UK = {'VUSA.L': 0.10,
-    #               'VEUR.L': 0.10,
-    #               'VMID.L':0.10,
-    #               'VJPN.L':0.10,
-    #               'EMIM.L':0.10,
-    #               'IWDP.L':0.10,
-    #               'VGOV.L':0.10,
-    #               'ITPS.L':0.10,
-    #               'IAU' :0.10,
-    #               'BIL' :0.10} 
-
-    # ret_all_weather_UK = qs.utils.make_index(ticker_weights = tickers_UK, 
-    #                                              rebalance=rebalance, 
-    #                                              period='max', 
-    #                                              returns=None, 
-    #                                              match_dates=False)
-
-    # ret_all_weather_UK = pd.Series(ret_all_weather_US, name = 'All_Weather_UK')
 
     # 60/40 based on BlackRock
     ret_60_40 = pd.Series(qs.utils.download_returns('BAGPX'),
