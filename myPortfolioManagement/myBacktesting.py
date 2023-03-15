@@ -119,8 +119,8 @@ def bootstrap_portfolio_performance(returns: pd.Series,
                                     rf: float = 0.02,
                                     out_of_sample_date: str = None,
                                     n_sim: int = 10000) -> Tuple[pd.DataFrame,
-                                                                 pd.DataFrame,
-                                                                 pd.DataFrame]:
+pd.DataFrame,
+pd.DataFrame]:
     """
     
 
@@ -654,3 +654,9 @@ def backtest_report(returns: pd.DataFrame,
     # df_monthly_returns.style.background_gradient(cmap='Blues' , cbar = True)
 
     return
+
+
+def performance(signal: pd.Series = None, returns: pd.Series = None, bps: float = 2e-4):
+    tc = (signal.diff().abs()) * bps
+    ret = returns * signal.shift(1) - tc
+    return ret
