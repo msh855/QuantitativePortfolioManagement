@@ -202,8 +202,8 @@ def get_US_yields(freq: str = 'd', add_fed_rate: bool = False) -> pd.DataFrame:
 
     # Fred Codes for the US Treasuries 
     if add_fed_rate:
-        treasuries = treasuries + ['EFFR']
-        renames = renames + ['EFFR']
+        treasuries = treasuries + ['DFF']
+        renames = renames + ['DFF']
 
     # yield spreads 
     df_USyields = get_fred_data(treasuries, freq=freq)
@@ -212,9 +212,8 @@ def get_US_yields(freq: str = 'd', add_fed_rate: bool = False) -> pd.DataFrame:
     return df_USyields
 
 
-def get_US_yield_spreads(freq: str = 'd', add_fed_rate: bool = False) -> pd.DataFrame:
+def get_US_yield_spreads(freq: str = 'd', spread_from = 'EFFR', add_fed_rate: bool = True) -> pd.DataFrame:
     """
-    
 
     Args:
         freq (str, optional): DESCRIPTION. Defaults to 'd'.
@@ -229,18 +228,18 @@ def get_US_yield_spreads(freq: str = 'd', add_fed_rate: bool = False) -> pd.Data
     df_USyields = get_US_yields(freq=freq, add_fed_rate=add_fed_rate)
     yields = df_USyields.columns
 
-    # get spread with fed rate 
-    spreads = ['T10Y2Y', 'T10Y3M', 'T10YFF'][2]
-    df_10y_fed_rate = get_fred_data([spreads], freq=freq)
+    # # get spread with fed rate
+    # spreads = ['T10Y2Y', 'T10Y3M', 'T10YFF'][2]
+    # df_10y_fed_rate = get_fred_data([spreads], freq=freq)
 
     # get spreads  
-    for col in list(df_USyields.columns.drop("10Y")):
-        df_USyields["spread_10Y_" + col] = df_USyields["10Y"] - df_USyields[col]
+    for col in list(df_USyields.columns.drop(spread_from)):
+        df_USyields["spread_" + col] = df_USyields[spread_from] - df_USyields[col]
 
     df_USyields_spreads = df_USyields.drop(yields, axis=1)
-    df_USyields_spreads = df_USyields_spreads.merge(df_10y_fed_rate, right_index=True, left_index=True)
+    # df_USyields_spreads = df_USyields_spreads.merge(df_10y_fed_rate, right_index=True, left_index=True)
 
-    return df_USyields_spreads
+    return df_USyields_spreads.dropna()
 
 
 def get_USyield_curve_factors(start_date: str = None, freq: str = 'd') -> pd.DataFrame:

@@ -150,6 +150,7 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
 
     return
 
+
 # fig = px.scatter(df_perf_python, x="AnnualizedStandardDeviation", y="AnnualizedReturn", 
 #                 color = 'AnnualizedSharpe', size ='AnnualizedSharpe', template='plotly_dark',
 #                   hover_data=['Company', 'ticker'], 
