@@ -259,6 +259,9 @@ def denoise_series_welvet(x: pd.Series,
 
 
 def denoise_series_kf(x: pd.Series) -> pd.DataFrame:
+    if isinstance(x,pd.DataFrame):
+        raise 'You passed a dataframe. Pass pandas series'
+
     x_array = x.dropna().to_numpy()
 
     # initial guesses 
@@ -454,24 +457,24 @@ def normalise_df(df: pd.DataFrame or pd.Series = None, **kwarg) -> pd.DataFrame:
     df_normalised.columns = df.columns
     return df_normalised
 
-
-def create_credit_impulse(freq="q"):
-    credit_impulse = ['CRDQXMAPABIS',  # Euro Area
-                      'QUSPAM770A',  # US
-                     # 'QCNPAM770A',  # China
-                      'QGBPAM770A',  # United Kingdom
-                      'CRDQJPAPABIS']  # Japan
-    gdp = ['GDP', # US
-           'EUNNGDP', # Euro
-          # 'MKTGDPCNA646NWDB', #China
-           'JPNNGDP', #Japan
-           'UKNGDP' ] # United Kingdom
-
-    symbols = gdp + credit_impulse
-
-    data = download_fred_data(fred_sumbol=symbols, freq=freq)
-    data.columns = ['EUR', 'US', 'CHN', 'GB', 'JP']
-    return data
+#
+# def create_credit_impulse(freq="q"):
+#     credit_impulse = ['CRDQXMAPABIS',  # Euro Area
+#                       'QUSPAM770A',  # US
+#                      # 'QCNPAM770A',  # China
+#                       'QGBPAM770A',  # United Kingdom
+#                       'CRDQJPAPABIS']  # Japan
+#     gdp = ['GDP', # US
+#            'EUNNGDP', # Euro
+#           # 'MKTGDPCNA646NWDB', #China
+#            'JPNNGDP', #Japan
+#            'UKNGDP' ] # United Kingdom
+#
+#     symbols = gdp + credit_impulse
+#
+#     data = download_fred_data(fred_sumbol=symbols, freq=freq)
+#     data.columns = ['EUR', 'US', 'CHN', 'GB', 'JP']
+#     return data
 
 # proxy fund rate data
 # source: https://www.kansascityfed.org/Economic%20Review/documents/319/2016-Measuring%20the%20Stance%20of%20Monetary%20Policy%20on%20and%20off%20the%20Zero%20Lower%20Bound.pdf

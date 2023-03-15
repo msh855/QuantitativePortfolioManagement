@@ -6,24 +6,22 @@ Created on Sun Apr  3 10:43:02 2022
 @author: safishajjouz
 """
 
-
 from quantstats.reports import _get_trading_periods, _stats, _td, _sqrt, _match_dates
 from quantstats.reports import _calc_dd, _dt, _tabulate
 
 from quantstats import utils as _utils
 
-
-
 import pandas as _pd
 import numpy as _np
 
-def metrics(returns: _pd.DataFrame, benchmark: _pd.DataFrame=None, rf:float=0, 
-            display:bool=False,
-            mode:str='basic', sep:bool=False, 
-            compounded:bool=True,
-            periods_per_year:int=252, 
-            prepare_returns:bool=True,
-            match_dates:bool=False, **kwargs) -> _pd.DataFrame:
+
+def metrics(returns: _pd.DataFrame, benchmark: _pd.DataFrame = None, rf: float = 0,
+            display: bool = False,
+            mode: str = 'basic', sep: bool = False,
+            compounded: bool = True,
+            periods_per_year: int = 252,
+            prepare_returns: bool = True,
+            match_dates: bool = False, **kwargs) -> _pd.DataFrame:
     """
     
 
@@ -59,7 +57,8 @@ def metrics(returns: _pd.DataFrame, benchmark: _pd.DataFrame=None, rf:float=0,
 
     if isinstance(returns, _pd.DataFrame):
         if len(returns.columns) > 1:
-            raise ValueError("`returns` needs to be a Pandas Series or one column DataFrame. multi colums DataFrame was passed")
+            raise ValueError(
+                "`returns` needs to be a Pandas Series or one column DataFrame. multi colums DataFrame was passed")
         returns = returns[returns.columns[0]]
 
     if prepare_returns:
@@ -99,14 +98,14 @@ def metrics(returns: _pd.DataFrame, benchmark: _pd.DataFrame=None, rf:float=0,
 
     metrics['Start Period'] = _pd.Series(s_start)
     metrics['End Period'] = _pd.Series(s_end)
-    metrics['Risk-Free Rate %'] = _pd.Series(s_rf)*100
+    metrics['Risk-Free Rate %'] = _pd.Series(s_rf) * 100
     metrics['Time in Market %'] = _stats.exposure(df, prepare_returns=False) * pct
 
     metrics['~'] = blank
 
     if compounded:
         metrics['Cumulative Return %'] = (
-            _stats.comp(df) * pct).map('{:,.2f}'.format)
+                _stats.comp(df) * pct).map('{:,.2f}'.format)
     else:
         metrics['Total Return %'] = (df.sum() * pct).map('{:,.2f}'.format)
 
@@ -189,28 +188,28 @@ def metrics(returns: _pd.DataFrame, benchmark: _pd.DataFrame=None, rf:float=0,
     metrics['MTD %'] = comp_func(
         df[df.index >= _dt(today.year, today.month, 1)]) * pct
 
-    d = today - _td(3*365/12)
+    d = today - _td(3 * 365 / 12)
     metrics['3M %'] = comp_func(
         df[df.index >= _dt(d.year, d.month, d.day)]) * pct
 
-    d = today - _td(6*365/12)
+    d = today - _td(6 * 365 / 12)
     metrics['6M %'] = comp_func(
         df[df.index >= _dt(d.year, d.month, d.day)]) * pct
 
     metrics['YTD %'] = comp_func(df[df.index >= _dt(today.year, 1, 1)]) * pct
 
-    d = today - _td(12*365/12)
+    d = today - _td(12 * 365 / 12)
     metrics['1Y %'] = comp_func(
         df[df.index >= _dt(d.year, d.month, d.day)]) * pct
-    d = today - _td(3*365)
+    d = today - _td(3 * 365)
     metrics['3Y (ann.) %'] = _stats.cagr(
         df[df.index >= _dt(d.year, d.month, d.day)
            ], 0., compounded) * pct
-    d = today - _td(5*365)
+    d = today - _td(5 * 365)
     metrics['5Y (ann.) %'] = _stats.cagr(
         df[df.index >= _dt(d.year, d.month, d.day)
            ], 0., compounded) * pct
-    d = today - _td(10*365)
+    d = today - _td(10 * 365)
     metrics['10Y (ann.) %'] = _stats.cagr(
         df[df.index >= _dt(d.year, d.month, d.day)
            ], 0., compounded) * pct
@@ -269,7 +268,7 @@ def metrics(returns: _pd.DataFrame, benchmark: _pd.DataFrame=None, rf:float=0,
         if display or "internal" in kwargs:
             metrics['Longest DD Days'] = metrics['Longest DD Days'].astype(str)
             metrics['Avg. Drawdown Days'] = metrics['Avg. Drawdown Days'
-                                                    ].astype(str)
+            ].astype(str)
     except Exception:
         metrics['Longest DD Days'] = '-'
         metrics['Avg. Drawdown Days'] = '-'
