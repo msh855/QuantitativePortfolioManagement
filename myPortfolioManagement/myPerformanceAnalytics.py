@@ -456,27 +456,3 @@ def reward_metric(df, rolling_window=3,
 
     return df_temp
 
-
-def risk_contributions(port_weights=None, returns=None,
-                       risk_measure='MV',
-                       plot=True):
-    '''
-    port_weights (pd.DataFrame): dataframe of asset weights. Assets are the index 
-    returns (pd.DataFrame): Returns of your assets. Date is an index 
-    risk_measure (str): string that defines the risk measure: MV for Variance and MSV for semi-Variance 
-    plot(boolonean): True to plot the risk contributions, otherwise returns just risk contributions 
-    
-    retunrs:
-        a plot of risk contributions or an array of risk contributions 
-    '''
-
-    cov = returns.cov()
-    if plot:
-        ax = rp.plot_risk_con(port_weights, cov=cov, returns=returns, rm=risk_measure,
-                              color="tab:blue", height=6, width=10, ax=None)
-        plt.setp(ax.get_xticklabels(), rotation=30, horizontalalignment='right')
-        return ax
-    else:
-        risk_cont = rk.Risk_Contribution(port_weights, cov=cov, returns=returns,
-                                         rm=risk_measure)
-        return np.round(risk_cont, 3)

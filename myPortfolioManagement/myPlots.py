@@ -150,8 +150,7 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
 
     return
 
-
-# fig = px.scatter(df_perf_python, x="AnnualizedStandardDeviation", y="AnnualizedReturn", 
+# fig = px.scatter(df_perf_python, x="AnnualizedStandardDeviation", y="AnnualizedReturn",
 #                 color = 'AnnualizedSharpe', size ='AnnualizedSharpe', template='plotly_dark',
 #                   hover_data=['Company', 'ticker'], 
 #                   color_continuous_scale=px.colors.sequential.Viridis, title = 'S&P 500 Companies Perfomance the Last 4 months')

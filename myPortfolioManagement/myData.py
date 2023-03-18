@@ -17,7 +17,7 @@ from sklearn.preprocessing import StandardScaler
 from finvizfinance.screener.overview import Overview
 
 from fredapi import Fred
-import quantstats as qs
+
 
 pd.options.mode.use_inf_as_na = True
 
@@ -74,8 +74,8 @@ def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
     file_type = 'csv'
     seperator = ','
 
-    path_to_funds = '/Users/safishajjouz/Google Drive/myFinancialManagement/files/FidelityPrices/funds'
-    path_to_etf_trusts = '/Users/safishajjouz/Google Drive/myFinancialManagement/files/FidelityPrices/trusts_etfs'
+    path_to_funds = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/Data/FidelityPrices/funds'
+    path_to_etf_trusts = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/Data/FidelityPrices/trusts_etfs'
 
     # asset classes 
     subfolder_class_equity = 'Equity'
@@ -91,7 +91,6 @@ def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
     folder_name_Bonds = path.join(path_to_funds, subfolder_class_Bonds)
     folder_name_vol_managed = path.join(path_to_funds, subfolder_class_volatility_managed)
     folder_name_commodities_funds = path.join(path_to_funds, subfolder_class_commodities)
-    folder_name_commodities = path.join(path_to_etf_trusts, subfolder_class_commodities)
 
     # load equity funds
     dataframe_equity = pd.concat([pd.read_csv(f)
@@ -212,10 +211,11 @@ def get_US_yields(freq: str = 'd', add_fed_rate: bool = False) -> pd.DataFrame:
     return df_USyields
 
 
-def get_US_yield_spreads(freq: str = 'd', spread_from = 'EFFR', add_fed_rate: bool = True) -> pd.DataFrame:
+def get_US_yield_spreads(freq: str = 'd', spread_from='EFFR', add_fed_rate: bool = True) -> pd.DataFrame:
     """
 
     Args:
+        spread_from:
         freq (str, optional): DESCRIPTION. Defaults to 'd'.
         add_fed_rate (bool, optional): DESCRIPTION. Defaults to False.
 
@@ -283,14 +283,14 @@ def get_USyield_curve_factors(start_date: str = None, freq: str = 'd') -> pd.Dat
     return principalDf
 
 
-def get_fred_data(fred_sumbol: list, freq: str, print_info: bool = False,
+def get_fred_data(fred_sumbol: list, freq: str = 'm', print_info: bool = False,
                   my_fred_API: str = 'cc628b51e21828ae6b98c06f4eef6714') -> pd.DataFrame:
     """
     
 
     Args:
         fred_sumbol (list): DESCRIPTION.
-        freq (str): DESCRIPTION. # fred = ['d', 'm', 'q', 'a'][0]
+        freq (str): options a string from ['d', 'm', 'q', 'a'].
         print_info (bool, optional): DESCRIPTION. Defaults to False.
         my_fred_API (str, optional): DESCRIPTION. Defaults to 'cc628b51e21828ae6b98c06f4eef6714'.
 
@@ -357,25 +357,10 @@ def get_yield_curve_factors(df: pd.DataFrame = None,
 
     return principalDf
 
-
-def get_stock_returns(yahoo_tickers: list) -> pd.DataFrame:
-    ret_bench = list()
-    for tick, names in zip(yahoo_tickers, yahoo_tickers):
-        ret = pd.Series(qs.utils.download_returns(tick), name=names)
-        ret_bench.append(ret)
-
-    ret_bench = pd.concat(ret_bench, axis=1)
-
-    return ret_bench
-
-
 def get_sp500_tickers() -> pd.DataFrame:
     """
-
-
     Returns:
         df (TYPE): DESCRIPTION.
-
     """
 
     # for filtering: https://finviz.com/screener.ashx
@@ -389,11 +374,8 @@ def get_sp500_tickers() -> pd.DataFrame:
 
 def get_nasdaq_tickers() -> pd.DataFrame:
     """
-
-
     Returns:
         df (TYPE): DESCRIPTION.
-
     """
 
     # for filtering: https://finviz.com/screener.ashx
@@ -405,64 +387,3 @@ def get_nasdaq_tickers() -> pd.DataFrame:
     return df
 
 
-def data_overview(df: pd.DataFrame,
-                  my_assets_col_name: str,
-                  my_date_col_name: str,
-                  price_col_name: str) -> pd.DataFrame:
-    """
-    This function expects a dataframe in long-format and a date column
-    and returns a pandas dataframe that shows the period of available data
-    that are available for each asset
-    ...
-
-    Args:
-          df (dataframe): A list of yahoo tickers
-          my_assets_col_name(str): the name of the column of
-                                   your dataframe with
-                                   asset names (e.g tickers, names etc..)
-          my_date_col_name (str): the name of the column of your dataframe with the dates
-                                  which column in your dataframe.
-                                  Can be your index name
-
-    Returns:
-      pandas Dataframe: Returns a pandas dataframe with stock prices and other info
-    """
-
-    df_overview = df
-
-    if type(df_overview.index) == pd.DatetimeIndex:
-        df_overview = df_overview.reset_index()
-
-    df_overview[my_date_col_name] = pd.to_datetime(df_overview[my_date_col_name], format='%Y/%m/%d')
-
-    df1 = df_overview[df_overview.groupby(my_assets_col_name).Date.transform('min') == df_overview[my_date_col_name]][
-        [my_assets_col_name, my_date_col_name]]
-    df2 = df_overview[df_overview.groupby(my_assets_col_name).Date.transform('max') == df_overview[my_date_col_name]][
-        [my_assets_col_name, my_date_col_name]]
-    df1 = df1.rename(columns={my_date_col_name: "Date_min"})
-    df2 = df2.rename(columns={my_date_col_name: "Date_max"})
-
-    # merge dataframes
-    df_overview = df1.merge(df2, how="left")
-
-    df_overview["trading_days"] = df_overview["Date_max"] - df_overview["Date_min"]
-    df_overview['years_available'] = df_overview['trading_days'] / np.timedelta64(1, 'Y')
-
-    df_overview = df_overview.rename(columns={'Stock': my_assets_col_name})
-    df_overview = df_overview.drop_duplicates()
-
-    # from long to wide
-
-    df.groupby(my_assets_col_name)
-
-    df_wide = df.pivot_table(index=my_date_col_name,
-                             columns=my_assets_col_name,
-                             values=price_col_name)
-
-    df_NAs = pd.DataFrame(pd.Series(df_wide.isnull().mean().round(4).mul(100).sort_values(ascending=False),
-                                    name='percentage_of_NAs'))
-
-    df_overview = df_overview.merge(df_NAs, on=my_assets_col_name)
-    df_overview = df_overview.set_index(my_assets_col_name)
-
-    return df_overview.sort_values('years_available', ascending=False)
