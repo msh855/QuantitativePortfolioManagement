@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Apr  3 10:43:02 2022
-
-@author: safishajjouz
-"""
-
 from quantstats.reports import _get_trading_periods, _stats, _td, _sqrt, _match_dates
 from quantstats.reports import _calc_dd, _dt, _tabulate
 

@@ -10,7 +10,7 @@ from empyrical.stats import alpha_beta_aligned, up_alpha_beta, down_alpha_beta
 import pandas as pd
 
 import numpy as np
-from myPortfolioManagement.myData import data_overview
+from myPortfolioManagement.myDataPreparation import data_overview
 from myPortfolioManagement.myUtils import balance_dates
 from sklearn.preprocessing import minmax_scale
 
@@ -455,4 +455,3 @@ def reward_metric(df, rolling_window=3,
     df_temp = df_temp[[my_assets_col_name, col_name]]
 
     return df_temp
-

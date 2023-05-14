@@ -1,7 +1,5 @@
 import pandas as pd
 
-import numpy as np
-
 from datetime import date, timedelta
 
 from timebudget import timebudget
