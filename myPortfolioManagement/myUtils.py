@@ -35,18 +35,4 @@ def balance_dates(returns, returns_benchmark):
     return ret_balanced_dates, ret_bench
 
 
-def rebase(df):
-    # Find the minimum starting date among all the series
-    min_start = df.apply(lambda x: x.first_valid_index()).min()
-    # Create a new dataframe with the aligned index
-    aligned_df = pd.DataFrame(index=pd.date_range(start=min_start, end=df.index[-1]))
-    # Interpolate missing values and fill them
-    for col in df.columns:
-        series = df[col].reindex(aligned_df.index).ffill()
-        first_valid_idx = series.first_valid_index()
-        if first_valid_idx:
-            series = series / series[first_valid_idx]
-        aligned_df[col] = series
-    aligned_df.index.name = df.index.name
-    return aligned_df
 

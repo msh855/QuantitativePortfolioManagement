@@ -371,8 +371,9 @@ def port_GMV(returns_training=None, S=None, periods=252, weight_min=0.02,
     weights = ef.clean_weights()
     weights = pd.DataFrame(weights, index=[0])
 
-    weights = pd.melt(weights, var_name='asset',
+    weights = pd.melt(weights, var_name='assets',
                       value_name='port_min_vol')
+    weights = weights.set_index('assets')
     return weights
 
 

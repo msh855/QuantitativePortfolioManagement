@@ -171,7 +171,7 @@ def performance_overview(df, prices=False, short=True):
     df_perf = pd.concat(df_stats)
 
     if short:
-        keep = ['start', 'end', 'rf', 'total_return', 'cagr', 'max_drawdown', 'yearly_sharpe', 'yearly_sortino',
+        keep = ['start', 'end', 'total_return', 'cagr', 'max_drawdown', 'yearly_sharpe', 'yearly_sortino',
                 'calmar']
 
         df_perf = df_perf[keep]

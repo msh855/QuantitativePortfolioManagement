@@ -14,6 +14,8 @@ from empyrical.stats import aggregate_returns
 import ffn
 
 import quantstats as qs
+
+
 # TODO
 # This part here has a function the 'get_stock_returns` that I dropped
 # from myPortfolioManagement.myData import get_stock_returns
@@ -21,8 +23,7 @@ import quantstats as qs
 
 # calculate portfolio returns
 def calculate_portfolio_returns(returns: pd.DataFrame,
-                                myassets_list: list,
-                                myweights_list: list,
+                                myweights: pd.DataFrame,
                                 portfolio_name: str = None) -> pd.DataFrame:
     """
     returns: a wide DataFrame series with assets returns 
@@ -51,9 +52,14 @@ def calculate_portfolio_returns(returns: pd.DataFrame,
     # if returns.index.inferred_type != "datetime64":
     #     raise TypeError('Date not an Index')
 
-    # slice returns dataframe 
-    returns = returns[myassets_list]
-    weights = np.array(myweights_list)
+    # # slice returns dataframe
+    # returns = returns[myassets_list]
+    # weights = np.array(myweights_list)
+
+    weights_temp = myweights.transpose()
+    weights_temp.columns = weights_temp.iloc[0, :]
+    returns = returns[weights_temp.columns]
+    weights = np.array(weights_temp.iloc[1, :])
 
     # set zero values with NA
     port_returns = returns.fillna(0).dot(weights)
