@@ -12,11 +12,15 @@ from pypfopt.expected_returns import prices_from_returns
 import numpy as np
 import quantstats as qs
 
+import matplotlib
+
+matplotlib.use("TkAgg")
+
 plt.style.use('seaborn')
 warnings.filterwarnings("ignore")
 
 # load tickers
-path = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/myWatchlist/Data/stock_screening.xlsx'
+path = 'S:\Investment Solutions Group\Quant_research\Moustafa\Github\QuantitativePortfolioManagement\myPortfolioManagement\myWatchlist\Data\stock_screening.xlsx'
 df_tickers = pd.read_excel(path)
 # df_tickers.dropna(inplace=True)
 
@@ -56,9 +60,18 @@ for tick in tickers:
 
 df_decompose = pd.concat(df_decompose_list)
 
-df_decompose['Undervalued'] = np.where(df_decompose['trend_cycle'] < 0, 'undervalued', 'overvalued')
+df_decompose['Undervalued'] = np.where(df_decompose['trend_cycle'] < 0, 'Yes', 'No')
 df_decompose['valuation'] = (abs(df_decompose['price']) - abs(df_decompose['trend_trend'])) / abs(
     df_decompose['trend_trend'])
+
+df_count = df_decompose.groupby(['YahooTicker', 'Undervalued']).count()
+df_count['count'] = df_count['trend_cycle']
+
+df_count = df_count.reset_index().pivot(index='YahooTicker', columns='Undervalued', values='count')
+df_count['Undervalued_Chances'] = np.where(df_count['No'] < df_count['Yes'], 'Undervalued',
+                                           'Overvalued')
+
+df_count.to_clipboard()
 
 df_decompose[['trend_cycle', 'trend_trend', 'price', 'YahooTicker', 'valuation']].groupby('YahooTicker').tail(1)
 
@@ -74,7 +87,11 @@ for tick in tickers:
     grouped['YahooTicker'] = tick
     fair_values.append(grouped)
 
-pd.concat(fair_values)
+df_fair_values = pd.concat(fair_values)
+df_fair_values = df_fair_values.set_index('YahooTicker')
+df_fair_values['Second_Valuation_Critirion'] =  np.where(df_fair_values['cagr']>df_fair_values['Average_Growth_Fair_Price'], 'Overvalued', 'Undervalued')
+
+df_fair_values.join(df_count[['Undervalued_Chances']]).to_clipboard()
 
 # benchmark
 price_sp = openbb.stocks.load('^GSPC', start_date=start_date)
