@@ -35,7 +35,6 @@ prices = prices.pivot(columns='Ticker', values='Adj Close')
 
 # performance of stocks
 # ======================
-
 df_perfm = performance_overview(prices, prices=True, short=False)
 df_perfm.index.name = 'YahooTicker'
 df_overview = df_tickers[['YahooTicker', 'Company']].set_index('YahooTicker').join(df_perfm)
