@@ -46,6 +46,15 @@ def get_main_stats(df_prices=None, rf=0.05, smart=False, index_name='YahooTicker
     return df_metrics
 
 
+def get_rolling_greek_stats(ret, ret_bench, rolling_period=30):
+    ret_temp = ret.join(ret_bench)
+    # ret_temp.iloc[:,0].greeks(ret_temp.iloc[:,1].dropna())
+    df_rolling_stats = ret_temp.iloc[:, 0].rolling_greeks(ret_temp.iloc[:, 1], periods=rolling_period).dropna()
+    df_rolling_stats['alpha_beta_corr'] = df_rolling_stats.corr()['alpha'][0]
+    df_rolling_stats = df_rolling_stats.mean()
+
+    return df_rolling_stats
+
 def cagr(df_prices: pd.DataFrame or pd.Series):
     if isinstance(df_prices, pd.Series):
         return ffn.core.calc_cagr(df_prices.dropna())

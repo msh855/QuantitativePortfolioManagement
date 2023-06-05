@@ -5,24 +5,27 @@ from openbb_terminal.sdk import openbb
 from scipy.stats import zscore
 import warnings
 from myPortfolioManagement.myPerformanceMetrics import performance_overview
-from myPortfolioManagement.myPerformanceMetrics import get_main_stats
+from myPortfolioManagement.myPerformanceMetrics import get_main_stats, get_rolling_greek_stats
+from myPortfolioManagement.myPerformanceMetrics import alpha_beta_table
 from sklearn import preprocessing as pre
 from myPortfolioManagement.myPerformanceMetrics import cagr
 import numpy as np
-
+import matplotlib
 from openbb_terminal.sdk import TerminalStyle
 import quantstats as qs
 
 qs.extend_pandas()
 theme = TerminalStyle("light", "light", "light")
 warnings.filterwarnings("ignore")
+matplotlib.use('TkAgg')
 
 # import tickers
 # ==============
 working_directory = os.getcwd()
 file_path = 'myPortfolioManagement/MeteoraGlobalEquityFund/Data/stock_screening.xlsx'
 path = os.path.join(working_directory, file_path)
-df_tickers = pd.read_excel(path)
+df_tickers = pd.read_excel(
+    'S:\Investment Solutions Group\Quant_research\Moustafa\Github\QuantitativePortfolioManagement\myPortfolioManagement\MeteoraGlobalEquityFund\Data\stock_screening.xlsx')
 index_name = df_tickers.columns[0]
 
 tickers = list(df_tickers.YahooTicker)
@@ -59,7 +62,7 @@ for tick in tickers:
 
 df_decompose = pd.concat(df_decompose_list)
 # df_decompose['Undervalued'] = np.where(df_decompose['price'] < df_decompose['trend_trend'], 'Yes', 'No')
-df_decompose['Undervalued'] = np.where(df_decompose['trend_cycle'] <= -0.10, 'Yes', 'No')
+df_decompose['Undervalued'] = np.where(df_decompose['trend_cycle'] <= -0.05, 'Yes', 'No')
 
 # for tick, comp in zip(tickers, companies):
 #     temp_dec = df_decompose[df_decompose[index_name] == tick]
@@ -71,7 +74,7 @@ df_decompose['Upside_potential'] = ((abs(df_decompose['price']) - abs(df_decompo
 df_temp_upside = df_decompose.set_index(index_name)[['Upside_potential']].groupby(index_name).tail(1).sort_values(
     'Upside_potential', ascending=False)
 df_temp_upside.plot.bar(title='Potential Upside Relative to Trend (Fair) Price')
-#
+
 # for tick, comp in zip(tickers, companies):
 #     temp_dec = df_decompose[df_decompose.index >= '2022-01-01']
 #     temp_dec = temp_dec[temp_dec[index_name] == tick]
@@ -116,7 +119,7 @@ df_upside['Upside_norm'] = zscore(df_upside['Upside_potential'])
 # df_upside['Upside_norm'] = pre.MinMaxScaler().fit_transform(x)
 # df_upside.sort_values('Upside_norm')
 
-df_valuations = df_valuations.join(df_upside[['Upside_norm', 'Upside_norm']])
+df_valuations = df_valuations.join(df_upside[['Upside_potential', 'Upside_norm']])
 
 # encode
 # ============
@@ -129,6 +132,9 @@ df_valuations['Valuation'] = np.where(df_valuations['Valuation_Score'] == 1, 'Un
 # keep valuation scores
 # =====================
 df_valuations_scores = df_valuations[['Upside_norm', 'Valuation_Score']]
+df_valuations_scores['Valuation_Score_final'] = df_valuations['Upside_norm'] + df_valuations['Valuation_Score']
+df_valuations_scores = df_valuations_scores[['Valuation_Score_final']]
+df_valuations_scores.sort_values(by='Valuation_Score_final').plot.bar()
 
 # performance of stocks
 # ======================
@@ -150,37 +156,65 @@ for tick in bench_ticker:
 
 ret_sp = pd.concat(bench_ret, axis=1)
 
-
-
-
 # df_prices_ewm = df_prices.ewm(span=30).mean()
 # ret_ewm = df_prices.ewm(span=30).mean().pct_change()
 
-df_main_stats = get_main_stats(df_prices, rf=0.05)
+df_main_stats = get_main_stats(prices_temp, rf=0.05)
+
+# greeks_list = []
+# for tick in tickers:
+#     temp_greeks = get_rolling_greek_stats(prices_temp[[tick]].pct_change(), ret_sp[['^GSPC']], rolling_period=30)
+#     temp_greeks.name = tick
+#     greeks_list.append(pd.DataFrame(temp_greeks))
+#
+# df_beta_rolling = pd.concat(greeks_list, axis=1).transpose()[['beta']]
+
+ret_sm = prices_temp.ewm(span=30).mean().pct_change()
+bench_sm = ret_sp[['^GSPC']].ewm(span=30).mean()
+
+df_beta_decompose = alpha_beta_table(prices_temp.pct_change(), ret_sp[['^GSPC']], rf=0.05)
+df_beta_decompose = df_beta_decompose[['beta', 'beta_bull', 'beta_bear']]
+df_beta_decompose['Defensive'] = np.where(df_beta_decompose['beta_bear'] < 1, 1, 0)
+df_beta_decompose['Defensive_norm'] = zscore(
+    df_beta_decompose['beta_bear']) * -1  # multiply with -1 to punish risky stocks
+
+df_main_stats_sm = get_main_stats(prices_temp.ewm(span=30).mean(), rf=0.05)
+df_main_stats_sm = df_main_stats_sm.drop(['max_drawdown', 'sharpe', 'probabilistic_sortino', 'probabilistic_sharpe'], axis=1)
 
 
-def get_greek_stats(ret, ret_bench, rolling_period=30):
-    ret_temp = ret.join(ret_bench)
-    # ret_temp.iloc[:,0].greeks(ret_temp.iloc[:,1].dropna())
-    df_rolling_stats = ret_temp.iloc[:, 0].rolling_greeks(ret_temp.iloc[:, 1], periods=rolling_period).dropna()
-    df_rolling_stats['alpha_beta_corr'] = df_rolling_stats.corr()['alpha'][0]
-    df_rolling_stats = df_rolling_stats.mean()
+# finalise
+df_final = df_valuations_scores.join(df_beta_decompose[['Defensive_norm']])
+df_final = df_final.join(df_main_stats[['max_drawdown']])
+df_final = df_final.join(df_main_stats_sm)
+df_final = df_final.join(df_overview[['Sample_Size_years']])
 
-    return df_rolling_stats
+score_weights = [0.10, 0.20, 0.25, 0.15, 0.15, 0.05, 0.05, 0.05]
+df_final['ranking'] = df_final.dot(score_weights)
 
+# normalize all values to be between 0 and 1
+x = df_final['ranking'].to_numpy().reshape(-1, 1)
+df_final['ranking_norm'] = pre.MinMaxScaler().fit_transform(x)
+df_final['weight'] = df_final['ranking_norm'] / df_final['ranking_norm'].sum()
 
-greeks_list = []
-for tick in tickers:
-    temp_greeks = get_greek_stats(df_prices.pct_change()[[tick]], ret_sp[['^GSPC']], rolling_period=30)
-    temp_greeks.name = tick
-    greeks_list.append(pd.DataFrame(temp_greeks))
-pd.concat(greeks_list, axis=1).transpose()
+df_final['weight'].sort_values()
 
+#
+# def get_weights_ranking(weights_for_ranking=[0.10, 0.20, 0.25, 0.15, 0.15, 0.05, 0.05, 0.05]):
+#     df_rank_norm = df_rank.astype(float).apply(zscore)
+#     df_rank_norm['ranking'] = df_rank_norm.dot(weights_for_ranking)
+#     df_rank_norm = df_rank_norm.sort_values(by='ranking', ascending=False)
+#
+#     x = df_rank_norm['ranking'].to_numpy().reshape(-1, 1)
+#
+#     # normalize all values to be between 0 and 1
+#     df_rank_norm['ranking_norm'] = pre.MinMaxScaler().fit_transform(x)
+#     df_rank_norm['weight'] = df_rank_norm['ranking_norm'] / df_rank_norm['ranking_norm'].sum()
+#
+#     return df_rank_norm
+#
+# df_rank_norm = get_weights_ranking()
 
-
-
-
-
+####
 prices_dummy = prices.copy()
 prices_dummy['year'] = prices_dummy.index.year
 prices_dummy['month'] = prices_dummy.index.month
@@ -189,34 +223,21 @@ for i in prices_dummy['month'].unique():
     prices_dummy[prices_dummy.month == i].fillna(method='ffill').drop_duplicates('year')['AAPL'].plot()
 
 prices_dummy.fillna(method='ffill').drop_duplicates('year')[['AAPL']].plot.bar()
-
-# portfolio selection
-# ====================
-keep = ['cagr', 'max_drawdown', 'calmar', 'daily_vol', 'twelve_month_win_perc']
-
-df_rank = df_overview[keep]
-df_rank['daily_vol'] = df_rank['daily_vol'] * -1  # multiplied with -1 to penalize when aggregate
-
-# join
-df_rank = df_rank.join(df_upside[['Upside_norm']])
-
-# define ranking
-df_rank = df_rank.reset_index().set_index([index_name, 'Company'])
-df_rank.columns
-
-
-def get_weights_ranking(weights_for_ranking=[0.20, 0.25, 0.25, 0.10, 0.10, 0.10]):
-    df_rank_norm = df_rank.astype(float).apply(zscore)
-    df_rank_norm['ranking'] = df_rank_norm.dot(weights_for_ranking)
-    df_rank_norm = df_rank_norm.sort_values(by='ranking', ascending=False)
-
-    x = df_rank_norm['ranking'].to_numpy().reshape(-1, 1)
-
-    # normalize all values to be between 0 and 1
-    df_rank_norm['ranking_norm'] = pre.MinMaxScaler().fit_transform(x)
-    df_rank_norm['weight'] = df_rank_norm['ranking_norm'] / df_rank_norm['ranking_norm'].sum()
-
-    return df_rank_norm
+#
+# # portfolio selection
+# # ====================
+# keep = ['cagr', 'max_drawdown', 'calmar', 'daily_vol', 'twelve_month_win_perc']
+#
+# df_rank = df_overview[keep]
+# df_rank['daily_vol'] = df_rank['daily_vol'] * -1  # multiplied with -1 to penalize when aggregate
+#
+# # join
+# df_rank = df_rank.join(df_upside[['Upside_norm']])
+#
+# # define ranking
+# df_rank = df_rank.reset_index().set_index([index_name, 'Company'])
+# df_rank.columns
+#
 
 
 df_rank_norm = get_weights_ranking()
