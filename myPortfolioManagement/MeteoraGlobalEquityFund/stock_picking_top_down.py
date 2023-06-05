@@ -13,6 +13,7 @@ import numpy as np
 import matplotlib
 from openbb_terminal.sdk import TerminalStyle
 import quantstats as qs
+from yahoofinancials import YahooFinancials
 
 qs.extend_pandas()
 theme = TerminalStyle("light", "light", "light")
@@ -298,6 +299,8 @@ df_sectors_final = temp_missin[['Sector', 'Industry', 'Country' ]]
 
 df_overview_temp = temp_missin.copy()
 
+
+
 # get market shares
 yahoo_financials = YahooFinancials(tickers, concurrent=True, max_workers=5)
 temp_ccy = yahoo_financials.get_currency()
@@ -338,7 +341,14 @@ total_mark_cap = temp['MarketCap_USD'].sum()
 temp['weight_market_cap'] = (temp['MarketCap_USD'] / total_mark_cap) * 100
 temp = temp[[index_name, 'Currency', 'weight_market_cap']]
 
-== == == == == == == == ==
+####
+df_market_cap_final = temp.drop(['Currency'], axis =1).set_index(index_name)
+
+
+#######
+df_final = df_final.join(df_market_cap_final)
+df_final = df_final.join(df_sectors_final)
+
 
 # merge with sectoral info
 df_overview = df_overview.join(temp.set_index([index_name]))
