@@ -349,13 +349,13 @@ df_market_cap_final = temp.drop(['Currency'], axis =1).set_index(index_name)
 df_final = df_final.join(df_market_cap_final)
 df_final = df_final.join(df_sectors_final)
 
-
-# merge with sectoral info
-df_overview = df_overview.join(temp.set_index([index_name]))
-df_overview = df_overview.join(df_weights.set_index([index_name]))
-df_overview = df_overview.sort_values(by='weight_market_cap', ascending=False)
-df_overview = df_overview.reset_index().drop_duplicates()
-df_overview = df_overview.set_index(index_name)
+#
+# # merge with sectoral info
+# df_overview = df_overview.join(temp.set_index([index_name]))
+# df_overview = df_overview.join(df_weights.set_index([index_name]))
+# df_overview = df_overview.sort_values(by='weight_market_cap', ascending=False)
+# df_overview = df_overview.reset_index().drop_duplicates()
+# df_overview = df_overview.set_index(index_name)
 
 ###
 fig, axes = plt.subplots(1, 2, gridspec_kw={"hspace": 5}, figsize=(10, 6))
