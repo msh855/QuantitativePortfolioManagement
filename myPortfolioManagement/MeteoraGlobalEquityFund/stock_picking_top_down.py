@@ -223,6 +223,7 @@ for i in prices_dummy['month'].unique():
     prices_dummy[prices_dummy.month == i].fillna(method='ffill').drop_duplicates('year')['AAPL'].plot()
 
 prices_dummy.fillna(method='ffill').drop_duplicates('year')[['AAPL']].plot.bar()
+
 #
 # # portfolio selection
 # # ====================
@@ -238,56 +239,64 @@ prices_dummy.fillna(method='ffill').drop_duplicates('year')[['AAPL']].plot.bar()
 # df_rank = df_rank.reset_index().set_index([index_name, 'Company'])
 # df_rank.columns
 #
-
-
-df_rank_norm = get_weights_ranking()
-
-n = len(keep)
-df_rank2 = get_weights_ranking([1 / n] * n)
-df_rank2 = df_rank2[['weight']]
-df_rank2.columns = ['weight_eq_zscore']
-df_rank2 = df_rank2.reset_index()
-df_rank2 = df_rank2.set_index(index_name)
-
-df_rank_norm = df_rank_norm[['weight']].join(df_rank2[['weight_eq_zscore']])
-
-df_rank_norm.sort_values('weight', ascending=False)
-df_rank_norm.to_clipboard()
+#
+#
+# df_rank_norm = get_weights_ranking()
+#
+# n = len(keep)
+# df_rank2 = get_weights_ranking([1 / n] * n)
+# df_rank2 = df_rank2[['weight']]
+# df_rank2.columns = ['weight_eq_zscore']
+# df_rank2 = df_rank2.reset_index()
+# df_rank2 = df_rank2.set_index(index_name)
+#
+# df_rank_norm = df_rank_norm[['weight']].join(df_rank2[['weight_eq_zscore']])
+#
+# df_rank_norm.sort_values('weight', ascending=False)
+# df_rank_norm.to_clipboard()
 
 # add industries
 # ==============
 
 df_sectors = openbb.stocks.ca.screener(similar=tickers, data_type="overview")
 df_sectors = df_sectors[["Ticker\n\n", 'Sector', 'Industry', 'Country']]
-df_sectors = df_sectors.rename(columns={"Ticker\n\n":})
+df_sectors = df_sectors.rename(columns={"Ticker\n\n":'Ticker'})
 df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
 
 # overview of Data
-df_overview = df_peak_prices.set_index([index_name]).join(df_sectors.set_index([index_name]))
+df_overview_temp = df_final.join(df_sectors.set_index([index_name]))
 
 # check if there is missing info for some stocks
 # ================================================
-temp_missin = df_overview[df_overview.isna().any(axis=1)]
+temp_missin = df_overview_temp[df_overview_temp.isna().any(axis=1)]
 temp_missin = temp_missin[['Sector', 'Industry', 'Country']]
 
-temp_missin.iloc[0, :] = ["Industrials", "Engineering & Construction", "France"]  # DG.PA
-temp_missin.iloc[1, :] = ["Investment Trust", "Investment Trust", "Asia"]  # FAS.L
-temp_missin.iloc[2, :] = ["Investment Trust", "Private Equity", "Global"]  # HVPE
-temp_missin.iloc[3, :] = ["Investment Trust", "Private Equity", "Global"]  # III
-temp_missin.iloc[4, :] = ["Consumer Cyclical", "Luxury Goods", "France"]  # MC.PA
-temp_missin.iloc[5, :] = ["Consumer Defensive", "Packaged Foods", "Switzerland"]  # NSRGF
-temp_missin.iloc[6, :] = ['Technology', 'Consumer Electronics', 'South Korea']  # Samsung
-temp_missin.iloc[7, :] = ["Investment Trust", "Investment Trust", "Global"]  # SMT
+temp_missin.iloc[0, :] = ["Consumer Defensive", "Packaged Foods", "Switzerland"]  # NSRGF
+temp_missin.iloc[1, :] = ["Investment Trust", "Investment Trust", "Global"]  # SMT
+temp_missin.iloc[2, :] = ["Communication Services", "Telecom Services", "Global"]  # Soft Bank / 9984.T
+temp_missin.iloc[3, :] = ["Healthcare", "Drug Manufacturers—General", "UK"]  # AZN / AstraZeneca
+temp_missin.iloc[4, :] = ["Investment Trust", "Investment Trust", "Asia"]  # FAS.L
+temp_missin.iloc[5, :] = ["Investment Trust", "Private Equity", "Global"]  # HVPE
+temp_missin.iloc[6, :] = ["Industrials", "Engineering & Construction", "France"]  # DG.PA
+temp_missin.iloc[7, :] = ["Consumer Cyclical", "Luxury Goods", "France"]  # MC.PA
+temp_missin.iloc[8, :] = ['Technology', 'Consumer Electronics', 'South Korea']  # Samsung
+temp_missin.iloc[9, :] = ["Investment Trust", "Private Equity", "Global"]  # III
+temp_missin.iloc[10, :] = ["Industrials", "Railroads", "Canada"]  # CNR.TO
 
-temp_missin = pd.merge(df_overview, temp_missin, on=index_name, how='left')
+
+temp_missin = pd.merge(df_overview_temp, temp_missin, on=index_name, how='left')
 
 temp_missin['Sector'] = np.where(temp_missin['Sector_x'].isna(), temp_missin['Sector_y'], temp_missin['Sector_x'])
 temp_missin['Industry'] = np.where(temp_missin['Industry_x'].isna(), temp_missin['Industry_y'],
                                    temp_missin['Industry_x'])
 temp_missin['Country'] = np.where(temp_missin['Country_x'].isna(), temp_missin['Country_y'], temp_missin['Country_x'])
 
-temp_missin = temp_missin[df_overview.columns]
-df_overview = temp_missin.copy()
+temp_missin = temp_missin[df_overview_temp.columns]
+
+#### Sectors
+df_sectors_final = temp_missin[['Sector', 'Industry', 'Country' ]]
+
+df_overview_temp = temp_missin.copy()
 
 # get market shares
 yahoo_financials = YahooFinancials(tickers, concurrent=True, max_workers=5)
