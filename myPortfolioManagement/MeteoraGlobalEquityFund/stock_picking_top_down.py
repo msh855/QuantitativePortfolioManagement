@@ -25,8 +25,8 @@ matplotlib.use('TkAgg')
 working_directory = os.getcwd()
 file_path = 'myPortfolioManagement/MeteoraGlobalEquityFund/Data/stock_screening.xlsx'
 path = os.path.join(working_directory, file_path)
-df_tickers = pd.read_excel(
-    'S:\Investment Solutions Group\Quant_research\Moustafa\Github\QuantitativePortfolioManagement\myPortfolioManagement\MeteoraGlobalEquityFund\Data\stock_screening.xlsx')
+mil_path = 'S:\Investment Solutions Group\Quant_research\Moustafa\Github\QuantitativePortfolioManagement\myPortfolioManagement\MeteoraGlobalEquityFund\Data\stock_screening.xlsx'
+df_tickers = pd.read_excel(path)
 index_name = df_tickers.columns[0]
 
 tickers = list(df_tickers.YahooTicker)
@@ -62,7 +62,6 @@ for tick in tickers:
     df_decompose_list.append(df_decompose)
 
 df_decompose = pd.concat(df_decompose_list)
-# df_decompose['Undervalued'] = np.where(df_decompose['price'] < df_decompose['trend_trend'], 'Yes', 'No')
 df_decompose['Undervalued'] = np.where(df_decompose['trend_cycle'] <= -0.05, 'Yes', 'No')
 
 # for tick, comp in zip(tickers, companies):
@@ -133,7 +132,8 @@ df_valuations['Valuation'] = np.where(df_valuations['Valuation_Score'] == 1, 'Un
 # keep valuation scores
 # =====================
 df_valuations_scores = df_valuations[['Upside_norm', 'Valuation_Score']]
-df_valuations_scores['Valuation_Score_final'] = df_valuations['Upside_norm'] + df_valuations['Valuation_Score']
+df_valuations_scores['Valuation_Score_final'] = 0.20 * df_valuations['Upside_norm'] + 0.80 * df_valuations[
+    'Valuation_Score']
 df_valuations_scores = df_valuations_scores[['Valuation_Score_final']]
 df_valuations_scores.sort_values(by='Valuation_Score_final').plot.bar()
 
@@ -180,8 +180,8 @@ df_beta_decompose['Defensive_norm'] = zscore(
     df_beta_decompose['beta_bear']) * -1  # multiply with -1 to punish risky stocks
 
 df_main_stats_sm = get_main_stats(prices_temp.ewm(span=30).mean(), rf=0.05)
-df_main_stats_sm = df_main_stats_sm.drop(['max_drawdown', 'sharpe', 'probabilistic_sortino', 'probabilistic_sharpe'], axis=1)
-
+df_main_stats_sm = df_main_stats_sm.drop(['max_drawdown', 'sharpe', 'probabilistic_sortino', 'probabilistic_sharpe'],
+                                         axis=1)
 
 # finalise
 df_final = df_valuations_scores.join(df_beta_decompose[['Defensive_norm']])
@@ -196,72 +196,25 @@ df_final['ranking'] = df_final.dot(score_weights)
 x = df_final['ranking'].to_numpy().reshape(-1, 1)
 df_final['ranking_norm'] = pre.MinMaxScaler().fit_transform(x)
 df_final['weight'] = df_final['ranking_norm'] / df_final['ranking_norm'].sum()
-
 df_final['weight'].sort_values()
 
 #
-# def get_weights_ranking(weights_for_ranking=[0.10, 0.20, 0.25, 0.15, 0.15, 0.05, 0.05, 0.05]):
-#     df_rank_norm = df_rank.astype(float).apply(zscore)
-#     df_rank_norm['ranking'] = df_rank_norm.dot(weights_for_ranking)
-#     df_rank_norm = df_rank_norm.sort_values(by='ranking', ascending=False)
+# ####
+# prices_dummy = prices.copy()
+# prices_dummy['year'] = prices_dummy.index.year
+# prices_dummy['month'] = prices_dummy.index.month
 #
-#     x = df_rank_norm['ranking'].to_numpy().reshape(-1, 1)
+# for i in prices_dummy['month'].unique():
+#     prices_dummy[prices_dummy.month == i].fillna(method='ffill').drop_duplicates('year')['AAPL'].plot()
 #
-#     # normalize all values to be between 0 and 1
-#     df_rank_norm['ranking_norm'] = pre.MinMaxScaler().fit_transform(x)
-#     df_rank_norm['weight'] = df_rank_norm['ranking_norm'] / df_rank_norm['ranking_norm'].sum()
-#
-#     return df_rank_norm
-#
-# df_rank_norm = get_weights_ranking()
+# prices_dummy.fillna(method='ffill').drop_duplicates('year')[['AAPL']].plot.bar()
 
-####
-prices_dummy = prices.copy()
-prices_dummy['year'] = prices_dummy.index.year
-prices_dummy['month'] = prices_dummy.index.month
-
-for i in prices_dummy['month'].unique():
-    prices_dummy[prices_dummy.month == i].fillna(method='ffill').drop_duplicates('year')['AAPL'].plot()
-
-prices_dummy.fillna(method='ffill').drop_duplicates('year')[['AAPL']].plot.bar()
-
-#
-# # portfolio selection
-# # ====================
-# keep = ['cagr', 'max_drawdown', 'calmar', 'daily_vol', 'twelve_month_win_perc']
-#
-# df_rank = df_overview[keep]
-# df_rank['daily_vol'] = df_rank['daily_vol'] * -1  # multiplied with -1 to penalize when aggregate
-#
-# # join
-# df_rank = df_rank.join(df_upside[['Upside_norm']])
-#
-# # define ranking
-# df_rank = df_rank.reset_index().set_index([index_name, 'Company'])
-# df_rank.columns
-#
-#
-#
-# df_rank_norm = get_weights_ranking()
-#
-# n = len(keep)
-# df_rank2 = get_weights_ranking([1 / n] * n)
-# df_rank2 = df_rank2[['weight']]
-# df_rank2.columns = ['weight_eq_zscore']
-# df_rank2 = df_rank2.reset_index()
-# df_rank2 = df_rank2.set_index(index_name)
-#
-# df_rank_norm = df_rank_norm[['weight']].join(df_rank2[['weight_eq_zscore']])
-#
-# df_rank_norm.sort_values('weight', ascending=False)
-# df_rank_norm.to_clipboard()
 
 # add industries
 # ==============
-
 df_sectors = openbb.stocks.ca.screener(similar=tickers, data_type="overview")
 df_sectors = df_sectors[["Ticker\n\n", 'Sector', 'Industry', 'Country']]
-df_sectors = df_sectors.rename(columns={"Ticker\n\n":'Ticker'})
+df_sectors = df_sectors.rename(columns={"Ticker\n\n": 'Ticker'})
 df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
 
 # overview of Data
@@ -284,7 +237,6 @@ temp_missin.iloc[8, :] = ['Technology', 'Consumer Electronics', 'South Korea']  
 temp_missin.iloc[9, :] = ["Investment Trust", "Private Equity", "Global"]  # III
 temp_missin.iloc[10, :] = ["Industrials", "Railroads", "Canada"]  # CNR.TO
 
-
 temp_missin = pd.merge(df_overview_temp, temp_missin, on=index_name, how='left')
 
 temp_missin['Sector'] = np.where(temp_missin['Sector_x'].isna(), temp_missin['Sector_y'], temp_missin['Sector_x'])
@@ -295,11 +247,9 @@ temp_missin['Country'] = np.where(temp_missin['Country_x'].isna(), temp_missin['
 temp_missin = temp_missin[df_overview_temp.columns]
 
 #### Sectors
-df_sectors_final = temp_missin[['Sector', 'Industry', 'Country' ]]
+df_sectors_final = temp_missin[['Sector', 'Industry', 'Country']]
 
 df_overview_temp = temp_missin.copy()
-
-
 
 # get market shares
 yahoo_financials = YahooFinancials(tickers, concurrent=True, max_workers=5)
@@ -342,76 +292,53 @@ temp['weight_market_cap'] = (temp['MarketCap_USD'] / total_mark_cap) * 100
 temp = temp[[index_name, 'Currency', 'weight_market_cap']]
 
 ####
-df_market_cap_final = temp.drop(['Currency'], axis =1).set_index(index_name)
-
+df_market_cap_final = temp.drop(['Currency'], axis=1).set_index(index_name)
 
 #######
 df_final = df_final.join(df_market_cap_final)
 df_final = df_final.join(df_sectors_final)
 
-#
-# # merge with sectoral info
-# df_overview = df_overview.join(temp.set_index([index_name]))
-# df_overview = df_overview.join(df_weights.set_index([index_name]))
-# df_overview = df_overview.sort_values(by='weight_market_cap', ascending=False)
-# df_overview = df_overview.reset_index().drop_duplicates()
-# df_overview = df_overview.set_index(index_name)
-
 ###
 fig, axes = plt.subplots(1, 2, gridspec_kw={"hspace": 5}, figsize=(10, 6))
-plot1 = df_overview[['weight_market_cap', 'Sector']].groupby('Sector').sum().plot.pie(ax=axes[0], y='weight_market_cap',
-                                                                                      cmap='rainbow_r',
-                                                                                      autopct='%1.f%%', legend=False)
+plot1 = df_final[['weight_market_cap', 'Sector']].groupby('Sector').sum().plot.pie(ax=axes[0], y='weight_market_cap',
+                                                                                   cmap='rainbow_r',
+                                                                                   autopct='%1.f%%', legend=False)
 plot1.set_title('Market Value')
 plot1.set(ylabel=None)
 plot1.tick_params(labelsize=7)
 
-plot2 = df_overview[['adjusted_weights', 'Sector']].groupby('Sector').sum().plot.pie(ax=axes[1], y='adjusted_weights',
-                                                                                     cmap='rainbow_r',
-                                                                                     autopct='%1.f%%', legend=False)
-plot2.set_title('adjusted_weights')
+plot2 = df_final[['weight', 'Sector']].groupby('Sector').sum().plot.pie(ax=axes[1], y='weight',
+                                                                        cmap='rainbow_r',
+                                                                        autopct='%1.f%%', legend=False)
+plot2.set_title('weight')
 plot2.set(ylabel=None)
 plt.show()
 
 ###
 group_by = 'Industry'
 fig, axes = plt.subplots(2, 1, gridspec_kw={"hspace": 3}, figsize=(10, 8))
-ax1 = df_overview[['adjusted_weights', group_by]].groupby(group_by).sum().sort_values(by='adjusted_weights',
-                                                                                      ascending=False).plot(ax=axes[1],
-                                                                                                            kind='bar',
-                                                                                                            legend=False)
+ax1 = df_final[['weight', group_by]].groupby(group_by).sum().sort_values(by='weight',
+                                                                         ascending=False).plot(ax=axes[1],
+                                                                                               kind='bar',
+                                                                                               legend=False)
 ax1.tick_params(axis='x', which='both', labelsize=6)
-ax1.set_title('adjusted_weights')
+ax1.set_title('weight')
 ax1.set(ylabel=None)
 
-ax2 = df_overview[['weight_market_cap', group_by]].groupby(group_by).sum().sort_values(by='weight_market_cap',
-                                                                                       ascending=False).plot(ax=axes[0],
-                                                                                                             kind='bar',
-                                                                                                             legend=False)
+ax2 = df_final[['weight_market_cap', group_by]].groupby(group_by).sum().sort_values(by='weight_market_cap',
+                                                                                    ascending=False).plot(ax=axes[0],
+                                                                                                          kind='bar',
+                                                                                                          legend=False)
 ax2.set_title('Market Value')
 ax2.set(ylabel=None)
 ax2.tick_params(axis='x', which='both', labelsize=6)
 plt.show()
 
-# df_port_weights.join(df_overview[['Company', 'Average_Growth_Fair_Price', 'Second_Valuation_Critirion')
+keep = ['Company', 'Sector', 'Industry', 'weight', 'weight_market_cap', 'Valuation_Score_final', 'Defensive_norm',
+        'max_drawdown',
+        'calmar', 'adjusted_sortino', 'cagr']
 
-
-df_temp = df_fair_values.join(df_count[['Undervalued_Chances']])
-df_overview = df_overview.join(
-    df_temp[['Average_Growth_Fair_Price', 'Second_Valuation_Critirion', 'Undervalued_Chances']])
-
-col1 = ['start', 'end', 'rf', 'total_return', 'cagr', 'max_drawdown',
-        'calmar', 'mtd', 'three_month', 'six_month', 'ytd', 'one_year',
-        'three_year', 'five_year', 'ten_year', 'incep', 'daily_sharpe',
-        'daily_sortino', 'daily_mean', 'daily_vol', 'daily_skew', 'daily_kurt',
-        'best_day', 'worst_day', 'monthly_sharpe', 'monthly_sortino',
-        'monthly_mean', 'monthly_vol', 'monthly_skew', 'monthly_kurt',
-        'best_month', 'worst_month', 'yearly_sharpe', 'yearly_sortino',
-        'yearly_mean', 'yearly_vol', 'yearly_skew', 'yearly_kurt', 'best_year',
-        'worst_year', 'avg_drawdown', 'avg_drawdown_days', 'avg_up_month',
-        'avg_down_month', 'win_year_perc']
-
-col_list = ['Company'] + ['Average_Growth_Fair_Price', 'Second_Valuation_Critirion', 'Undervalued_Chances'] + col1
-df_overview[col_list].to_clipboard()
-
-df_overview.to_clipboard()
+df_company_names = df_tickers[['YahooTicker', 'Company']].set_index(index_name)
+df_final = df_final.join(df_company_names)
+df_final_export = df_final.drop_duplicates()
+df_final_export[keep].to_clipboard()
