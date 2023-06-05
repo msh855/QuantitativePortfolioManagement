@@ -2,12 +2,9 @@ import pandas as pd
 from openbb_terminal.sdk import openbb
 import warnings
 from matplotlib import pyplot as plt
-from myPortfolioManagement.myPerformanceAnalytics import performance_overview
 from myPortfolioManagement.myReturns import calculate_portfolio_returns
 from myPortfolioManagement.myPortfolioOptimisation import port_GMV, inverse_vol_portfolio, equal_weight_portfolio
-import quantstats as qs
 from pypfopt.expected_returns import prices_from_returns
-from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance
 import numpy as np
 from yahoofinancials import YahooFinancials
 from openbb_terminal.sdk import TerminalStyle
@@ -214,38 +211,3 @@ ax2.set_title('Market Value')
 ax2.set(ylabel=None)
 ax2.tick_params(axis='x', which='both', labelsize=6)
 plt.show()
-
-# Performance
-df_portf_perfm = performance_overview(prices_from_returns(ret), prices=True, short=False)
-df_portf_perfm.index.name = df_port_weights.index.name
-df_portf_perfm.to_clipboard()
-
-ret['adjusted_weights']
-
-ret_new = ret[ret.index <= '2020-01-01']
-
-qs.reports.html(ret_new['adjusted_weights'], ret_new['S&P'],
-                output='/Users/safishajjouz/PycharmProjects/myWatchlist/Data',
-                download_filename='myPie_pre_pand.html')
-
-ret_cp = ret.copy()
-ret_cp.index.name = 'Date'
-out_of_sample_date = '2022-01-01'
-boost_results = bootstrap_portfolio_performance(returns=ret_cp['adjusted_weights'],
-                                                returns_benchmark=ret_cp['S&P'],
-                                                out_of_sample_date='2022-01-01',
-                                                n_sim=5000)
-
-boost_results[0]
-boost_results[1]['alpha_out_sample'].hist()
-
-ret_test = prices_from_returns(ret_cp[ret_cp.index >= out_of_sample_date])
-ret_test.plot()
-
-# fan_chart(returns=ret['adjusted_weights'],
-#           weight_period=None,
-#           out_of_sample_date='2022-01-01',
-#           n_sample=100,
-#           chart_title='Cumulative Returns')
-#
-# backtest_report(ret[['adjusted_weights']], ret[['S&P']], out_of_sample_date='2022-01-01')
