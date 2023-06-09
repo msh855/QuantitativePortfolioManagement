@@ -25,7 +25,10 @@ matplotlib.use('TkAgg')
 working_directory = os.getcwd()
 file_path = 'myPortfolioManagement/MeteoraGlobalEquityFund/Data/stock_screening.xlsx'
 path = os.path.join(working_directory, file_path)
-mil_path = 'S:\Investment Solutions Group\Quant_research\Moustafa\Github\QuantitativePortfolioManagement\myPortfolioManagement\MeteoraGlobalEquityFund\Data\stock_screening.xlsx'
+mil_path = 'S:\Investment Solutions Group\Quant_research\Moustafa\Github\/ ' \
+           'QuantitativePortfolioManagement\ /' \
+           'myPortfolioManagement\MeteoraGlobalEquityFund\Data\stock_screening.xlsx'
+
 df_tickers = pd.read_excel(path)
 index_name = df_tickers.columns[0]
 
@@ -189,7 +192,7 @@ df_final = df_final.join(df_main_stats[['max_drawdown']])
 df_final = df_final.join(df_main_stats_sm)
 df_final = df_final.join(df_overview[['Sample_Size_years']])
 
-score_weights = [0.10, 0.20, 0.25, 0.15, 0.15, 0.05, 0.05, 0.05]
+score_weights = [0.30, 0.20, 0.20, 0.10, 0.05, 0.05, 0.05, 0.05]
 df_final['ranking'] = df_final.dot(score_weights)
 
 # normalize all values to be between 0 and 1
@@ -248,7 +251,6 @@ temp_missin = temp_missin[df_overview_temp.columns]
 
 #### Sectors
 df_sectors_final = temp_missin[['Sector', 'Industry', 'Country']]
-
 df_overview_temp = temp_missin.copy()
 
 # get market shares
@@ -333,6 +335,8 @@ ax2.set_title('Market Value')
 ax2.set(ylabel=None)
 ax2.tick_params(axis='x', which='both', labelsize=6)
 plt.show()
+
+###### export
 
 keep = ['Company', 'Sector', 'Industry', 'weight', 'weight_market_cap', 'Valuation_Score_final', 'Defensive_norm',
         'max_drawdown',

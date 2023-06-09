@@ -1,3 +1,4 @@
+import numpy
 import pandas as pd
 import os
 from openbb_terminal.sdk import openbb
@@ -17,8 +18,9 @@ warnings.filterwarnings("ignore")
 working_directory = os.getcwd()
 file_path = 'myPortfolioManagement/MeteoraGlobalEquityFund/Data/stock_screening.xlsx'
 path = os.path.join(working_directory, file_path)
+mil_path = 'S:\Investment Solutions Group\Quant_research\Moustafa\Github\QuantitativePortfolioManagement\myPortfolioManagement\MeteoraGlobalEquityFund\Data\stock_screening.xlsx'
 df_tickers = pd.read_excel(path)
-# df_tickers.dropna(inplace=True)
+index_name = df_tickers.columns[0]
 
 tickers = list(df_tickers.YahooTicker)
 companies = list(df_tickers['Company'])
@@ -40,19 +42,18 @@ prices = prices.pivot(columns='Ticker', values='Adj Close')
 # ===================
 returns = prices.pct_change()
 returns_training = returns
-df_weights = df_tickers[['YahooTicker', 'Adjusted_weight ']]
+df_weights = df_tickers[[index_name, 'weight', 'adj_weight']]
 
 # optimal weight
 # ===============
 inv_vol_weights = inverse_vol_portfolio(returns_training=returns_training)  # Inverse Vol
 equal_weights = equal_weight_portfolio(returns_training)  # Equally Waighted
-min_vol_weights = port_GMV(returns_training=returns_training)
 
-df_port_weights = pd.concat([inv_vol_weights, equal_weights, min_vol_weights], axis=1)
-df_port_weights.index.name = df_weights.columns[0]
-df_port_weights = pd.concat([df_port_weights, df_weights.set_index('YahooTicker')], axis=1)
+df_port_weights = pd.concat([inv_vol_weights, equal_weights], axis=1)
+df_port_weights.index.name = index_name
+df_port_weights = pd.concat([df_port_weights, df_weights.set_index(index_name)], axis=1)
 
-
+df_port_weights.sum(axis=0)
 
 # portfolio returns
 # =================
@@ -105,16 +106,34 @@ index_valuation.columns = ['Undervalued']
 
 index_valuation.sort_values(by='Undervalued').plot.barh()
 
-# Performance
-df_performance = performance_overview(returns_training, short=True)
-df_performance.index.name = df_overview.index.name
-df_performance = df_performance.join(df_overview[['Company']])
-df_performance = df_performance.join(df_port_weights)
-df_performance = df_performance.join(df_upside[['Upside_potential']])
-list_var = list(df_performance.columns)
-list_var.remove('Company')
-df_performance[['Company'] + list_var].to_clipboard()
+df_incex = []
+for tick in ['SCHX', 'TSLA']:
+    price_sp = openbb.stocks.load(tick, start_date=start_date)
+    price_sp['Ticker'] = tick
+    price_sp = pd.DataFrame(price_sp)
+    df_incex.append(price_sp)
 
-df_portf_perfm = performance_overview(prices_from_returns(ret), prices=True, short=False)
-df_portf_perfm.index.name = df_overview.index.name
-df_portf_perfm.to_clipboard()
+df_inceces = pd.concat(df_incex)
+df_inceces = df_inceces.pivot(columns='Ticker', values='Adj Close')
+df_inceces.dropna(inplace=True)
+
+df_inceces.to_clipboard()
+
+import numpy as np
+def get_hurst_exponent(time_series:pd.Series, max_lag=20):
+    """Returns the Hurst Exponent of the time series
+       A value above 0.40 denotes some long-term persistance
+    """
+    time_series = time_series.to_numpy()
+    lags = range(2, max_lag)
+    # variances of the lagged differences
+    tau = [np.std(np.subtract(time_series[lag:], time_series[:-lag])) for lag in lags]
+    # calculate the slope of the log plot -> the Hurst Exponent
+    reg = np.polyfit(np.log(lags), np.log(tau), 1)
+    return reg[0]
+
+
+df_inceces.apply(get_hurst_exponent, result_type='reduce')
+
+get_hurst_exponent(df_inceces)
+
