@@ -520,7 +520,20 @@ def data_overview(df: pd.DataFrame,
 
     return df_overview.sort_values('years_available', ascending=False)
 
-#
+
+def get_hurst_exponent_function(time_series: pd.Series, max_lag=20):
+    """Returns the Hurst Exponent of the time series
+       A value above 0.40 denotes some long-term persistance
+    """
+    time_series = time_series.to_numpy()
+    lags = range(2, max_lag)
+    # variances of the lagged differences
+    tau = [np.std(np.subtract(time_series[lag:], time_series[:-lag])) for lag in lags]
+    # calculate the slope of the log plot -> the Hurst Exponent
+    reg = np.polyfit(np.log(lags), np.log(tau), 1)
+    return reg[0]
+
+
 # def create_credit_impulse(freq="q"):
 #     credit_impulse = ['CRDQXMAPABIS',  # Euro Area
 #                       'QUSPAM770A',  # US

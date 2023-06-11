@@ -4,7 +4,7 @@ import os
 from openbb_terminal.sdk import openbb
 from scipy.stats import zscore
 import warnings
-from myPortfolioManagement.myData import  get_stock_prices_from_openBB
+from myPortfolioManagement.myData import get_stock_prices_from_openBB, get_stock_info
 from myPortfolioManagement.myPerformanceMetrics import performance_overview
 from myPortfolioManagement.myPerformanceMetrics import get_main_stats, get_rolling_greek_stats
 from myPortfolioManagement.myPerformanceMetrics import alpha_beta_table
@@ -34,26 +34,14 @@ index_name = df_tickers.columns[0]
 
 tickers = list(df_tickers.YahooTicker)
 companies = list(df_tickers['Company'])
-start_date = "1995-01-01"
+start_date = "2016-01-01"
 
-
-# df_prices_list = []
-# for ticker, company in zip(tickers, companies):
-#     data = openbb.stocks.load(ticker, start_date=start_date)
-#     data[index_name] = ticker
-#     data['Company'] = company
-#     df_prices_list.append(data)
-#
-# df_prices = pd.concat(df_prices_list)
-#
-# prices = df_prices[['Adj Close', index_name]]
-# prices = prices.pivot(columns=index_name, values='Adj Close')
-
-prices = get_stock_prices_from_openBB(yahoo_tickers=tickers, start_date=start_date)
+prices = get_stock_prices_from_openBB(yahoo_tickers=tickers, start_date=start_date, base_currency='GBP',
+                                      index_name=index_name, wide_format=True)
 
 # decompose to cyclical and trend
 # ===============================
-prices_temp = prices
+prices_temp = prices.pivot(columns=index_name, values='Adj_Close_GBP')
 df_decompose_list = []
 for tick in tickers:
     temp_decomp = openbb.qa.decompose(data=prices_temp[tick].dropna(), multiplicative=True)
@@ -70,10 +58,6 @@ for tick in tickers:
 
 df_decompose = pd.concat(df_decompose_list)
 df_decompose['Undervalued'] = np.where(df_decompose['trend_cycle'] <= -0.05, 'Yes', 'No')
-
-# for tick, comp in zip(tickers, companies):
-#     temp_dec = df_decompose[df_decompose[index_name] == tick]
-#     temp_dec[['trend_cycle', 'trend_trend', 'price']].plot(title=comp, secondary_y='trend_cycle')
 
 df_decompose['Upside_potential'] = ((abs(df_decompose['price']) - abs(df_decompose['trend_trend'])) / abs(
     df_decompose['trend_trend'])) * -1
@@ -122,10 +106,6 @@ df_upside = df_decompose[['trend_cycle', 'trend_trend', 'price', index_name, 'Up
     index_name).tail(1)
 df_upside = df_upside.set_index(index_name)
 df_upside['Upside_norm'] = zscore(df_upside['Upside_potential'])
-# x = df_upside['Upside_norm'].to_numpy().reshape(-1, 1)
-# df_upside['Upside_norm'] = pre.MinMaxScaler().fit_transform(x)
-# df_upside.sort_values('Upside_norm')
-
 df_valuations = df_valuations.join(df_upside[['Upside_potential', 'Upside_norm']])
 
 # encode
@@ -153,29 +133,14 @@ df_overview['Sample_Size_years'] = (((df_overview['end'] - df_overview['start'])
 
 # benchmark
 bench_ticker = ['SCHX', '^GSPC']
-bench_ret = []
+df_prices_bench = get_stock_prices_from_openBB(bench_ticker, start_date=start_date, base_currency='GBP',
+                                               index_name=index_name)
 
-for tick in bench_ticker:
-    price_sp = openbb.stocks.load(tick, start_date=start_date)
-    ret_sp = price_sp['Adj Close'].pct_change()
-    ret_sp.name = tick
-    ret_sp = pd.DataFrame(ret_sp)
-    bench_ret.append(ret_sp)
+prices_bench = df_prices_bench.pivot(columns = index_name, values = 'Adj_Close_GBP')
+ret_sp = prices_bench.pct_change()
 
-ret_sp = pd.concat(bench_ret, axis=1)
-
-# df_prices_ewm = df_prices.ewm(span=30).mean()
-# ret_ewm = df_prices.ewm(span=30).mean().pct_change()
 
 df_main_stats = get_main_stats(prices_temp, rf=0.05)
-
-# greeks_list = []
-# for tick in tickers:
-#     temp_greeks = get_rolling_greek_stats(prices_temp[[tick]].pct_change(), ret_sp[['^GSPC']], rolling_period=30)
-#     temp_greeks.name = tick
-#     greeks_list.append(pd.DataFrame(temp_greeks))
-#
-# df_beta_rolling = pd.concat(greeks_list, axis=1).transpose()[['beta']]
 
 ret_sm = prices_temp.ewm(span=30).mean().pct_change()
 bench_sm = ret_sp[['^GSPC']].ewm(span=30).mean()
@@ -196,7 +161,9 @@ df_final = df_final.join(df_main_stats[['max_drawdown']])
 df_final = df_final.join(df_main_stats_sm)
 df_final = df_final.join(df_overview[['Sample_Size_years']])
 
-score_weights = [0.30, 0.20, 0.20, 0.10, 0.05, 0.05, 0.05, 0.05]
+df_final.columns
+
+score_weights = [0.20, 0.20, 0.20, 0.10, 0.10, 0.05, 0.10, 0.05]
 df_final['ranking'] = df_final.dot(score_weights)
 
 # normalize all values to be between 0 and 1
@@ -205,104 +172,24 @@ df_final['ranking_norm'] = pre.MinMaxScaler().fit_transform(x)
 df_final['weight'] = df_final['ranking_norm'] / df_final['ranking_norm'].sum()
 df_final['weight'].sort_values()
 
-#
-# ####
-# prices_dummy = prices.copy()
-# prices_dummy['year'] = prices_dummy.index.year
-# prices_dummy['month'] = prices_dummy.index.month
-#
-# for i in prices_dummy['month'].unique():
-#     prices_dummy[prices_dummy.month == i].fillna(method='ffill').drop_duplicates('year')['AAPL'].plot()
-#
-# prices_dummy.fillna(method='ffill').drop_duplicates('year')[['AAPL']].plot.bar()
-
+df_final[['weight']].sort_values(by = 'weight').plot.bar()
 
 # add industries
 # ==============
-df_sectors = openbb.stocks.ca.screener(similar=tickers, data_type="overview")
-df_sectors = df_sectors[["Ticker\n\n", 'Sector', 'Industry', 'Country']]
-df_sectors = df_sectors.rename(columns={"Ticker\n\n": 'Ticker'})
-df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
+df_sectors = get_stock_info(yahoo_tickers=tickers)
+#TODO: English Stock are quoted in pence and not in pounds. Need to be adjusted
+df_market_cap = prices[['YahooTicker', 'Market_Cap_USD']]
+df_market_cap = df_market_cap.pivot(columns=index_name, values='Market_Cap_USD')
+df_market_cap = df_market_cap.dropna().tail(1)
+df_market_cap = df_market_cap.transpose()
+df_market_cap.columns = ['Market_Cap_USD']
 
-# overview of Data
-df_overview_temp = df_final.join(df_sectors.set_index([index_name]))
-
-# check if there is missing info for some stocks
-# ================================================
-temp_missin = df_overview_temp[df_overview_temp.isna().any(axis=1)]
-temp_missin = temp_missin[['Sector', 'Industry', 'Country']]
-
-temp_missin.iloc[0, :] = ["Consumer Defensive", "Packaged Foods", "Switzerland"]  # NSRGF
-temp_missin.iloc[1, :] = ["Investment Trust", "Investment Trust", "Global"]  # SMT
-temp_missin.iloc[2, :] = ["Communication Services", "Telecom Services", "Global"]  # Soft Bank / 9984.T
-temp_missin.iloc[3, :] = ["Healthcare", "Drug Manufacturers—General", "UK"]  # AZN / AstraZeneca
-temp_missin.iloc[4, :] = ["Investment Trust", "Investment Trust", "Asia"]  # FAS.L
-temp_missin.iloc[5, :] = ["Investment Trust", "Private Equity", "Global"]  # HVPE
-temp_missin.iloc[6, :] = ["Industrials", "Engineering & Construction", "France"]  # DG.PA
-temp_missin.iloc[7, :] = ["Consumer Cyclical", "Luxury Goods", "France"]  # MC.PA
-temp_missin.iloc[8, :] = ['Technology', 'Consumer Electronics', 'South Korea']  # Samsung
-temp_missin.iloc[9, :] = ["Investment Trust", "Private Equity", "Global"]  # III
-temp_missin.iloc[10, :] = ["Industrials", "Railroads", "Canada"]  # CNR.TO
-
-temp_missin = pd.merge(df_overview_temp, temp_missin, on=index_name, how='left')
-
-temp_missin['Sector'] = np.where(temp_missin['Sector_x'].isna(), temp_missin['Sector_y'], temp_missin['Sector_x'])
-temp_missin['Industry'] = np.where(temp_missin['Industry_x'].isna(), temp_missin['Industry_y'],
-                                   temp_missin['Industry_x'])
-temp_missin['Country'] = np.where(temp_missin['Country_x'].isna(), temp_missin['Country_y'], temp_missin['Country_x'])
-
-temp_missin = temp_missin[df_overview_temp.columns]
-
-#### Sectors
-df_sectors_final = temp_missin[['Sector', 'Industry', 'Country']]
-df_overview_temp = temp_missin.copy()
-
-# get market shares
-yahoo_financials = YahooFinancials(tickers, concurrent=True, max_workers=5)
-temp_ccy = yahoo_financials.get_currency()
-temp_ccy = pd.DataFrame.from_dict(temp_ccy.items())
-temp_ccy.columns = [index_name, 'Currency']
-temp_ccy.Currency = [x.upper() for x in temp_ccy.Currency]
-
-temp_mrk_cap = yahoo_financials.get_market_cap()
-temp_mrk_cap = pd.DataFrame.from_dict(temp_mrk_cap.items())
-temp_mrk_cap.columns = [index_name, 'MarketCap']
-
-temp_mrk_cap = temp_mrk_cap.set_index([index_name]).join(temp_ccy.set_index([index_name]))
-
-# Get FX to convert market Cap
-# =============================
-fx = []
-for ccy in temp_mrk_cap.Currency:
-    if ccy != 'USD':
-        fx_temp = openbb.forex.load(to_symbol='USD', from_symbol=ccy)
-        fx_temp['FX'] = 'USD' + ccy
-        fx_temp['Currency'] = ccy
-        fx.append(fx_temp[['Close', 'FX', 'Currency']].tail(1))
-
-fx = pd.concat(fx)
-
-temp_ccy_fx = temp_ccy.set_index(['Currency']).join(fx.set_index(['Currency']))
-temp_ccy_fx = temp_ccy_fx.reset_index()
-temp_ccy_fx['Close'] = temp_ccy_fx['Close'].fillna(1)
-temp_ccy_fx['FX'] = temp_ccy_fx['FX'].fillna('USD')
-
-# merge with market cap data
-temp = temp_mrk_cap.join(temp_ccy_fx.set_index([index_name, 'Currency']))
-temp = temp.drop(['Currency'], axis=1)
-temp = temp.reset_index()
-temp['MarketCap_USD'] = temp['MarketCap'] * temp['Close']
-
-total_mark_cap = temp['MarketCap_USD'].sum()
-temp['weight_market_cap'] = (temp['MarketCap_USD'] / total_mark_cap) * 100
-temp = temp[[index_name, 'Currency', 'weight_market_cap']]
-
-####
-df_market_cap_final = temp.drop(['Currency'], axis=1).set_index(index_name)
+total_mark_cap = df_market_cap['Market_Cap_USD'].sum()
+df_market_cap['weight_market_cap'] = (df_market_cap['Market_Cap_USD'] / total_mark_cap)
 
 #######
-df_final = df_final.join(df_market_cap_final)
-df_final = df_final.join(df_sectors_final)
+df_final = df_final.join(df_market_cap)
+df_final = df_final.join(df_sectors)
 
 ###
 fig, axes = plt.subplots(1, 2, gridspec_kw={"hspace": 5}, figsize=(10, 6))
@@ -343,8 +230,7 @@ plt.show()
 ###### export
 
 keep = ['Company', 'Sector', 'Industry', 'weight', 'weight_market_cap', 'Valuation_Score_final', 'Defensive_norm',
-        'max_drawdown',
-        'calmar', 'adjusted_sortino', 'cagr']
+        'max_drawdown', 'adjusted_sortino', 'cagr']
 
 df_company_names = df_tickers[['YahooTicker', 'Company']].set_index(index_name)
 df_final = df_final.join(df_company_names)

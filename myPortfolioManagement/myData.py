@@ -1,23 +1,62 @@
 import pandas as pd
-
+from openbb_terminal.sdk import openbb, TerminalStyle
 from datetime import date, timedelta
-
 from timebudget import timebudget
-
 from yahoofinancials import YahooFinancials
-
 from os import path
 import glob
-
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-
 from finvizfinance.screener.overview import Overview
-
 from fredapi import Fred
+import numpy as np
+import quantstats as qs
 
-
+qs.extend_pandas()
 pd.options.mode.use_inf_as_na = True
+theme = TerminalStyle("light", "light", "light")
+
+
+@timebudget
+def get_stock_prices_from_openBB(yahoo_tickers: list = None, start_date: str = "1995-01-01", base_currency: str = 'GBP',
+                            index_name: str = 'YahooTicker'):
+    data_list = []
+
+    for ticker in yahoo_tickers:
+        data = openbb.stocks.load(ticker, start_date=start_date)
+        keep = list(data.columns)
+        data[index_name] = ticker
+        yahoo_financials = YahooFinancials(ticker, concurrent=True, max_workers=5)
+        temp_ccy = yahoo_financials.get_currency()
+        data['Currency'] = temp_ccy
+
+        # get base rate currency
+        fx_temp_base_currency = openbb.forex.load(to_symbol='USD', from_symbol=base_currency, start_date=start_date)
+        fx_temp_base_currency = fx_temp_base_currency[['Adj Close']]
+        fx_temp_base_currency.columns = ['Spot_' + base_currency]
+
+        if temp_ccy != 'USD':
+            fx_temp = openbb.forex.load(to_symbol='USD', from_symbol=temp_ccy, start_date=start_date)
+            fx_temp = fx_temp[['Adj Close']]
+            fx_temp.columns = ['Spot_USD']
+            data = data.join(fx_temp)
+            data['Adj_Close_USD'] = data['Adj Close'] * data['Spot_USD']
+            data = data.join(fx_temp_base_currency)
+            data['Adj_Close_' + base_currency] = data['Adj_Close_USD'] / data['Spot_' + base_currency]
+        else:
+            data['Adj_Close_USD'] = data['Adj Close']
+            data = data.join(fx_temp_base_currency)
+            data['Adj_Close_' + base_currency] = data['Adj_Close_USD'] / data['Spot_' + base_currency]
+
+        name_temp = 'Adj_Close_' + base_currency
+        keep_final = keep + [index_name] + ['Currency'] + ['Adj_Close_USD', name_temp]
+        data = data[keep_final]
+        data_list.append(data)
+
+    df_prices = pd.concat(data_list)
+    df_prices['Market_Cap_USD'] = df_prices['Volume'] * df_prices['Adj_Close_USD']
+
+    return df_prices
 
 
 # function to get prices for a list of stocks
@@ -355,6 +394,7 @@ def get_yield_curve_factors(df: pd.DataFrame = None,
 
     return principalDf
 
+
 def get_sp500_tickers() -> pd.DataFrame:
     """
     Returns:
@@ -385,3 +425,75 @@ def get_nasdaq_tickers() -> pd.DataFrame:
     return df
 
 
+def get_stock_info(yahoo_tickers: list = None):
+    # add industries
+    # ==============
+    index_name = 'YahooTicker'
+
+    df_sectors = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type="overview")
+    df_sectors = df_sectors[["Ticker\n\n", 'Sector', 'Industry', 'Country']]
+    df_sectors = df_sectors.rename(columns={"Ticker\n\n": index_name})
+    df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
+    df_sectors = df_sectors.set_index(index_name)
+
+    # get market shares
+    yahoo_financials = YahooFinancials(yahoo_tickers, concurrent=True, max_workers=5)
+    temp_ccy = yahoo_financials.get_currency()
+    temp_ccy = pd.DataFrame.from_dict(temp_ccy.items())
+    temp_ccy.columns = [index_name, 'Currency']
+    temp_ccy.Currency = [x.upper() for x in temp_ccy.Currency]
+    temp_ccy = temp_ccy.set_index(index_name)
+
+    if temp_ccy.shape[0] >= df_sectors.shape[0]:
+        df_info = temp_ccy.join(df_sectors)
+    else:
+        df_info = df_sectors.join(temp_ccy)
+
+    df_info = df_info[list(df_sectors.columns) + list(temp_ccy.columns)]
+
+    if df_info['Sector'].any():
+        df_info['Sector'] = df_info['Sector'].replace(np.nan, 'Unclassified')
+
+    if df_info['Country'].any():
+        df_info['Country'] = df_info['Country'].replace(np.nan, 'Unclassified')
+
+    if df_info['Industry'].any():
+        df_info['Industry'] = df_info['Industry'].replace(np.nan, 'Unclassified')
+
+    return df_info
+
+
+#
+# def get_stock_prices_from_openBB(yahoo_tickers: list = None, start_date="1995-01-01", wide_format=False):
+#     index_name = 'YahooTicker'
+#     df_prices = []
+#     for ticker in yahoo_tickers:
+#         data = openbb.stocks.load(ticker, start_date=start_date)
+#         data[index_name] = ticker
+#         df_prices.append(data)
+#     df_prices = pd.concat(df_prices)
+#     prices = df_prices[['Adj Close', index_name]]
+#
+#     if wide_format:
+#         prices = prices.pivot(columns=index_name, values='Adj Close')
+#     return prices
+
+
+def get_FX_spots(currencies: list = None, start_date='1995-01-01', wide_format=False):
+    fx = []
+    for ccy in currencies:
+        if ccy != 'USD':
+            fx_temp = openbb.forex.load(to_symbol='USD', from_symbol=ccy, start_date=start_date)
+            fx_temp['FX'] = 'USD' + ccy
+            fx_temp['Currency'] = ccy
+            fx.append(fx_temp)
+
+    fx = pd.concat(fx)
+
+    fx = fx[['Adj Close', 'FX', 'Currency']]
+    fx = fx.rename(columns={'Adj Close': 'Spot'})
+
+    if wide_format:
+        fx = fx.pivot(columns='FX', values='Spot')
+
+    return fx

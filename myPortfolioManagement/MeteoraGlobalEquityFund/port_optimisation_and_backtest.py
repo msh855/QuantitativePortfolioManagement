@@ -4,9 +4,10 @@ import os
 from openbb_terminal.sdk import openbb
 import warnings
 from myPortfolioManagement.myReturns import calculate_portfolio_returns
-from myPortfolioManagement.myPortfolioOptimisation import port_GMV, inverse_vol_portfolio, equal_weight_portfolio
+from myPortfolioManagement.myPortfolioOptimisation import inverse_vol_portfolio, equal_weight_portfolio
 from pypfopt.expected_returns import prices_from_returns
 import quantstats as qs
+from myPortfolioManagement.myData import get_stock_prices_from_openBB
 import matplotlib
 from openbb_terminal.sdk import TerminalStyle
 
@@ -24,25 +25,16 @@ index_name = df_tickers.columns[0]
 
 tickers = list(df_tickers.YahooTicker)
 companies = list(df_tickers['Company'])
-start_date = "1995-01-01"
+start_date = "2016-01-01"
 
-df_prices = []
-for ticker, company in zip(tickers, companies):
-    data = openbb.stocks.load(ticker, start_date=start_date)
-    data['Ticker'] = ticker
-    data['Company'] = company
-    df_prices.append(data)
-
-df_prices = pd.concat(df_prices)
-
-prices = df_prices[['Adj Close', 'Ticker']]
-prices = prices.pivot(columns='Ticker', values='Adj Close')
+df_prices = get_stock_prices_from_openBB(yahoo_tickers=tickers, start_date=start_date, base_currency='GBP',
+                                         index_name=index_name)
+prices = df_prices.pivot(columns=index_name, values='Adj_Close_GBP')
 
 # Optimase Portfolio
 # ===================
-returns = prices.pct_change()
-returns_training = returns
-df_weights = df_tickers[[index_name, 'weight', 'adj_weight']]
+returns_training = prices.pct_change()
+df_weights = df_tickers[[index_name, 'adj_weight', 'adj_weight_GBP']]
 
 # optimal weight
 # ===============
@@ -66,16 +58,10 @@ df_portfolios = pd.concat(df_portfolios, axis=1)
 
 # benchmark
 bench_ticker = ['SCHX', '^GSPC']
-bench_ret = []
-
-for tick in bench_ticker:
-    price_sp = openbb.stocks.load(tick, start_date=start_date)
-    ret_sp = price_sp['Adj Close'].pct_change()
-    ret_sp.name = tick
-    ret_sp = pd.DataFrame(ret_sp)
-    bench_ret.append(ret_sp)
-
-ret_sp = pd.concat(bench_ret, axis=1)
+df_prices_bench = get_stock_prices_from_openBB(yahoo_tickers=bench_ticker, start_date=start_date, base_currency='GBP',
+                                               index_name=index_name)
+prices_bench = df_prices_bench.pivot(columns=index_name, values='Adj_Close_GBP')
+ret_sp = prices_bench.pct_change()
 
 # total returns
 index_name = 'date'
@@ -87,13 +73,17 @@ portf_prices = prices_from_returns(ret_backtest)
 portf_prices.plot()
 
 port_names = ret.columns[2:7]
-
 out_put = os.path.join(working_directory, 'myPortfolioManagement/MeteoraGlobalEquityFund/Output')
 
 for pot_name in port_names:
     qs.reports.html(ret_backtest[pot_name], ret_backtest[bench_ticker[1]],
                     output=out_put,
                     download_filename=pot_name + '.html')
+
+
+qs.reports.html(ret_backtest['adj_weight_GBP'], ret_backtest['port_inverse_vol'],
+                    output=out_put,
+                    download_filename='adj_weight_vs_inv_vol' + '.html')
 
 # check
 portf_prices = prices_from_returns(ret)
@@ -106,34 +96,4 @@ index_valuation.columns = ['Undervalued']
 
 index_valuation.sort_values(by='Undervalued').plot.barh()
 
-df_incex = []
-for tick in ['SCHX', 'TSLA']:
-    price_sp = openbb.stocks.load(tick, start_date=start_date)
-    price_sp['Ticker'] = tick
-    price_sp = pd.DataFrame(price_sp)
-    df_incex.append(price_sp)
-
-df_inceces = pd.concat(df_incex)
-df_inceces = df_inceces.pivot(columns='Ticker', values='Adj Close')
-df_inceces.dropna(inplace=True)
-
-df_inceces.to_clipboard()
-
-import numpy as np
-def get_hurst_exponent(time_series:pd.Series, max_lag=20):
-    """Returns the Hurst Exponent of the time series
-       A value above 0.40 denotes some long-term persistance
-    """
-    time_series = time_series.to_numpy()
-    lags = range(2, max_lag)
-    # variances of the lagged differences
-    tau = [np.std(np.subtract(time_series[lag:], time_series[:-lag])) for lag in lags]
-    # calculate the slope of the log plot -> the Hurst Exponent
-    reg = np.polyfit(np.log(lags), np.log(tau), 1)
-    return reg[0]
-
-
-df_inceces.apply(get_hurst_exponent, result_type='reduce')
-
-get_hurst_exponent(df_inceces)
-
+inv_vol_weights.to_clipboard()
