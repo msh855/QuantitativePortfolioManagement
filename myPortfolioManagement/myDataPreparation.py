@@ -417,12 +417,6 @@ def ts_standarise_df(df: pd.DataFrame, window: int, mode: str = 'rolling') -> pd
     return df_stz
 
 
-def remove_outliers(dta: pd.DataFrame or pd.Series) -> pd.DataFrame or pd.Series:
-    assert isinstance(dta, pd.DataFrame or pd.Series)
-    treated = quantstats.stats.remove_outliers(dta)
-    return treated
-
-
 def adf_statistics(time_series):
     """
     Augmented Dickey-Fuller test for stationarity
@@ -532,6 +526,62 @@ def get_hurst_exponent_function(time_series: pd.Series, max_lag=20):
     # calculate the slope of the log plot -> the Hurst Exponent
     reg = np.polyfit(np.log(lags), np.log(tau), 1)
     return reg[0]
+
+
+def transform(column, transforms):
+    transformation = transforms[column.name]
+    # For quarterly data like GDP, we will compute
+    # annualized percent changes
+    mult = 4 if column.index.freqstr[0] == 'Q' else 1
+
+    # 1 => No transformation
+    if transformation == 1:
+        pass
+    # 2 => First difference
+    elif transformation == 2:
+        column = column.diff()
+    # 3 => Second difference
+    elif transformation == 3:
+        column = column.diff().diff()
+    # 4 => Log
+    elif transformation == 4:
+        column = np.log(column)
+    # 5 => Log first difference, multiplied by 100
+    #      (i.e. approximate percent change)
+    #      with optional multiplier for annualization
+    elif transformation == 5:
+        column = np.log(column).diff() * 100 * mult
+    # 6 => Log second difference, multiplied by 100
+    #      with optional multiplier for annualization
+    elif transformation == 6:
+        column = np.log(column).diff().diff() * 100 * mult
+    # 7 => Exact percent change, multiplied by 100
+    #      with optional annualization
+    elif transformation == 7:
+        column = ((column / column.shift(1)) ** mult - 1.0) * 100
+
+    return column
+
+
+
+def qs_remove_outliers(dta: pd.DataFrame or pd.Series) -> pd.DataFrame or pd.Series:
+    assert isinstance(dta, pd.DataFrame or pd.Series)
+    treated = quantstats.stats.remove_outliers(dta)
+    return treated
+
+
+def remove_outliers(dta):
+    # Compute the mean and interquartile range
+    mean = dta.mean()
+    iqr = dta.quantile([0.25, 0.75]).diff().T.iloc[:, 1]
+
+    # Replace entries that are more than 10 times the IQR
+    # away from the mean with NaN (denotes a missing entry)
+    mask = np.abs(dta) > mean + 10 * iqr
+    treated = dta.copy()
+    treated[mask] = np.nan
+
+    return treated
 
 
 # def create_credit_impulse(freq="q"):

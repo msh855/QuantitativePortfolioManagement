@@ -161,8 +161,6 @@ df_final = df_final.join(df_main_stats[['max_drawdown']])
 df_final = df_final.join(df_main_stats_sm)
 df_final = df_final.join(df_overview[['Sample_Size_years']])
 
-df_final.columns
-
 score_weights = [0.20, 0.20, 0.20, 0.10, 0.10, 0.05, 0.10, 0.05]
 df_final['ranking'] = df_final.dot(score_weights)
 

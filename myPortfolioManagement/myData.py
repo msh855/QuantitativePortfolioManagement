@@ -1,4 +1,6 @@
 import pandas as pd
+import types
+
 from openbb_terminal.sdk import openbb, TerminalStyle
 from datetime import date, timedelta
 from timebudget import timebudget
@@ -11,6 +13,7 @@ from finvizfinance.screener.overview import Overview
 from fredapi import Fred
 import numpy as np
 import quantstats as qs
+from myPortfolioManagement.myDataPreparation import transform, remove_outliers
 
 qs.extend_pandas()
 pd.options.mode.use_inf_as_na = True
@@ -55,6 +58,7 @@ def get_stock_prices_from_openBB(yahoo_tickers: list = None, start_date: str = "
 
     df_prices = pd.concat(data_list)
     df_prices['Market_Cap_USD'] = df_prices['Volume'] * df_prices['Adj_Close_USD']
+    df_prices['Market_Cap_USD'] = df_prices['Market_Cap_USD'] / 1000000000   # convert to Billions
 
     return df_prices
 
@@ -463,21 +467,6 @@ def get_stock_info(yahoo_tickers: list = None):
     return df_info
 
 
-#
-# def get_stock_prices_from_openBB(yahoo_tickers: list = None, start_date="1995-01-01", wide_format=False):
-#     index_name = 'YahooTicker'
-#     df_prices = []
-#     for ticker in yahoo_tickers:
-#         data = openbb.stocks.load(ticker, start_date=start_date)
-#         data[index_name] = ticker
-#         df_prices.append(data)
-#     df_prices = pd.concat(df_prices)
-#     prices = df_prices[['Adj Close', index_name]]
-#
-#     if wide_format:
-#         prices = prices.pivot(columns=index_name, values='Adj Close')
-#     return prices
-
 
 def get_FX_spots(currencies: list = None, start_date='1995-01-01', wide_format=False):
     fx = []
@@ -497,3 +486,54 @@ def get_FX_spots(currencies: list = None, start_date='1995-01-01', wide_format=F
         fx = fx.pivot(columns='FX', values='Spot')
 
     return fx
+
+
+def load_fredmd_data(vintage):
+    base_url = 'https://files.stlouisfed.org/files/htdocs/fred-md/'
+
+    # - FRED-MD --------------------------------------------------------------
+    # 1. Download data
+    orig_m = (pd.read_csv(f'{base_url}/monthly/{vintage}.csv')
+              .dropna(how='all'))
+
+    # 2. Extract transformation information
+    transform_m = orig_m.iloc[0, 1:]
+    orig_m = orig_m.iloc[1:]
+
+    # 3. Extract the date as an index
+    orig_m.index = pd.PeriodIndex(orig_m.sasdate.tolist(), freq='M')
+    orig_m.drop('sasdate', axis=1, inplace=True)
+
+    # 4. Apply the transformations
+    dta_m = orig_m.apply(transform, axis=0,
+                         transforms=transform_m)
+
+    # 5. Remove outliers (but not in 2020)
+    dta_m.loc[:'2019-12'] = remove_outliers(dta_m.loc[:'2019-12'])
+
+    # - FRED-QD --------------------------------------------------------------
+    # 1. Download data
+    orig_q = (pd.read_csv(f'{base_url}/quarterly/{vintage}.csv')
+              .dropna(how='all'))
+
+    # 2. Extract factors and transformation information
+    factors_q = orig_q.iloc[0, 1:]
+    transform_q = orig_q.iloc[1, 1:]
+    orig_q = orig_q.iloc[2:]
+
+    # 3. Extract the date as an index
+    orig_q.index = pd.PeriodIndex(orig_q.sasdate.tolist(), freq='Q')
+    orig_q.drop('sasdate', axis=1, inplace=True)
+
+    # 4. Apply the transformations
+    dta_q = orig_q.apply(transform, axis=0,
+                         transforms=transform_q)
+
+    # 5. Remove outliers (but not in 2020)
+    dta_q.loc[:'2019Q4'] = remove_outliers(dta_q.loc[:'2019Q4'])
+
+    # - Output datasets ------------------------------------------------------
+    return types.SimpleNamespace(
+        orig_m=orig_m, orig_q=orig_q,
+        dta_m=dta_m, transform_m=transform_m,
+        dta_q=dta_q, transform_q=transform_q, factors_q=factors_q)
