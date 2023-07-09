@@ -19,7 +19,7 @@ theme = TerminalStyle("light", "light", "light")
 
 @timebudget
 def get_stock_prices_from_openBB(yahoo_tickers: list = None, start_date: str = "1995-01-01", base_currency: str = 'GBP',
-                            index_name: str = 'YahooTicker'):
+                                 index_name: str = 'YahooTicker'):
     data_list = []
 
     for ticker in yahoo_tickers:
