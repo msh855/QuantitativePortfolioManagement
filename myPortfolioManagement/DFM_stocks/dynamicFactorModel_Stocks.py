@@ -8,6 +8,7 @@ import statsmodels.api as sm
 import seaborn as sns
 from scipy.stats import norm
 import numpy as np
+import os
 
 theme = TerminalStyle("light", "light", "light")
 
@@ -18,7 +19,11 @@ warnings.filterwarnings("ignore")
 
 # import tickers
 # ======================================================================================================================
-file_path = '/myPortfolioManagement/MeteoraGlobalEquityFund/Data/stock_screening.xlsx'
+wd = os.getcwd()
+data_path = 'myPortfolioManagement/MeteoraGlobalEquityFund/Data'
+file_to_load = 'stock_screening.xlsx'
+file_path = os.path.join(wd,data_path, file_to_load)
+
 
 # load tickers
 df_tickers = pd.read_excel(file_path)
@@ -30,8 +35,8 @@ companies = list(df_tickers['Company'])
 # start_date = "2005-01-01"
 # prices = get_stock_prices_from_openBB(yahoo_tickers=tickers, start_date=start_date)
 
-file_path = '/myPortfolioManagement/MeteoraGlobalEquityFund/Data/df_prices.csv'
-df_prices = pd.read_csv(file_path)
+file_path_prices = os.path.join(wd,data_path, 'df_prices.csv')
+df_prices = pd.read_csv(file_path_prices)
 df_prices = df_prices.set_index('date')
 
 # Group stocks for DFM

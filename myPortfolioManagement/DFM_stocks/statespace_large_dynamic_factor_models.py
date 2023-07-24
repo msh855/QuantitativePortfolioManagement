@@ -6,13 +6,15 @@ import statsmodels.api as sm
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+import os
+
 
 def transform(column, transforms):
     transformation = transforms[column.name]
     # For quarterly data like GDP, we will compute
     # annualized percent changes
     mult = 4 if column.index.freqstr[0] == 'Q' else 1
-    
+
     # 1 => No transformation
     if transformation == 1:
         pass
@@ -37,8 +39,8 @@ def transform(column, transforms):
     # 7 => Exact percent change, multiplied by 100
     #      with optional annualization
     elif transformation == 7:
-        column = ((column / column.shift(1))**mult - 1.0) * 100
-        
+        column = ((column / column.shift(1)) ** mult - 1.0) * 100
+
     return column
 
 
@@ -46,7 +48,7 @@ def remove_outliers(dta):
     # Compute the mean and interquartile range
     mean = dta.mean()
     iqr = dta.quantile([0.25, 0.75]).diff().T.iloc[:, 1]
-    
+
     # Replace entries that are more than 10 times the IQR
     # away from the mean with NaN (denotes a missing entry)
     mask = np.abs(dta) > mean + 10 * iqr
@@ -58,12 +60,12 @@ def remove_outliers(dta):
 
 def load_fredmd_data(vintage):
     base_url = 'https://files.stlouisfed.org/files/htdocs/fred-md/'
-    
+
     # - FRED-MD --------------------------------------------------------------
     # 1. Download data
     orig_m = (pd.read_csv(f'{base_url}/monthly/{vintage}.csv')
-                .dropna(how='all'))
-    
+              .dropna(how='all'))
+
     # 2. Extract transformation information
     transform_m = orig_m.iloc[0, 1:]
     orig_m = orig_m.iloc[1:]
@@ -82,7 +84,7 @@ def load_fredmd_data(vintage):
     # - FRED-QD --------------------------------------------------------------
     # 1. Download data
     orig_q = (pd.read_csv(f'{base_url}/quarterly/{vintage}.csv')
-                .dropna(how='all'))
+              .dropna(how='all'))
 
     # 2. Extract factors and transformation information
     factors_q = orig_q.iloc[0, 1:]
@@ -95,11 +97,11 @@ def load_fredmd_data(vintage):
 
     # 4. Apply the transformations
     dta_q = orig_q.apply(transform, axis=0,
-                          transforms=transform_q)
+                         transforms=transform_q)
 
     # 5. Remove outliers (but not in 2020)
     dta_q.loc[:'2019Q4'] = remove_outliers(dta_q.loc[:'2019Q4'])
-    
+
     # - Output datasets ------------------------------------------------------
     return types.SimpleNamespace(
         orig_m=orig_m, orig_q=orig_q,
@@ -107,6 +109,7 @@ def load_fredmd_data(vintage):
         dta_q=dta_q, transform_q=transform_q, factors_q=factors_q)
 
 
+# Load the vintages of data from FRED
 dta = {date: load_fredmd_data(date)
        for date in ['2020-02', '2020-03', '2020-04', '2020-05', '2020-06']}
 
@@ -120,12 +123,11 @@ end = dta['2020-02'].dta_m.index[-1]
 print(f'For vintage 2020-02, there are {k} series and {n} observations,'
       f' over the period {start} to {end}.')
 
-
 with sns.color_palette('deep'):
     fig, axes = plt.subplots(3, figsize=(14, 6))
 
     # Plot the raw data from the February 2020 vintage, for:
-    # 
+    #
     vintage = '2020-02'
     variable = 'RPI'
     start = '2000-01'
@@ -133,7 +135,7 @@ with sns.color_palette('deep'):
 
     # 1. Plot the original dataset, for 2000-01 through 2020-01
     dta[vintage].orig_m.loc[start:end, variable].plot(ax=axes[0])
-    axes[0].set(title='Original data', xlim=('2000','2020'), ylabel='Billons of $')
+    axes[0].set(title='Original data', xlim=('2000', '2020'), ylabel='Billons of $')
 
     # 2. Plot the transformed data, still including outliers
     # (we only stored the transformation with outliers removed, so
@@ -147,38 +149,43 @@ with sns.color_palette('deep'):
                    transformed.index[0], transformed.index[-1],
                    linestyles='--', linewidth=1)
     axes[1].set(title='Transformed data, with bands showing outliers cutoffs',
-                xlim=('2000','2020'), ylim=(mean - 15 * iqr, mean + 15 * iqr),
+                xlim=('2000', '2020'), ylim=(mean - 15 * iqr, mean + 15 * iqr),
                 ylabel='Percent')
     axes[1].annotate('Outlier', xy=('2013-01', transformed.loc['2013-01']),
                      xytext=('2014-01', -5.3), textcoords='data',
-                     arrowprops=dict(arrowstyle="->", connectionstyle="arc3"),)
+                     arrowprops=dict(arrowstyle="->", connectionstyle="arc3"), )
 
     # 3. Plot the transformed data, with outliers removed (see missing value for 2013-01)
     dta[vintage].dta_m.loc[start:end, 'RPI'].plot(ax=axes[2])
     axes[2].set(title='Transformed data, with outliers removed',
-                xlim=('2000','2020'), ylabel='Percent')
+                xlim=('2000', '2020'), ylabel='Percent')
     axes[2].annotate('Missing value in place of outlier', xy=('2013-01', -1),
                      xytext=('2014-01', -2), textcoords='data',
                      arrowprops=dict(arrowstyle="->", connectionstyle="arc3"))
-    
+
     fig.suptitle('Real Personal Income (RPI)',
                  fontsize=12, fontweight=600)
 
     fig.tight_layout(rect=[0, 0.00, 1, 0.95]);
 
 
+data_path = "S:\Investment Solutions Group\Quant_research\Moustafa\Github\QuantitativePortfolioManagement\myPortfolioManagement\Data"
+
+data_des_month = os.path.join(data_path, 'fredmd_definitions.csv')
+data_des_quart = os.path.join(data_path, 'fredqd_definitions.csv')
+
 # Definitions from the Appendix for FRED-MD variables
-defn_m = pd.read_csv('/data/fredmd_definitions.csv')
+defn_m = pd.read_csv(data_des_month)
 defn_m.index = defn_m.fred
 
 # Definitions from the Appendix for FRED-QD variables
-defn_q = pd.read_csv('/data/fredqd_definitions.csv')
+defn_q = pd.read_csv(data_des_quart)
 defn_q.index = defn_q.fred
 
 # Example of the information in these files:
 defn_m.head()
 
-
+# Replace the names of the columns in each monthly and quarterly dataset
 # Replace the names of the columns in each monthly and quarterly dataset
 map_m = defn_m['description'].to_dict()
 map_q = defn_q['description'].to_dict()
@@ -187,6 +194,7 @@ for date, value in dta.items():
     value.dta_m.columns = value.dta_m.columns.map(map_m)
     value.orig_q.columns = value.orig_q.columns.map(map_q)
     value.dta_q.columns = value.dta_q.columns.map(map_q)
+
 
 # Get the mapping of variable id to group name, for monthly variables
 groups = defn_m[['description', 'group']].copy()
@@ -200,13 +208,14 @@ for date in dta.keys():
 
 # Add real GDP (our quarterly variable) into the "Output and Income" group
 gdp_description = defn_q.loc['GDPC1', 'description']
-groups = groups.append({'description': gdp_description, 'group': 'Output and Income'},
-                       ignore_index=True)
+groups.loc['GDPC1'] = {'description': gdp_description, 'group': 'Output and Income'}
 
 # Display the number of variables in each group
 (groups.groupby('group', sort=False)
        .count()
        .rename({'description': '# series in group'}, axis=1))
+
+
 
 # Construct the variable => list of factors dictionary
 factors = {row['description']: ['Global', row['group']]
