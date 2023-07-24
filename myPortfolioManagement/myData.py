@@ -58,7 +58,7 @@ def get_stock_prices_from_openBB(yahoo_tickers: list = None, start_date: str = "
 
     df_prices = pd.concat(data_list)
     df_prices['Market_Cap_USD'] = df_prices['Volume'] * df_prices['Adj_Close_USD']
-    df_prices['Market_Cap_USD'] = df_prices['Market_Cap_USD'] / 1000000000   # convert to Billions
+    df_prices['Market_Cap_USD'] = df_prices['Market_Cap_USD'] / 1000000000  # convert to Billions
 
     return df_prices
 
@@ -429,6 +429,19 @@ def get_nasdaq_tickers() -> pd.DataFrame:
     return df
 
 
+def get_sector_info(yahoo_tickers: list = None):
+    # ==============
+    index_name = 'YahooTicker'
+
+    df_sectors = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type="overview")
+    df_sectors = df_sectors[["Ticker\n\n", 'Sector', 'Industry', 'Country']]
+    df_sectors = df_sectors.rename(columns={"Ticker\n\n": index_name})
+    df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
+    df_sectors = df_sectors.set_index(index_name)
+
+    return df_sectors
+
+
 def get_stock_info(yahoo_tickers: list = None):
     # add industries
     # ==============
@@ -465,7 +478,6 @@ def get_stock_info(yahoo_tickers: list = None):
         df_info['Industry'] = df_info['Industry'].replace(np.nan, 'Unclassified')
 
     return df_info
-
 
 
 def get_FX_spots(currencies: list = None, start_date='1995-01-01', wide_format=False):
