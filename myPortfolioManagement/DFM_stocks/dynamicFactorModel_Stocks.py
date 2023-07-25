@@ -76,7 +76,7 @@ monthly_macro_data.index.name = 'date'
 data_monthly = monthly_macro_data.join(ret_m)
 quart_macro_data.index.name = 'date'
 
-model = sm.tsa.DynamicFactorMQ(data_monthly, endog_quarterly=quart_macro_data, factors=factors,
+model = sm.tsa.DynamicFactorMQ(data_monthly, factors=factors,
                                factor_orders=factor_orders,
                                factor_multiplicities=factor_multiplicities)
 
@@ -313,3 +313,156 @@ value_last = point_forecasts_q[point_forecasts_q.index[0]]
 
 print('Baseline (February 2020) forecast for real GDP growth'
       f' in 2020Q2: {point_forecasts_q[point_forecasts_q[value_last]]:.2f}%')
+
+###
+
+r
+# **Updated GDP forecast: March 2020 vintage**
+vintage_results = {'2020-02': results}
+
+# Get the updated monthly and quarterly datasets
+start = '2000'
+updated_endog_m = dta['2020-03'].dta_m.loc[start:, :]
+gdp_description = defn_q.loc['GDPC1', 'description']
+updated_endog_q = dta['2020-03'].dta_q.loc[start:, [gdp_description]]
+
+# Get the results for March 2020 using `apply`
+vintage_results['2020-03'] = results.apply(
+    updated_endog_m, endog_quarterly=updated_endog_q)
+
+# Print the updated forecast for real GDP growth in 2020Q2
+updated_forecasts_q = (
+    vintage_results['2020-03'].forecast('June 2020')[gdp_description]
+    .resample('Q').last())
+
+print('March 2020 forecast for real GDP growth in 2020Q2:'
+      f' {updated_forecasts_q["2020Q2"]:.2f}%')
+
+# Apply our results to the remaining vintages
+for vintage in ['2020-04', '2020-05', '2020-06']:
+    # Get updated data for the vintage
+    updated_endog_m = dta[vintage].dta_m.loc[start:, :]
+    updated_endog_q = dta[vintage].dta_q.loc[start:, [gdp_description]]
+
+    # Get updated results for for the vintage
+    vintage_results[vintage] = results.apply(
+        updated_endog_m, endog_quarterly=updated_endog_q)
+
+# Compute forecasts for each vintage
+forecasts = {vintage: res.forecast('June 2020')[gdp_description]
+.resample('Q').last().loc['2020Q2']
+             for vintage, res in vintage_results.items()}
+# Convert to a Pandas series with a date index
+forecasts = pd.Series(list(forecasts.values()),
+                      index=pd.PeriodIndex(forecasts.keys(), freq='M'))
+
+# Print our forecast for 2020Q2 real GDP growth across all vintages
+for vintage, value in forecasts.items():
+    print(f'{vintage} forecast for real GDP growth in 2020Q2:'
+          f' {value:.2f}%')
+
+# Compute the news and impacts on the real GDP growth forecast
+# for 2020Q2, between the April and March vintages
+news = vintage_results['2020-04'].news(
+    vintage_results['2020-03'], impact_date='2020-06',
+    impacted_variable=gdp_description,
+    comparison_type='previous')
+
+# We can re-arrange the `details_by_impact` table to show the new
+# observations with the top ten impacts (in absolute value)
+details = news.details_by_impact
+details.index = details.index.droplevel(['impact date', 'impacted variable'])
+details['absolute impact'] = np.abs(details['impact'])
+details = (details.sort_values('absolute impact', ascending=False)
+           .drop('absolute impact', axis=1))
+details.iloc[:10].round(2)
+
+news_results = {}
+vintages = ['2020-02', '2020-03', '2020-04', '2020-05', '2020-06']
+impact_date = '2020-06'
+
+for i in range(1, len(vintages)):
+    vintage = vintages[i]
+    prev_vintage = vintages[i - 1]
+
+    # Notice that to get the "incremental" news, we are computing
+    # the news relative to the previous vintage and not to the baseline
+    # (February 2020) vintage
+    news_results[vintage] = vintage_results[vintage].news(
+        vintage_results[prev_vintage],
+        impact_date=impact_date,
+        impacted_variable=gdp_description,
+        comparison_type='previous')
+
+group_impacts = {'2020-02': None}
+
+for vintage, news in news_results.items():
+    # Start from the details by impact table
+    details_by_impact = (
+        news.details_by_impact.reset_index()
+        .drop(['impact date', 'impacted variable'], axis=1))
+
+    # Merge with the groups dataset, so that we can identify
+    # which group each individual impact belongs to
+    impacts = (pd.merge(details_by_impact, groups, how='left',
+                        left_on='updated variable', right_on='description')
+               .drop('description', axis=1)
+               .set_index(['update date', 'updated variable']))
+
+    # Compute impacts by group, summing across the individual impacts
+    group_impacts[vintage] = impacts.groupby('group').sum()['impact']
+
+# Add in a row of zeros for the baseline forecast
+group_impacts['2020-02'] = group_impacts['2020-03'] * np.nan
+
+# Convert into a Pandas DataFrame, and fill in missing entries
+# with zeros (missing entries happen when there were no updates
+# for a given group in a given vintage)
+group_impacts = (
+    pd.concat(group_impacts, axis=1)
+    .fillna(0)
+    .reindex(group_counts.index).T)
+group_impacts.index = forecasts.index
+
+# Print the table of impacts from data in each group,
+# along with a row with the "Total" impact
+(group_impacts.T
+ .append(group_impacts.sum(axis=1).rename('Total impact on 2020Q2 forecast'))
+ .round(2).iloc[:, 1:])
+
+with sns.color_palette('deep'):
+    fig, ax = plt.subplots(figsize=(14, 6))
+
+    # Stacked bar plot showing the impacts by group
+    group_impacts.plot(kind='bar', stacked=True, width=0.3, zorder=2, ax=ax);
+
+    # Line plot showing the forecast for real GDP growth in 2020Q2 for each vintage
+    x = np.arange(len(forecasts))
+    ax.plot(x, forecasts, marker='o', color='k', markersize=7, linewidth=2)
+    ax.hlines(0, -1, len(group_impacts) + 1, linewidth=1)
+
+    # x-ticks
+    labels = group_impacts.index.strftime('%b')
+    ax.xaxis.set_ticklabels(labels)
+    ax.xaxis.set_tick_params(size=0)
+    ax.xaxis.set_tick_params(labelrotation='auto', labelsize=13)
+
+    # y-ticks
+    ax.yaxis.set_tick_params(direction='in', size=0, labelsize=13)
+    ax.yaxis.grid(zorder=0)
+
+    # title, remove spines
+    ax.set_title('Evolution of real GDP growth nowcast: 2020Q2', fontsize=16, fontweight=600, loc='left')
+    [ax.spines[spine].set_visible(False)
+     for spine in ['top', 'left', 'bottom', 'right']]
+
+    # base forecast vs updates
+    ylim = ax.get_ylim()
+    ax.vlines(0.5, ylim[0], ylim[1] + 5, linestyles='--')
+    ax.annotate('Base forecast', (-0.2, 22), fontsize=14)
+    ax.annotate(r'Updated forecasts and impacts from the "news" $\rightarrow$', (0.65, 22), fontsize=14)
+
+    # legend
+    ax.legend(loc='upper center', ncol=4, fontsize=13, bbox_to_anchor=(0.5, -0.1), frameon=False)
+
+    fig.tight_layout()
