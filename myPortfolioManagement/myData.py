@@ -1,25 +1,66 @@
 import pandas as pd
+import types
 
-import numpy as np
-
+from openbb_terminal.sdk import openbb, TerminalStyle
 from datetime import date, timedelta
-
 from timebudget import timebudget
-
 from yahoofinancials import YahooFinancials
-
 from os import path
 import glob
-
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-
 from finvizfinance.screener.overview import Overview
-
 from fredapi import Fred
+import numpy as np
 import quantstats as qs
+from myPortfolioManagement.myDataPreparation import transform, remove_outliers
 
+qs.extend_pandas()
 pd.options.mode.use_inf_as_na = True
+theme = TerminalStyle("light", "light", "light")
+
+
+@timebudget
+def get_stock_prices_from_openBB(yahoo_tickers: list = None, start_date: str = "1995-01-01", base_currency: str = 'GBP',
+                                 index_name: str = 'YahooTicker'):
+    data_list = []
+
+    for ticker in yahoo_tickers:
+        data = openbb.stocks.load(ticker, start_date=start_date)
+        keep = list(data.columns)
+        data[index_name] = ticker
+        yahoo_financials = YahooFinancials(ticker, concurrent=True, max_workers=5)
+        temp_ccy = yahoo_financials.get_currency()
+        data['Currency'] = temp_ccy
+
+        # get base rate currency
+        fx_temp_base_currency = openbb.forex.load(to_symbol='USD', from_symbol=base_currency, start_date=start_date)
+        fx_temp_base_currency = fx_temp_base_currency[['Adj Close']]
+        fx_temp_base_currency.columns = ['Spot_' + base_currency]
+
+        if temp_ccy != 'USD':
+            fx_temp = openbb.forex.load(to_symbol='USD', from_symbol=temp_ccy, start_date=start_date)
+            fx_temp = fx_temp[['Adj Close']]
+            fx_temp.columns = ['Spot_USD']
+            data = data.join(fx_temp)
+            data['Adj_Close_USD'] = data['Adj Close'] * data['Spot_USD']
+            data = data.join(fx_temp_base_currency)
+            data['Adj_Close_' + base_currency] = data['Adj_Close_USD'] / data['Spot_' + base_currency]
+        else:
+            data['Adj_Close_USD'] = data['Adj Close']
+            data = data.join(fx_temp_base_currency)
+            data['Adj_Close_' + base_currency] = data['Adj_Close_USD'] / data['Spot_' + base_currency]
+
+        name_temp = 'Adj_Close_' + base_currency
+        keep_final = keep + [index_name] + ['Currency'] + ['Adj_Close_USD', name_temp]
+        data = data[keep_final]
+        data_list.append(data)
+
+    df_prices = pd.concat(data_list)
+    df_prices['Market_Cap_USD'] = df_prices['Volume'] * df_prices['Adj_Close_USD']
+    df_prices['Market_Cap_USD'] = df_prices['Market_Cap_USD'] / 1000000000  # convert to Billions
+
+    return df_prices
 
 
 # function to get prices for a list of stocks
@@ -74,8 +115,8 @@ def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
     file_type = 'csv'
     seperator = ','
 
-    path_to_funds = '/Users/safishajjouz/Google Drive/myFinancialManagement/files/FidelityPrices/funds'
-    path_to_etf_trusts = '/Users/safishajjouz/Google Drive/myFinancialManagement/files/FidelityPrices/trusts_etfs'
+    path_to_funds = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/Data/FidelityPrices/funds'
+    path_to_etf_trusts = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/Data/FidelityPrices/trusts_etfs'
 
     # asset classes 
     subfolder_class_equity = 'Equity'
@@ -91,7 +132,6 @@ def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
     folder_name_Bonds = path.join(path_to_funds, subfolder_class_Bonds)
     folder_name_vol_managed = path.join(path_to_funds, subfolder_class_volatility_managed)
     folder_name_commodities_funds = path.join(path_to_funds, subfolder_class_commodities)
-    folder_name_commodities = path.join(path_to_etf_trusts, subfolder_class_commodities)
 
     # load equity funds
     dataframe_equity = pd.concat([pd.read_csv(f)
@@ -212,10 +252,11 @@ def get_US_yields(freq: str = 'd', add_fed_rate: bool = False) -> pd.DataFrame:
     return df_USyields
 
 
-def get_US_yield_spreads(freq: str = 'd', spread_from = 'EFFR', add_fed_rate: bool = True) -> pd.DataFrame:
+def get_US_yield_spreads(freq: str = 'd', spread_from='EFFR', add_fed_rate: bool = True) -> pd.DataFrame:
     """
 
     Args:
+        spread_from:
         freq (str, optional): DESCRIPTION. Defaults to 'd'.
         add_fed_rate (bool, optional): DESCRIPTION. Defaults to False.
 
@@ -283,14 +324,14 @@ def get_USyield_curve_factors(start_date: str = None, freq: str = 'd') -> pd.Dat
     return principalDf
 
 
-def get_fred_data(fred_sumbol: list, freq: str, print_info: bool = False,
+def get_fred_data(fred_sumbol: list, freq: str = 'm', print_info: bool = False,
                   my_fred_API: str = 'cc628b51e21828ae6b98c06f4eef6714') -> pd.DataFrame:
     """
     
 
     Args:
         fred_sumbol (list): DESCRIPTION.
-        freq (str): DESCRIPTION. # fred = ['d', 'm', 'q', 'a'][0]
+        freq (str): options a string from ['d', 'm', 'q', 'a'].
         print_info (bool, optional): DESCRIPTION. Defaults to False.
         my_fred_API (str, optional): DESCRIPTION. Defaults to 'cc628b51e21828ae6b98c06f4eef6714'.
 
@@ -358,24 +399,10 @@ def get_yield_curve_factors(df: pd.DataFrame = None,
     return principalDf
 
 
-def get_stock_returns(yahoo_tickers: list) -> pd.DataFrame:
-    ret_bench = list()
-    for tick, names in zip(yahoo_tickers, yahoo_tickers):
-        ret = pd.Series(qs.utils.download_returns(tick), name=names)
-        ret_bench.append(ret)
-
-    ret_bench = pd.concat(ret_bench, axis=1)
-
-    return ret_bench
-
-
 def get_sp500_tickers() -> pd.DataFrame:
     """
-
-
     Returns:
         df (TYPE): DESCRIPTION.
-
     """
 
     # for filtering: https://finviz.com/screener.ashx
@@ -389,11 +416,8 @@ def get_sp500_tickers() -> pd.DataFrame:
 
 def get_nasdaq_tickers() -> pd.DataFrame:
     """
-
-
     Returns:
         df (TYPE): DESCRIPTION.
-
     """
 
     # for filtering: https://finviz.com/screener.ashx
@@ -405,64 +429,123 @@ def get_nasdaq_tickers() -> pd.DataFrame:
     return df
 
 
-def data_overview(df: pd.DataFrame,
-                  my_assets_col_name: str,
-                  my_date_col_name: str,
-                  price_col_name: str) -> pd.DataFrame:
-    """
-    This function expects a dataframe in long-format and a date column
-    and returns a pandas dataframe that shows the period of available data
-    that are available for each asset
-    ...
+def get_sector_info(yahoo_tickers: list = None):
+    # ==============
+    index_name = 'YahooTicker'
 
-    Args:
-          df (dataframe): A list of yahoo tickers
-          my_assets_col_name(str): the name of the column of
-                                   your dataframe with
-                                   asset names (e.g tickers, names etc..)
-          my_date_col_name (str): the name of the column of your dataframe with the dates
-                                  which column in your dataframe.
-                                  Can be your index name
+    df_sectors = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type="overview")
+    df_sectors = df_sectors[["Ticker\n\n", 'Sector', 'Industry', 'Country']]
+    df_sectors = df_sectors.rename(columns={"Ticker\n\n": index_name})
+    df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
+    df_sectors = df_sectors.set_index(index_name)
 
-    Returns:
-      pandas Dataframe: Returns a pandas dataframe with stock prices and other info
-    """
+    return df_sectors
 
-    df_overview = df
 
-    if type(df_overview.index) == pd.DatetimeIndex:
-        df_overview = df_overview.reset_index()
+def get_stock_info(yahoo_tickers: list = None):
+    # add industries
+    # ==============
+    index_name = 'YahooTicker'
 
-    df_overview[my_date_col_name] = pd.to_datetime(df_overview[my_date_col_name], format='%Y/%m/%d')
+    df_sectors = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type="overview")
+    df_sectors = df_sectors[["Ticker\n\n", 'Sector', 'Industry', 'Country']]
+    df_sectors = df_sectors.rename(columns={"Ticker\n\n": index_name})
+    df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
+    df_sectors = df_sectors.set_index(index_name)
 
-    df1 = df_overview[df_overview.groupby(my_assets_col_name).Date.transform('min') == df_overview[my_date_col_name]][
-        [my_assets_col_name, my_date_col_name]]
-    df2 = df_overview[df_overview.groupby(my_assets_col_name).Date.transform('max') == df_overview[my_date_col_name]][
-        [my_assets_col_name, my_date_col_name]]
-    df1 = df1.rename(columns={my_date_col_name: "Date_min"})
-    df2 = df2.rename(columns={my_date_col_name: "Date_max"})
+    # get market shares
+    yahoo_financials = YahooFinancials(yahoo_tickers, concurrent=True, max_workers=5)
+    temp_ccy = yahoo_financials.get_currency()
+    temp_ccy = pd.DataFrame.from_dict(temp_ccy.items())
+    temp_ccy.columns = [index_name, 'Currency']
+    temp_ccy.Currency = [x.upper() for x in temp_ccy.Currency]
+    temp_ccy = temp_ccy.set_index(index_name)
 
-    # merge dataframes
-    df_overview = df1.merge(df2, how="left")
+    if temp_ccy.shape[0] >= df_sectors.shape[0]:
+        df_info = temp_ccy.join(df_sectors)
+    else:
+        df_info = df_sectors.join(temp_ccy)
 
-    df_overview["trading_days"] = df_overview["Date_max"] - df_overview["Date_min"]
-    df_overview['years_available'] = df_overview['trading_days'] / np.timedelta64(1, 'Y')
+    df_info = df_info[list(df_sectors.columns) + list(temp_ccy.columns)]
 
-    df_overview = df_overview.rename(columns={'Stock': my_assets_col_name})
-    df_overview = df_overview.drop_duplicates()
+    if df_info['Sector'].any():
+        df_info['Sector'] = df_info['Sector'].replace(np.nan, 'Unclassified')
 
-    # from long to wide
+    if df_info['Country'].any():
+        df_info['Country'] = df_info['Country'].replace(np.nan, 'Unclassified')
 
-    df.groupby(my_assets_col_name)
+    if df_info['Industry'].any():
+        df_info['Industry'] = df_info['Industry'].replace(np.nan, 'Unclassified')
 
-    df_wide = df.pivot_table(index=my_date_col_name,
-                             columns=my_assets_col_name,
-                             values=price_col_name)
+    return df_info
 
-    df_NAs = pd.DataFrame(pd.Series(df_wide.isnull().mean().round(4).mul(100).sort_values(ascending=False),
-                                    name='percentage_of_NAs'))
 
-    df_overview = df_overview.merge(df_NAs, on=my_assets_col_name)
-    df_overview = df_overview.set_index(my_assets_col_name)
+def get_FX_spots(currencies: list = None, start_date='1995-01-01', wide_format=False):
+    fx = []
+    for ccy in currencies:
+        if ccy != 'USD':
+            fx_temp = openbb.forex.load(to_symbol='USD', from_symbol=ccy, start_date=start_date)
+            fx_temp['FX'] = 'USD' + ccy
+            fx_temp['Currency'] = ccy
+            fx.append(fx_temp)
 
-    return df_overview.sort_values('years_available', ascending=False)
+    fx = pd.concat(fx)
+
+    fx = fx[['Adj Close', 'FX', 'Currency']]
+    fx = fx.rename(columns={'Adj Close': 'Spot'})
+
+    if wide_format:
+        fx = fx.pivot(columns='FX', values='Spot')
+
+    return fx
+
+
+def load_fredmd_data(vintage):
+    base_url = 'https://files.stlouisfed.org/files/htdocs/fred-md/'
+
+    # - FRED-MD --------------------------------------------------------------
+    # 1. Download data
+    orig_m = (pd.read_csv(f'{base_url}/monthly/{vintage}.csv')
+              .dropna(how='all'))
+
+    # 2. Extract transformation information
+    transform_m = orig_m.iloc[0, 1:]
+    orig_m = orig_m.iloc[1:]
+
+    # 3. Extract the date as an index
+    orig_m.index = pd.PeriodIndex(orig_m.sasdate.tolist(), freq='M')
+    orig_m.drop('sasdate', axis=1, inplace=True)
+
+    # 4. Apply the transformations
+    dta_m = orig_m.apply(transform, axis=0,
+                         transforms=transform_m)
+
+    # 5. Remove outliers (but not in 2020)
+    dta_m.loc[:'2019-12'] = remove_outliers(dta_m.loc[:'2019-12'])
+
+    # - FRED-QD --------------------------------------------------------------
+    # 1. Download data
+    orig_q = (pd.read_csv(f'{base_url}/quarterly/{vintage}.csv')
+              .dropna(how='all'))
+
+    # 2. Extract factors and transformation information
+    factors_q = orig_q.iloc[0, 1:]
+    transform_q = orig_q.iloc[1, 1:]
+    orig_q = orig_q.iloc[2:]
+
+    # 3. Extract the date as an index
+    orig_q.index = pd.PeriodIndex(orig_q.sasdate.tolist(), freq='Q')
+    orig_q.drop('sasdate', axis=1, inplace=True)
+
+    # 4. Apply the transformations
+    dta_q = orig_q.apply(transform, axis=0,
+                         transforms=transform_q)
+
+    # 5. Remove outliers (but not in 2020)
+    dta_q.loc[:'2019Q4'] = remove_outliers(dta_q.loc[:'2019Q4'])
+
+    # - Output datasets ------------------------------------------------------
+    return types.SimpleNamespace(
+        orig_m=orig_m, orig_q=orig_q,
+        dta_m=dta_m, transform_m=transform_m,
+        dta_q=dta_q, transform_q=transform_q, factors_q=factors_q)

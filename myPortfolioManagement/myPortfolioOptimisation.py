@@ -8,6 +8,7 @@ Created on Sat Dec  4 07:29:35 2021
 
 import riskfolio as rp
 import pandas as pd
+import numpy as np
 import ffn
 import quantstats as qs
 
@@ -22,6 +23,7 @@ import ray  # to parallelise
 from timebudget import timebudget  # to time functions
 import itertools
 from myPortfolioManagement.myReturns import average_returns
+import matplotlib.pyplot as plt
 
 
 # Hierarchical Risk Parity Default option
@@ -369,8 +371,9 @@ def port_GMV(returns_training=None, S=None, periods=252, weight_min=0.02,
     weights = ef.clean_weights()
     weights = pd.DataFrame(weights, index=[0])
 
-    weights = pd.melt(weights, var_name='asset',
+    weights = pd.melt(weights, var_name='assets',
                       value_name='port_min_vol')
+    weights = weights.set_index('assets')
     return weights
 
 
@@ -993,3 +996,28 @@ def make_standard_portfolios(returns_training: pd.DataFrame, target_return: floa
     portfolios = pd.DataFrame(frame)
 
     return [portfolios, df_weights_all]
+
+
+def risk_contributions(port_weights=None, returns=None,
+                       risk_measure='MV',
+                       plot=True):
+    '''
+    port_weights (pd.DataFrame): dataframe of asset weights. Assets are the index
+    returns (pd.DataFrame): Returns of your assets. Date is an index
+    risk_measure (str): string that defines the risk measure: MV for Variance and MSV for semi-Variance
+    plot(boolonean): True to plot the risk contributions, otherwise returns just risk contributions
+
+    retunrs:
+        a plot of risk contributions or an array of risk contributions
+    '''
+
+    cov = returns.cov()
+    if plot:
+        ax = rp.plot_risk_con(port_weights, cov=cov, returns=returns, rm=risk_measure,
+                              color="tab:blue", height=6, width=10, ax=None)
+        plt.setp(ax.get_xticklabels(), rotation=30, horizontalalignment='right')
+        return ax
+    else:
+        risk_cont = rp.Risk_Contribution(port_weights, cov=cov, returns=returns,
+                                         rm=risk_measure)
+        return np.round(risk_cont, 3)

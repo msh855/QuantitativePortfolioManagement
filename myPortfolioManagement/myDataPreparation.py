@@ -417,12 +417,6 @@ def ts_standarise_df(df: pd.DataFrame, window: int, mode: str = 'rolling') -> pd
     return df_stz
 
 
-def remove_outliers(dta: pd.DataFrame or pd.Series) -> pd.DataFrame or pd.Series:
-    assert isinstance(dta, pd.DataFrame or pd.Series)
-    treated = quantstats.stats.remove_outliers(dta)
-    return treated
-
-
 def adf_statistics(time_series):
     """
     Augmented Dickey-Fuller test for stationarity
@@ -449,7 +443,7 @@ def adf_tests(df):
                 print(f'Null hypothesis of non-stationarity of {i} series is rejected')
 
 
-def normalise_df(df: pd.DataFrame or pd.Series = None, **kwarg) -> pd.DataFrame:
+def normalise_data(df: pd.DataFrame or pd.Series = None, **kwarg) -> pd.DataFrame:
     x = df.values  # returns a numpy array
     min_max_scaler = MinMaxScaler(**kwarg)
     x_scaled = min_max_scaler.fit_transform(x)
@@ -457,7 +451,139 @@ def normalise_df(df: pd.DataFrame or pd.Series = None, **kwarg) -> pd.DataFrame:
     df_normalised.columns = df.columns
     return df_normalised
 
-#
+
+def data_overview(df: pd.DataFrame,
+                  my_assets_col_name: str,
+                  my_date_col_name: str,
+                  price_col_name: str) -> pd.DataFrame:
+    """
+    This function expects a dataframe in long-format and a date column
+    and returns a pandas dataframe that shows the period of available data
+    that are available for each asset
+    ...
+
+    Args:
+          df (dataframe): A list of yahoo tickers
+          my_assets_col_name(str): the name of the column of
+                                   your dataframe with
+                                   asset names (e.g tickers, names etc..)
+          my_date_col_name (str): the name of the column of your dataframe with the dates
+                                  which column in your dataframe.
+                                  Can be your index name
+
+    Returns:
+      pandas Dataframe: Returns a pandas dataframe with stock prices and other info
+    """
+
+    df_overview = df
+
+    if type(df_overview.index) == pd.DatetimeIndex:
+        df_overview = df_overview.reset_index()
+
+    df_overview[my_date_col_name] = pd.to_datetime(df_overview[my_date_col_name], format='%Y/%m/%d')
+
+    df1 = df_overview[df_overview.groupby(my_assets_col_name).Date.transform('min') == df_overview[my_date_col_name]][
+        [my_assets_col_name, my_date_col_name]]
+    df2 = df_overview[df_overview.groupby(my_assets_col_name).Date.transform('max') == df_overview[my_date_col_name]][
+        [my_assets_col_name, my_date_col_name]]
+    df1 = df1.rename(columns={my_date_col_name: "Date_min"})
+    df2 = df2.rename(columns={my_date_col_name: "Date_max"})
+
+    # merge dataframes
+    df_overview = df1.merge(df2, how="left")
+
+    df_overview["trading_days"] = df_overview["Date_max"] - df_overview["Date_min"]
+    df_overview['years_available'] = df_overview['trading_days'] / np.timedelta64(1, 'Y')
+
+    df_overview = df_overview.rename(columns={'Stock': my_assets_col_name})
+    df_overview = df_overview.drop_duplicates()
+
+    # from long to wide
+
+    df.groupby(my_assets_col_name)
+
+    df_wide = df.pivot_table(index=my_date_col_name,
+                             columns=my_assets_col_name,
+                             values=price_col_name)
+
+    df_NAs = pd.DataFrame(pd.Series(df_wide.isnull().mean().round(4).mul(100).sort_values(ascending=False),
+                                    name='percentage_of_NAs'))
+
+    df_overview = df_overview.merge(df_NAs, on=my_assets_col_name)
+    df_overview = df_overview.set_index(my_assets_col_name)
+
+    return df_overview.sort_values('years_available', ascending=False)
+
+
+def get_hurst_exponent_function(time_series: pd.Series, max_lag=20):
+    """Returns the Hurst Exponent of the time series
+       A value above 0.40 denotes some long-term persistance
+    """
+    time_series = time_series.to_numpy()
+    lags = range(2, max_lag)
+    # variances of the lagged differences
+    tau = [np.std(np.subtract(time_series[lag:], time_series[:-lag])) for lag in lags]
+    # calculate the slope of the log plot -> the Hurst Exponent
+    reg = np.polyfit(np.log(lags), np.log(tau), 1)
+    return reg[0]
+
+
+def transform(column, transforms):
+    transformation = transforms[column.name]
+    # For quarterly data like GDP, we will compute
+    # annualized percent changes
+    mult = 4 if column.index.freqstr[0] == 'Q' else 1
+
+    # 1 => No transformation
+    if transformation == 1:
+        pass
+    # 2 => First difference
+    elif transformation == 2:
+        column = column.diff()
+    # 3 => Second difference
+    elif transformation == 3:
+        column = column.diff().diff()
+    # 4 => Log
+    elif transformation == 4:
+        column = np.log(column)
+    # 5 => Log first difference, multiplied by 100
+    #      (i.e. approximate percent change)
+    #      with optional multiplier for annualization
+    elif transformation == 5:
+        column = np.log(column).diff() * 100 * mult
+    # 6 => Log second difference, multiplied by 100
+    #      with optional multiplier for annualization
+    elif transformation == 6:
+        column = np.log(column).diff().diff() * 100 * mult
+    # 7 => Exact percent change, multiplied by 100
+    #      with optional annualization
+    elif transformation == 7:
+        column = ((column / column.shift(1)) ** mult - 1.0) * 100
+
+    return column
+
+
+
+def qs_remove_outliers(dta: pd.DataFrame or pd.Series) -> pd.DataFrame or pd.Series:
+    assert isinstance(dta, pd.DataFrame or pd.Series)
+    treated = quantstats.stats.remove_outliers(dta)
+    return treated
+
+
+def remove_outliers(dta):
+    # Compute the mean and interquartile range
+    mean = dta.mean()
+    iqr = dta.quantile([0.25, 0.75]).diff().T.iloc[:, 1]
+
+    # Replace entries that are more than 10 times the IQR
+    # away from the mean with NaN (denotes a missing entry)
+    mask = np.abs(dta) > mean + 10 * iqr
+    treated = dta.copy()
+    treated[mask] = np.nan
+
+    return treated
+
+
 # def create_credit_impulse(freq="q"):
 #     credit_impulse = ['CRDQXMAPABIS',  # Euro Area
 #                       'QUSPAM770A',  # US

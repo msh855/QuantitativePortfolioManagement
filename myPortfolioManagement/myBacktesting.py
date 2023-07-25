@@ -13,7 +13,6 @@ from IPython.core.display import display as iDisplay
 from numpy import ndarray
 from timebudget import timebudget
 
-from myPortfolioManagement.myPerformanceAnalytics import *
 from myPortfolioManagement.myPlots import *
 from myPortfolioManagement.myReports import metrics
 from myPortfolioManagement.myReturns import average_returns
