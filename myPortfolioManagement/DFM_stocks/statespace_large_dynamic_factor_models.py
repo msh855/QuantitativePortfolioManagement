@@ -113,8 +113,6 @@ def load_fredmd_data(vintage):
 dta = {date: load_fredmd_data(date)
        for date in ['2020-02', '2020-03', '2020-04', '2020-05', '2020-06']}
 
-
-
 # Print some information about the base dataset
 n, k = dta['2020-02'].dta_m.shape
 start = dta['2020-02'].dta_m.index[0]
@@ -168,7 +166,6 @@ with sns.color_palette('deep'):
 
     fig.tight_layout(rect=[0, 0.00, 1, 0.95]);
 
-
 data_path = "S:\Investment Solutions Group\Quant_research\Moustafa\Github\QuantitativePortfolioManagement\myPortfolioManagement\Data"
 
 data_des_month = os.path.join(data_path, 'fredmd_definitions.csv')
@@ -195,7 +192,6 @@ for date, value in dta.items():
     value.orig_q.columns = value.orig_q.columns.map(map_q)
     value.dta_q.columns = value.dta_q.columns.map(map_q)
 
-
 # Get the mapping of variable id to group name, for monthly variables
 groups = defn_m[['description', 'group']].copy()
 
@@ -212,10 +208,8 @@ groups.loc['GDPC1'] = {'description': gdp_description, 'group': 'Output and Inco
 
 # Display the number of variables in each group
 (groups.groupby('group', sort=False)
-       .count()
-       .rename({'description': '# series in group'}, axis=1))
-
-
+ .count()
+ .rename({'description': '# series in group'}, axis=1))
 
 # Construct the variable => list of factors dictionary
 factors = {row['description']: ['Global', row['group']]
@@ -251,6 +245,7 @@ mean = results.factors.smoothed[factor_names]
 
 # Compute 95% confidence intervals
 from scipy.stats import norm
+
 std = pd.concat([results.factors.smoothed_cov.loc[name, name]
                  for name in factor_names], axis=1)
 crit = norm.ppf(1 - 0.05 / 2)
@@ -260,10 +255,10 @@ upper = mean + crit * std
 with sns.color_palette('deep'):
     fig, ax = plt.subplots(figsize=(14, 3))
     mean.plot(ax=ax)
-    
+
     for name in factor_names:
         ax.fill_between(mean.index, lower[name], upper[name], alpha=0.3)
-    
+
     ax.set(title='Estimated factors: smoothed estimates and 95% confidence intervals')
     fig.tight_layout();
 
@@ -274,13 +269,12 @@ rsquared = results.get_coefficients_of_determination(method='individual')
 top_ten = []
 for factor_name in rsquared.columns[:2]:
     top_factor = (rsquared[factor_name].sort_values(ascending=False)
-                                       .iloc[:10].round(2).reset_index())
+                  .iloc[:10].round(2).reset_index())
     top_factor.columns = pd.MultiIndex.from_product([
         [f'Top ten variables explained by {factor_name}'],
         ['Variable', r'$R^2$']])
     top_ten.append(top_factor)
 pd.concat(top_ten, axis=1)
-
 
 # **Plotting $R^2$**
 
@@ -288,7 +282,6 @@ with sns.color_palette('deep'):
     fig = results.plot_coefficients_of_determination(method='individual', figsize=(14, 9))
     fig.suptitle(r'$R^2$ - regression on individual factors', fontsize=14, fontweight=600)
     fig.tight_layout(rect=[0, 0, 1, 0.95]);
-
 
 group_counts = defn_m[['description', 'group']]
 group_counts = group_counts[group_counts['description'].isin(dta['2020-02'].dta_m.columns)]
@@ -320,7 +313,6 @@ with sns.color_palette('deep'):
 
     fig.tight_layout();
 
-
 # ### Forecasting
 
 # Create point forecasts, 3 steps ahead
@@ -328,8 +320,6 @@ point_forecasts = results.forecast(steps=3)
 
 # Print the forecasts for the first 5 observed variables
 print(point_forecasts.T.head())
-
-
 
 # Create forecasts results objects, through the end of 20201
 prediction_results = results.get_prediction(start='2000', end='2022')
@@ -366,16 +356,15 @@ with sns.color_palette('deep'):
         ax.fill_between(ci.index,
                         lower[f'lower {name}'],
                         upper[f'upper {name}'], alpha=0.1)
-        
+
     # Forecast period, set title
     ylim = ax.get_ylim()
     ax.vlines('2020-01', ylim[0], ylim[1], linewidth=1)
     ax.annotate(r' Forecast $\rightarrow$', ('2020-01', -1.7))
     ax.set(title=('Treasury securities / Federal Funds Rate spreads:'
                   ' in-sample predictions and out-of-sample forecasts, with 95% confidence intervals'), ylim=ylim)
-    
-    fig.tight_layout()
 
+    fig.tight_layout()
 
 # #### Forecasting example
 
@@ -387,7 +376,6 @@ gdp_description = 'Real Gross Domestic Product, 3 Decimal (Billions of Chained 2
 # Compute the point forecasts
 fcast_m = results.forecast('2021-12')[unemp_description]
 fcast_q = results.forecast('2021-12')[gdp_description].resample('Q').last()
-
 
 # In[25]:
 
@@ -408,7 +396,7 @@ with sns.color_palette('deep'):
     plot_m.plot(ax=axes[1])
     axes[1].set(title='Civilian Unemployment Rate (transformed: change)')
     axes[1].hlines(0, plot_m.index[0], plot_m.index[-1], linewidth=1)
-    
+
     # Show the forecast period in each graph
     for i in range(2):
         ylim = axes[i].get_ylim()
@@ -424,12 +412,11 @@ with sns.color_palette('deep'):
 
     fig.tight_layout(rect=[0, 0, 1, 0.95]);
 
-
 # Reverse the transformations
 
 # For real GDP, we take the level in 2000Q1 from the original data,
 # and then apply the growth rates to compute the remaining levels
-plot_q_orig = (plot_q / 100 + 1)**0.25
+plot_q_orig = (plot_q / 100 + 1) ** 0.25
 plot_q_orig.loc['2000Q1'] = dta['2020-02'].orig_q.loc['2000Q1', gdp_description]
 plot_q_orig = plot_q_orig.cumprod()
 
@@ -439,7 +426,6 @@ plot_q_orig = plot_q_orig.cumprod()
 plot_m_orig = plot_m.copy()
 plot_m_orig.loc['2000-01'] = dta['2020-02'].orig_m.loc['2000-01', unemp_description]
 plot_m_orig = plot_m_orig.cumsum()
-
 
 # In[27]:
 with sns.color_palette('deep'):
@@ -469,7 +455,6 @@ with sns.color_palette('deep'):
 
     fig.tight_layout(rect=[0, 0, 1, 0.95]);
 
-
 # ### Nowcasting GDP, real-time forecast updates, and the news
 
 # The original point forecasts are monthly
@@ -481,7 +466,6 @@ point_forecasts_q = point_forecasts_m.resample('Q').last()
 
 print('Baseline (February 2020) forecast for real GDP growth'
       f' in 2020Q2: {point_forecasts_q["2020Q2"]:.2f}%')
-
 
 # **Updated GDP forecast: March 2020 vintage**
 vintage_results = {'2020-02': results}
@@ -499,11 +483,10 @@ vintage_results['2020-03'] = results.apply(
 # Print the updated forecast for real GDP growth in 2020Q2
 updated_forecasts_q = (
     vintage_results['2020-03'].forecast('June 2020')[gdp_description]
-                              .resample('Q').last())
+    .resample('Q').last())
 
 print('March 2020 forecast for real GDP growth in 2020Q2:'
       f' {updated_forecasts_q["2020Q2"]:.2f}%')
-
 
 # Apply our results to the remaining vintages
 for vintage in ['2020-04', '2020-05', '2020-06']:
@@ -515,15 +498,14 @@ for vintage in ['2020-04', '2020-05', '2020-06']:
     vintage_results[vintage] = results.apply(
         updated_endog_m, endog_quarterly=updated_endog_q)
 
-
 # Compute forecasts for each vintage
 forecasts = {vintage: res.forecast('June 2020')[gdp_description]
-                         .resample('Q').last().loc['2020Q2']
+.resample('Q').last().loc['2020Q2']
              for vintage, res in vintage_results.items()}
 # Convert to a Pandas series with a date index
 forecasts = pd.Series(list(forecasts.values()),
                       index=pd.PeriodIndex(forecasts.keys(), freq='M'))
-    
+
 # Print our forecast for 2020Q2 real GDP growth across all vintages
 for vintage, value in forecasts.items():
     print(f'{vintage} forecast for real GDP growth in 2020Q2:'
@@ -536,14 +518,13 @@ news = vintage_results['2020-04'].news(
     impacted_variable=gdp_description,
     comparison_type='previous')
 
-
 # We can re-arrange the `details_by_impact` table to show the new
 # observations with the top ten impacts (in absolute value)
 details = news.details_by_impact
 details.index = details.index.droplevel(['impact date', 'impacted variable'])
 details['absolute impact'] = np.abs(details['impact'])
 details = (details.sort_values('absolute impact', ascending=False)
-                  .drop('absolute impact', axis=1))
+           .drop('absolute impact', axis=1))
 details.iloc[:10].round(2)
 
 news_results = {}
@@ -563,21 +544,20 @@ for i in range(1, len(vintages)):
         impacted_variable=gdp_description,
         comparison_type='previous')
 
-
 group_impacts = {'2020-02': None}
 
 for vintage, news in news_results.items():
     # Start from the details by impact table
     details_by_impact = (
         news.details_by_impact.reset_index()
-            .drop(['impact date', 'impacted variable'], axis=1))
-    
+        .drop(['impact date', 'impacted variable'], axis=1))
+
     # Merge with the groups dataset, so that we can identify
     # which group each individual impact belongs to
     impacts = (pd.merge(details_by_impact, groups, how='left',
                         left_on='updated variable', right_on='description')
-                 .drop('description', axis=1)
-                 .set_index(['update date', 'updated variable']))
+               .drop('description', axis=1)
+               .set_index(['update date', 'updated variable']))
 
     # Compute impacts by group, summing across the individual impacts
     group_impacts[vintage] = impacts.groupby('group').sum()['impact']
@@ -590,16 +570,15 @@ group_impacts['2020-02'] = group_impacts['2020-03'] * np.nan
 # for a given group in a given vintage)
 group_impacts = (
     pd.concat(group_impacts, axis=1)
-      .fillna(0)
-      .reindex(group_counts.index).T)
+    .fillna(0)
+    .reindex(group_counts.index).T)
 group_impacts.index = forecasts.index
 
 # Print the table of impacts from data in each group,
 # along with a row with the "Total" impact
 (group_impacts.T
-    .append(group_impacts.sum(axis=1).rename('Total impact on 2020Q2 forecast'))
-    .round(2).iloc[:, 1:])
-
+ .append(group_impacts.sum(axis=1).rename('Total impact on 2020Q2 forecast'))
+ .round(2).iloc[:, 1:])
 
 with sns.color_palette('deep'):
     fig, ax = plt.subplots(figsize=(14, 6))
@@ -621,12 +600,12 @@ with sns.color_palette('deep'):
     # y-ticks
     ax.yaxis.set_tick_params(direction='in', size=0, labelsize=13)
     ax.yaxis.grid(zorder=0)
-    
+
     # title, remove spines
     ax.set_title('Evolution of real GDP growth nowcast: 2020Q2', fontsize=16, fontweight=600, loc='left')
     [ax.spines[spine].set_visible(False)
      for spine in ['top', 'left', 'bottom', 'right']]
-    
+
     # base forecast vs updates
     ylim = ax.get_ylim()
     ax.vlines(0.5, ylim[0], ylim[1] + 5, linestyles='--')

@@ -4,16 +4,20 @@ import warnings
 from matplotlib import pyplot as plt
 from myPortfolioManagement.myDataPreparation import remove_outliers
 from myPortfolioManagement.myData import get_stock_prices_from_openBB, get_sector_info
+from myPortfolioManagement.DFM_stocks.prepare_macro_data import get_macro_data
 import statsmodels.api as sm
 import seaborn as sns
 from scipy.stats import norm
 import numpy as np
 import os
 
-theme = TerminalStyle("light", "light", "light")
-
-plt.style.use('seaborn')
 warnings.filterwarnings("ignore")
+theme = TerminalStyle("light", "light", "light")
+plt.style.use('seaborn')
+
+# load macro data
+# ======================================================================================================================
+monthly_macro_data, quart_macro_data, factors_macro_data = get_macro_data()
 
 # import tickers
 # ======================================================================================================================
@@ -49,6 +53,8 @@ groups.columns = ['group', 'description']
 factors = {row['description']: ['Global', row['group']]
            for ix, row in groups.iterrows()}
 
+factors.update(factors_macro_data)
+
 # Create Portfolio
 # ======================================================================================================================
 df_prices = df_prices.reset_index().merge(groups.reset_index())
@@ -66,7 +72,11 @@ returns.index = pd.to_datetime(returns.index)
 returns.index = pd.DatetimeIndex(returns.index).to_period('D')
 ret_m = returns.resample('M').mean()
 
-model = sm.tsa.DynamicFactorMQ(ret_m, factors=factors,
+monthly_macro_data.index.name = 'date'
+data_monthly = monthly_macro_data.join(ret_m)
+quart_macro_data.index.name = 'date'
+
+model = sm.tsa.DynamicFactorMQ(data_monthly, endog_quarterly=quart_macro_data, factors=factors,
                                factor_orders=factor_orders,
                                factor_multiplicities=factor_multiplicities)
 
@@ -250,7 +260,7 @@ with sns.color_palette('deep'):
 # For real GDP, we take the level in 2000Q1 from the original data,
 # and then apply the growth rates to compute the remaining levels
 plot_q_orig = (plot_q / 100 + 1) ** 0.25
-#plot_q_orig.loc['2000Q1'] = dta['2020-02'].orig_q.loc['2000Q1', gdp_description]
+# plot_q_orig.loc['2000Q1'] = dta['2020-02'].orig_q.loc['2000Q1', gdp_description]
 plot_q_orig = plot_q_orig.cumprod()
 
 price = df_prices['Adj Close'][df_prices['description'] == unemp_description]
@@ -261,7 +271,7 @@ price_m.plot()
 # the original data, and then we apply the changes to compute the
 # remaining levels
 plot_m_orig = plot_m.copy()
-#plot_m_orig.loc['2000-01'] = dta['2020-02'].orig_m.loc['2000-01', unemp_description]
+# plot_m_orig.loc['2000-01'] = dta['2020-02'].orig_m.loc['2000-01', unemp_description]
 plot_m_orig = plot_m_orig.cumsum()
 
 with sns.color_palette('deep'):
@@ -291,13 +301,10 @@ with sns.color_palette('deep'):
 
     fig.tight_layout(rect=[0, 0, 1, 0.95]);
 
-
 # impact of news
 
 # The original point forecasts are monthly
 point_forecasts_m = results.forecast()[gdp_description]
-
-results.forecast()[gdp_description]
 
 # Resample to quarterly frequency by taking the value in the last
 # month of each quarter
@@ -306,6 +313,3 @@ value_last = point_forecasts_q[point_forecasts_q.index[0]]
 
 print('Baseline (February 2020) forecast for real GDP growth'
       f' in 2020Q2: {point_forecasts_q[point_forecasts_q[value_last]]:.2f}%')
-
-
-point_forecasts_q[point_forecasts_q.index[0]]
