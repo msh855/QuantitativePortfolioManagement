@@ -25,7 +25,7 @@ start_date = "1995-01-01"
 base_currency = 'GBP'
 
 df_prices = get_stock_prices_from_openBB(yahoo_tickers=tickers, start_date="2019-01-01", base_currency='GBP',
-                                    index_name='YahooTicker')
+                                         index_name='YahooTicker')
 
 prices_USD = df_prices.pivot(columns='YahooTicker', values='Adj_Close_USD')
 prices_base = df_prices.pivot(columns='YahooTicker', values='Adj_Close_GBP')
@@ -71,6 +71,6 @@ portf_prices.plot()
 
 out_put = os.path.join(working_directory, 'myPortfolioManagement/MeteoraGlobalEquityFund/Output')
 
-qs.reports.html(temp_portf_LC.iloc[:,0], temp_portf_USD.iloc[:,0],
+qs.reports.html(temp_portf_LC.iloc[:, 0], temp_portf_USD.iloc[:, 0],
                 output=out_put,
                 download_filename='fx_impact' + '.html')
