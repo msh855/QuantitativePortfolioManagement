@@ -316,7 +316,7 @@ print('Baseline (February 2020) forecast for real GDP growth'
 
 ###
 
-r
+
 # **Updated GDP forecast: March 2020 vintage**
 vintage_results = {'2020-02': results}
 
