@@ -616,3 +616,21 @@ def remove_outliers(dta):
 # 8. DBAA         - Daily, Moody's Seasoned Baa Corporate Bond Yield
 # Spreads: Mortgage rates and 10-year Treasury spread , Two-year and 10-year Treasury spread,
 #          Aaa corporate bond yield and 10-year Treasury spread, Baa corporate bond yield and 10-year Treasury spread
+
+
+
+def make_sma(df: pd.DataFrame = None, spans: list = [50, 60, 90, 200]) -> pd.DataFrame:
+    df_ema_list = []
+
+    for span in spans:
+        temp = df.ewm(span=span).mean()
+        temp.columns = temp.columns + '_sm' + str(span)
+        df_ema_list.append(temp)
+
+    df_ema = pd.concat(df_ema_list, axis=1)
+    df_ema_prod = df.ewm(halflife=126, adjust=False).mean()
+    df_ema_prod.columns = df_ema_prod.columns + '_sm_prod'
+    df_ema = df_ema.reset_index().merge(df_ema_prod.reset_index())
+    df_ema = df_ema.set_index('Date')
+
+    return df_ema
