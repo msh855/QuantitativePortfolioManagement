@@ -4,3 +4,4 @@
 *.iml
 myPortfolioManagement/.DS_Store
 *.xml
+.idea/misc.xml
