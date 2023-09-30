@@ -485,7 +485,7 @@ def get_FX_spots(currencies: list = None, start_date='1995-01-01', wide_format=F
     for ccy in currencies:
         if ccy != 'USD':
             fx_temp = openbb.forex.load(to_symbol='USD', from_symbol=ccy, start_date=start_date)
-            fx_temp['FX'] = 'USD' + ccy
+            fx_temp['FX'] = ccy + 'USD'
             fx_temp['Currency'] = ccy
             fx.append(fx_temp)
 
