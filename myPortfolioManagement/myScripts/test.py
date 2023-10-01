@@ -1,12 +1,10 @@
 import pandas as pd
 from myPortfolioManagement.myData import get_FX_spots
 from myPortfolioManagement.myDataPreparation import Trends, decomposeTS
-from openbb_terminal.sdk import openbb
 
 df_fx = get_FX_spots(currencies=['EUR'], wide_format=True)
 
 trends = Trends(df_fx)
-
 df1 = trends.make_sma(spans=[50], add_prod=False)
 df2 = trends.smooth_series_LowessSmoother(0.1)
 df3 = trends.denoise_series_fft()
@@ -23,14 +21,9 @@ df_decp.HPfilter()
 df_decp.CFfilter()['EURUSD_cycle'].hist()
 df_decp.HPfilter()['EURUSD_cycle'].hist()
 
-temp_decomp = openbb.qa.decompose(data=df_fx, multiplicative=True)
-
-df_decompose = pd.concat([df_fx, temp_decomp[1], temp_decomp[2]], axis=1).dropna()
-df_decompose.columns = [df_fx.columns[0], df_fx.columns[0] + '_cycle', df_fx.columns[0] + '_trend']
-
-temp_decomp[0].trend[temp_decomp[0].trend.notna().values]
 
 
+<<<<<<< Updated upstream
 
 from openbb_terminal.sdk import openbb
 f = openbb.funds.load("Vanguard", "US")
@@ -38,3 +31,5 @@ df_fund = openbb.funds.historical(f, "2000-01-01", "2023-10-01")
 openbb.funds.historical(f, "2020-01-01", "2020-12-31")
 
 df_fund.plot()
+=======
+>>>>>>> Stashed changes
