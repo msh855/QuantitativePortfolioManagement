@@ -8,9 +8,7 @@ import quantstats as qs
 
 # stock market
 df_stock = get_stock_prices(yahoo_tickers=['^IXIC'], wide_format=True)
-
 df_USyields = get_US_yields(freq='d', add_fed_rate=True)
-
 df_USyields[['1M']].dropna().plot()
 
 # get monetary signal
@@ -20,7 +18,6 @@ df_US_spreads = df_US_spreads[['spread_2Y', 'spread_10Y']]
 # define smoothing averaging
 spans = [10, 30, 50, 120, 200]
 df_ema_list = []
-# df_US_spreads = spread
 
 for span in spans:
     temp = df_US_spreads.ewm(span=span).mean()
@@ -38,14 +35,12 @@ df_all = df_all.set_index('Date')
 
 # create signal
 df_all[['spread_2Y', 'spread_2Y_sm50']].plot()
-
 df_all['Signal'] = np.where(df_all['spread_2Y'] > df_all['spread_2Y_sm50'], 1, -1)
 
 df_all['Signal_pass_all'] = np.where((df_all['spread_2Y'] > df_all['spread_2Y_sm10']) &
                                      (df_all['spread_2Y'] > df_all['spread_2Y_sm30']) &
                                      (df_all['spread_2Y'] > df_all['spread_2Y_sm50']) &
                                      (df_all['spread_2Y'] > df_all['spread_2Y_sm120']), -1, 1)
-
 
 df_all['Signal_pass_all'].plot()
 
@@ -61,7 +56,6 @@ df_performance = pd.DataFrame(index=df_all.index)
 for signal in ['Signal', 'Signal_pass_all']:
     df_performance[signal] = performance(signal=df_all[signal], returns=np.log(df_all['^IXIC']).diff()).cumsum()
 
-
 prices_from_returns(df_performance.diff().dropna()).plot()
 
 df_all[['spread_2Y', 'spread_10Y']].plot()
@@ -72,7 +66,7 @@ df_all[['spread_2Y', 'spread_10Y']].plot()
 # df_all['Signal'] = np.where(df_all['spread_10Y'] > df_all['spread_2Y'], -1, 1)
 # df_all['Signal'] = np.where(np.sign(df_all['spread_2Y']) != np.sign(df_all['spread_10Y']), 0, df_all['Signal'])
 
-factor = performance(signal=df_all['Signal'], returns=np.log(df_all['^IXIC']).diff(), bps=0).cumsum()
+factor = performance(signal=df_all['Signal'], returns=np.log(df_all['^IXIC']).diff()).cumsum()
 factor = pd.Series(factor, name='Strategy')
 factor = pd.DataFrame(factor)
 factor['Market'] = np.log(df_all['^IXIC']).diff().cumsum()
@@ -83,7 +77,6 @@ factor['Composite'] = factor.mean(axis=1)
 
 # backtest
 # =========
-
 ret_factor = factor[['Strategy']].diff()
 ret_bench = factor[['Market']].diff()
 ret = ret_factor.join(ret_bench)
@@ -92,7 +85,6 @@ from myPortfolioManagement.myPortfolioOptimisation import inverse_vol_portfolio,
 
 ret['Composite2'] = (0.40 * ret['Strategy'] + 0.60 * ret['Market']) / 2
 
-factor['Excess'].mean()
 
 qs.reports.html(ret['Composite2']['1990-01-01':], benchmark=ret['Market']['1990-01-01':],
                 output='/Users/safishajjouz/GitHub')

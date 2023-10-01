@@ -32,13 +32,6 @@ groups.columns = ['group', 'description']
 factors = {row['description']: ['Global', row['group']]
            for ix, row in groups.iterrows()}
 
-
-
-
-
-
-
-
 # load Macro Series
 # ======================================================================================================================
 files_to_load = ['2023-02', '2023-03', '2023-04', '2023-05', '2023-06']
