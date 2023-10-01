@@ -13,12 +13,15 @@ df3 = trends.denoise_series_fft()
 df4 = trends.denoise_series_kf()
 df5 = trends.denoise_series_welvet()
 
+
+pd.concat([df_fx, df1, df2, df3, df4.iloc[100:, :], df5], axis=1).plot()
+
 df_decp = decomposeTS(df_fx)
 df_decp.CFfilter().iloc[:, [0, 2]].plot()
 df_decp.HPfilter().iloc[:, [0, 2]].plot()
 df_decp.HPfilter()
-
-pd.concat([df_fx, df1, df2, df3, df4.iloc[100:, :], df5], axis=1).plot()
+df_decp.CFfilter()['EURUSD_cycle'].hist()
+df_decp.HPfilter()['EURUSD_cycle'].hist()
 
 temp_decomp = openbb.qa.decompose(data=df_fx, multiplicative=True)
 
@@ -29,18 +32,9 @@ temp_decomp[0].trend[temp_decomp[0].trend.notna().values]
 
 
 
-type(df_fx.index)
-if df_fx.index.inferred_type != "datetime64":
-    print('not a da')
+from openbb_terminal.sdk import openbb
+f = openbb.funds.load("Vanguard", "US")
+df_fund = openbb.funds.historical(f, "2000-01-01", "2023-10-01")
+openbb.funds.historical(f, "2020-01-01", "2020-12-31")
 
-import pandas as pd
-
-
-def check_date_index(df):
-    if not isinstance(df.index, pd.DatetimeIndex):
-        raise ValueError("Index is not a date index")
-
-
-# Example usage:
-df = pd.DataFrame({'A': [1, 2, 3]})
-check_date_index(df)  # This will raise a ValueError
+df_fund.plot()

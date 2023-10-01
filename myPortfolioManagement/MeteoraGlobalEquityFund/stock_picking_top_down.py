@@ -1,24 +1,26 @@
+import warnings
+warnings.filterwarnings("ignore")
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from openbb_terminal.sdk import openbb
 from scipy.stats import zscore
-import warnings
 from myPortfolioManagement.myData import  get_stock_prices_from_openBB
 from myPortfolioManagement.myPerformanceMetrics import performance_overview
-from myPortfolioManagement.myPerformanceMetrics import get_main_stats, get_rolling_greek_stats
+from myPortfolioManagement.myPerformanceMetrics import get_main_stats
 from myPortfolioManagement.myPerformanceMetrics import alpha_beta_table
 from sklearn import preprocessing as pre
 from myPortfolioManagement.myPerformanceMetrics import cagr
 import numpy as np
-import matplotlib
+
 from openbb_terminal.sdk import TerminalStyle
 import quantstats as qs
 from yahoofinancials import YahooFinancials
 
 qs.extend_pandas()
 theme = TerminalStyle("light", "light", "light")
-warnings.filterwarnings("ignore")
+
 
 # import tickers
 # ==============
