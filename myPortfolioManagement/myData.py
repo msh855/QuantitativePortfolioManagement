@@ -1,6 +1,5 @@
 import pandas as pd
 
-
 from openbb_terminal.sdk import openbb, TerminalStyle
 from datetime import date, timedelta
 from timebudget import timebudget
@@ -109,6 +108,43 @@ def get_stock_prices(yahoo_tickers: list, start_date: str = '1950-01-01',
     return df
 
 
+def get_stock_prices_fx_adj(yahoo_tickers: list, start_date: str = '1950-01-01', base_currency='GBP',
+                           ticker_col_name: str = 'YahooTicker', wide_format: bool = False,
+                           df_currency: pd.DataFrame = None):
+    data_list = []
+    for ticker in yahoo_tickers:
+        # data = openbb.stocks.load(ticker, start_date=start_date)
+        data = get_stock_prices(yahoo_tickers=[ticker], start_date=start_date, fix_data=True)
+        data = data.rename(columns={'yahooTicker': ticker_col_name})
+        # data[ticker_col_name] = ticker
+        data = data.reset_index()
+        data = data.merge(df_currency)
+        if data['Currency'].drop_duplicates()[0] != base_currency:
+            fx_temp = openbb.forex.load(to_symbol=base_currency, from_symbol=data['Currency'].drop_duplicates()[0],
+                                        start_date=start_date)
+            fx_temp.index.name = 'Date'
+            fx_temp = fx_temp[['Adj Close']]
+            fx_temp.columns = ['Spot']
+            fx_temp['FX'] = data['Currency'].drop_duplicates()[0] + base_currency
+            data = data.set_index('Date').join(fx_temp)
+        else:
+            data['Spot'] = 1
+            data['FX'] = base_currency + base_currency
+            data = data.set_index('Date')
+
+        data_list.append(data)
+
+    df_prices = pd.concat(data_list)
+    df_prices = df_prices[['adjclose', ticker_col_name, 'Currency', 'Spot', 'FX']]
+    df_prices['adj_close_' + base_currency] = df_prices['adjclose'] * df_prices['Spot']
+
+    if wide_format:
+        df_prices = df_prices.pivot_table(index='Date',
+                                          columns=ticker_col_name,
+                                          values='adj_close_' + base_currency)
+    return df_prices
+
+
 def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
     file_type = 'csv'
     seperator = ','
@@ -116,7 +152,7 @@ def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
     path_to_funds = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/Data/FidelityPrices/funds'
     path_to_etf_trusts = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/Data/FidelityPrices/trusts_etfs'
 
-    # asset classes 
+    # asset classes
     subfolder_class_equity = 'Equity'
     subfolder_class_Absolute_Alpha = 'AbsoluteAlpha'
     subfolder_class_Bonds = 'Bonds'
@@ -124,7 +160,7 @@ def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
     subfolder_class_commodities = 'Commodities'
     subfolder_class_alternatives = 'Alternatives'
 
-    # pathsto funds 
+    # pathsto funds
     folder_name_equity = path.join(path_to_funds, subfolder_class_equity)
     folder_name_Absolute_Alpha = path.join(path_to_funds, subfolder_class_Absolute_Alpha)
     folder_name_Bonds = path.join(path_to_funds, subfolder_class_Bonds)
@@ -159,7 +195,7 @@ def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
 
     dataframe_market_neutral['Asset_Class'] = 'Vol_managed'
 
-    # DataFrame Commodities 
+    # DataFrame Commodities
     dataframe_commodities_funds = pd.concat([pd.read_csv(f, sep=seperator)
                                              for f in glob.glob(folder_name_commodities_funds + "/*." + file_type)],
                                             ignore_index=False)
@@ -170,7 +206,7 @@ def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
                             dataframe_absolute_alpha,
                             dataframe_market_neutral, dataframe_commodities_funds])
 
-    # clean dataframe 
+    # clean dataframe
     dataframe1 = dataframe1.rename(columns={'Name': 'fund', 'NAV': 'price'})
     dataframe1['Date'] = pd.to_datetime(dataframe1['Date'], format='%m/%d/%Y')
     dataframe1 = dataframe1[(dataframe1['Date'] >= filter_date)]
@@ -178,9 +214,9 @@ def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
     # dataframe1 = dataframe1.drop(['NAV'], axis = 1)
     dataframe1 = dataframe1.set_index('Date')
 
-    # load trusts 
+    # load trusts
 
-    # paths to ETFs and Trusts 
+    # paths to ETFs and Trusts
     folder_name_equity = path.join(path_to_etf_trusts, subfolder_class_equity)
     folder_name_commodities = path.join(path_to_etf_trusts, subfolder_class_commodities)
     folder_name_alternatives = path.join(path_to_etf_trusts, subfolder_class_alternatives)
@@ -207,7 +243,7 @@ def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
                             dataframe_alternatives,
                             dataframe_commodities])
 
-    # clean dataframe 
+    # clean dataframe
     dataframe2 = dataframe2.rename(columns={'Name': 'fund', 'Close': 'price'})
     dataframe2 = dataframe2.drop(['High', 'Low', 'Open', 'Volume'], axis=1)
     dataframe2['Date'] = pd.to_datetime(dataframe2['Date'], format='%m/%d/%Y')
@@ -218,7 +254,6 @@ def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
     dataframe = pd.concat([dataframe1, dataframe2])
 
     return dataframe
-
 
 
 def get_sp500_tickers() -> pd.DataFrame:
@@ -300,5 +335,3 @@ def get_stock_info(yahoo_tickers: list = None):
         df_info['Industry'] = df_info['Industry'].replace(np.nan, 'Unclassified')
 
     return df_info
-
-
