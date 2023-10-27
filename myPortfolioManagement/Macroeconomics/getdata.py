@@ -1,11 +1,14 @@
-from myPortfolioManagement.myDataAnalysis import transform
-from myPortfolioManagement.myDataAnalysis import remove_outliers
+import types
+
+import pandas as pd
+from fredapi import Fred
+from openbb_terminal.sdk import openbb
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-import types
-from fredapi import Fred
-import pandas as pd
-from openbb_terminal.sdk import openbb
+
+from myPortfolioManagement.myDataAnalysis import remove_outliers
+from myPortfolioManagement.myDataAnalysis import transform
+
 
 def load_fredmd_data(vintage):
     base_url = 'https://files.stlouisfed.org/files/htdocs/fred-md/'
@@ -58,14 +61,13 @@ def load_fredmd_data(vintage):
         dta_q=dta_q, transform_q=transform_q, factors_q=factors_q)
 
 
-def get_FX_spots(currencies: list = None, start_date='1995-01-01', wide_format=False):
+def get_FX_spots(currencies: list = None, start_date='1995-01-01', base_currency='USD', wide_format=False):
     fx = []
     for ccy in currencies:
-        if ccy != 'USD':
-            fx_temp = openbb.forex.load(to_symbol='USD', from_symbol=ccy, start_date=start_date)
-            fx_temp['FX'] = ccy + 'USD'
-            fx_temp['Currency'] = ccy
-            fx.append(fx_temp)
+        fx_temp = openbb.forex.load(to_symbol=base_currency, from_symbol=ccy, start_date=start_date)
+        fx_temp['FX'] = ccy + base_currency
+        fx_temp['Currency'] = ccy
+        fx.append(fx_temp)
 
     fx = pd.concat(fx)
 
@@ -253,10 +255,6 @@ def get_yield_curve_factors(df: pd.DataFrame = None,
         principalDf.columns = prefix + principalDf.columns
 
     return principalDf
-
-
-
-
 
 # def create_credit_impulse(freq="q"):
 #     credit_impulse = ['CRDQXMAPABIS',  # Euro Area
