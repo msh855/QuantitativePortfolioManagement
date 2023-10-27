@@ -1,24 +1,26 @@
+import warnings
+warnings.filterwarnings("ignore")
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import os
 from openbb_terminal.sdk import openbb
 from scipy.stats import zscore
-import warnings
-from myPortfolioManagement.myData import  get_stock_prices_from_openBB
+from myPortfolioManagement.myData import  get_stock_prices_from_openBB, get_stock_prices
 from myPortfolioManagement.myPerformanceMetrics import performance_overview
-from myPortfolioManagement.myPerformanceMetrics import get_main_stats, get_rolling_greek_stats
+from myPortfolioManagement.myPerformanceMetrics import get_main_stats
 from myPortfolioManagement.myPerformanceMetrics import alpha_beta_table
 from sklearn import preprocessing as pre
 from myPortfolioManagement.myPerformanceMetrics import cagr
 import numpy as np
-import matplotlib
+
 from openbb_terminal.sdk import TerminalStyle
 import quantstats as qs
 from yahoofinancials import YahooFinancials
 
 qs.extend_pandas()
 theme = TerminalStyle("light", "light", "light")
-warnings.filterwarnings("ignore")
+
 
 # import tickers
 # ==============
@@ -50,6 +52,8 @@ start_date = "1995-01-01"
 # prices = prices.pivot(columns=index_name, values='Adj Close')
 
 prices = get_stock_prices_from_openBB(yahoo_tickers=tickers, start_date=start_date)
+
+prices = get_stock_prices(yahoo_tickers=tickers, start_date=start_date)
 
 # decompose to cyclical and trend
 # ===============================

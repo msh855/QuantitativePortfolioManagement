@@ -10,9 +10,10 @@ from yahoofinancials import YahooFinancials
 from openbb_terminal.sdk import TerminalStyle
 
 theme = TerminalStyle("light", "light", "light")
-
 plt.style.use('seaborn')
 warnings.filterwarnings("ignore")
+
+# ======================================================================================================================
 
 # load tickers
 df_tickers = pd.read_excel('/Users/safishajjouz/PycharmProjects/myWatchlist/Data/stock_screening.xlsx')
@@ -211,3 +212,23 @@ ax2.set_title('Market Value')
 ax2.set(ylabel=None)
 ax2.tick_params(axis='x', which='both', labelsize=6)
 plt.show()
+
+# Get the nominal price returns for 2022
+stocks_dataframe = openbb.stocks.load("BMWYY",start_date="2022-03-01", end_date="2023-03-01")
+price_start = stocks_dataframe["Close"].iloc[0]
+price_end = stocks_dataframe["Close"].iloc[-1]
+
+nominal_returns = (price_end - price_start) / price_start
+print(f"Nominal price returns: {nominal_returns}")
+
+# Get the inflation rate in percentage points for 2022
+inflation = openbb.economy.cpi(["united_states"],units="growth_same",start_date="2022-03-01",end_date="2023-03-01",frequency="monthly").to_dataframe()
+
+# We're only asking for one country, we can drop the country level index
+inflation.columns = inflation.columns.droplevel(0)
+inflation = inflation["value"].iloc[-1] / 100
+print(f"Inflation: {inflation}")
+
+# Calculate inflation adjusted (real) returns
+real_returns = (1 + nominal_returns) / (1 + inflation) - 1
+print(f"Real returns: {real_returns}")
