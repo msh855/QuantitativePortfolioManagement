@@ -1,5 +1,5 @@
 import pandas as pd
-from myPortfolioManagement.myData import get_FX_spots
+from myPortfolioManagement.Macroeconomics.getdata import get_FX_spots
 from myPortfolioManagement.myDataPreparation import Trends, decomposeTS
 
 df_fx = get_FX_spots(currencies=['EUR'], wide_format=True)
@@ -21,15 +21,9 @@ df_decp.HPfilter()
 df_decp.CFfilter()['EURUSD_cycle'].hist()
 df_decp.HPfilter()['EURUSD_cycle'].hist()
 
-
-
-<<<<<<< Updated upstream
-
 from openbb_terminal.sdk import openbb
 f = openbb.funds.load("Vanguard", "US")
 df_fund = openbb.funds.historical(f, "2000-01-01", "2023-10-01")
 openbb.funds.historical(f, "2020-01-01", "2020-12-31")
 
 df_fund.plot()
-=======
->>>>>>> Stashed changes
