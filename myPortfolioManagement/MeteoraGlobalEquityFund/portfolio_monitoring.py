@@ -4,15 +4,11 @@ warnings.filterwarnings('ignore')
 import numpy as np
 import pandas as pd
 import os
-from myPortfolioManagement.myPortfolioOptimisation import inverse_vol_portfolio
 
-from pypfopt.expected_returns import prices_from_returns
 from myPortfolioManagement.myData import get_stock_prices, get_stock_prices_fx_adj
 from myPortfolioManagement.myPerformanceMetrics import performance_overview
 from myPortfolioManagement.myReturns import calculate_portfolio_returns
 import quantstats as qs
-from myPortfolioManagement.Macroeconomics.getdata import get_FX_spots
-from openbb_terminal.sdk import openbb
 
 #
 working_directory = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/MeteoraGlobalEquityFund/Data'
