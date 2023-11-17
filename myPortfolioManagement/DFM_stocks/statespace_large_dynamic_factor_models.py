@@ -166,8 +166,7 @@ with sns.color_palette('deep'):
 
     fig.tight_layout(rect=[0, 0.00, 1, 0.95]);
 
-data_path = "S:\Investment Solutions Group\Quant_research\Moustafa\Github\QuantitativePortfolioManagement\myPortfolioManagement\Data"
-
+data_path = "/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/Data"
 data_des_month = os.path.join(data_path, 'fredmd_definitions.csv')
 data_des_quart = os.path.join(data_path, 'fredqd_definitions.csv')
 
@@ -182,7 +181,6 @@ defn_q.index = defn_q.fred
 # Example of the information in these files:
 defn_m.head()
 
-# Replace the names of the columns in each monthly and quarterly dataset
 # Replace the names of the columns in each monthly and quarterly dataset
 map_m = defn_m['description'].to_dict()
 map_q = defn_q['description'].to_dict()

@@ -17,49 +17,6 @@ pd.options.mode.use_inf_as_na = True
 theme = TerminalStyle("light", "light", "light")
 
 
-@timebudget
-def get_stock_prices_from_openBB(yahoo_tickers: list = None, start_date: str = "1995-01-01", base_currency: str = 'GBP',
-                                 index_name: str = 'YahooTicker'):
-    data_list = []
-
-    for ticker in yahoo_tickers:
-        data = openbb.stocks.load(ticker, start_date=start_date)
-        keep = list(data.columns)
-        data[index_name] = ticker
-        yahoo_financials = YahooFinancials(ticker, concurrent=True, max_workers=5)
-        temp_ccy = yahoo_financials.get_currency()
-        data['Currency'] = temp_ccy
-
-        # get base rate currency
-        fx_temp_base_currency = openbb.forex.load(to_symbol='USD', from_symbol=base_currency, start_date=start_date)
-        fx_temp_base_currency = fx_temp_base_currency[['Adj Close']]
-        fx_temp_base_currency.columns = ['Spot_' + base_currency]
-
-        if temp_ccy != 'USD':
-            fx_temp = openbb.forex.load(to_symbol='USD', from_symbol=temp_ccy, start_date=start_date)
-            fx_temp = fx_temp[['Adj Close']]
-            fx_temp.columns = ['Spot_USD']
-            data = data.join(fx_temp)
-            data['Adj_Close_USD'] = data['Adj Close'] * data['Spot_USD']
-            data = data.join(fx_temp_base_currency)
-            data['Adj_Close_' + base_currency] = data['Adj_Close_USD'] / data['Spot_' + base_currency]
-        else:
-            data['Adj_Close_USD'] = data['Adj Close']
-            data = data.join(fx_temp_base_currency)
-            data['Adj_Close_' + base_currency] = data['Adj_Close_USD'] / data['Spot_' + base_currency]
-
-        name_temp = 'Adj_Close_' + base_currency
-        keep_final = keep + [index_name] + ['Currency'] + ['Adj_Close_USD', name_temp]
-        data = data[keep_final]
-        data_list.append(data)
-
-    df_prices = pd.concat(data_list)
-    df_prices['Market_Cap_USD'] = df_prices['Volume'] * df_prices['Adj_Close_USD']
-    df_prices['Market_Cap_USD'] = df_prices['Market_Cap_USD'] / 1000000000  # convert to Billions
-
-    return df_prices
-
-
 # function to get prices for a list of stocks
 @timebudget
 def get_stock_prices(yahoo_tickers: list, start_date: str = '1950-01-01',

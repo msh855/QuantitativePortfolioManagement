@@ -2,17 +2,18 @@ import pandas as pd
 from openbb_terminal.sdk import openbb
 import warnings
 from matplotlib import pyplot as plt
-from myPortfolioManagement.myPerformanceAnalytics import performance_overview
+from myPortfolioManagement.myPerformanceMetrics import performance_overview
 from pypfopt.expected_returns import prices_from_returns
 
-plt.style.use('seaborn')
+plt.style.use('seaborn-v0_8')
 warnings.filterwarnings("ignore")
 
 openbb.keys.finnhub(key="btd8eef48v6t4umjg6r0")
 openbb.keys.polygon(key='qnyrMp6qOcr76VtuH9e5wihMPt5mg6Pi')
 
 # load tickers
-df_tickers = pd.read_excel('/Users/safishajjouz/PycharmProjects/myWatchlist/Data/yahoo_tickers.xlsx')
+file_path = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/MeteoraGlobalEquityFund/Data/stock_screening.xlsx'
+df_tickers = pd.read_excel(file_path)
 df_tickers.dropna(inplace=True)
 
 tickers = list(df_tickers.YahooTicker)
@@ -25,7 +26,7 @@ def get_stats_of_similar_companies(stocks_ticker: str = 'ALB', start_date="1990-
     similar_stocks3 = openbb.stocks.ca.similar(symbol=stocks_ticker, source='Finnhub')
     similar_stocks4 = openbb.stocks.ca.similar(symbol=stocks_ticker, source='Finviz')
 
-    similar_stocks = similar_stocks1 + similar_stocks2 + similar_stocks3 + similar_stocks4
+    similar_stocks =  similar_stocks2 + similar_stocks3 + similar_stocks4
     similar_stocks = [*set(similar_stocks)]
     similar_stocks = list(filter(None, similar_stocks))
 

@@ -2,7 +2,7 @@ from scipy import stats as scipy_stats
 from empyrical.stats import alpha_beta_aligned, up_alpha_beta, down_alpha_beta
 import pandas as pd
 import numpy as np
-from myPortfolioManagement.myDataAnalysis import data_overview
+from myPortfolioManagement.myDataCleaning import data_overview
 from myPortfolioManagement.myUtils import balance_dates
 from sklearn.preprocessing import minmax_scale
 
@@ -14,7 +14,6 @@ import quantstats as qs
 
 
 def get_main_stats(df_prices=None, rf=0.05, smart=False, index_name='YahooTicker'):
-
     # Gain to Pain Ratio (Daily Data)—0.30 or higher
     # Gain to Pain Ratio (Monthly Data)—2.0 or higher
     # Sortino Ratio/√2—2.0 or higher
@@ -43,6 +42,13 @@ def get_main_stats(df_prices=None, rf=0.05, smart=False, index_name='YahooTicker
     df_cgr.index.name = index_name
     df_cgr.columns = ['cagr']
     df_metrics = df_metrics.join(df_cgr)
+
+    df_tot_return = ffn.core.calc_total_return(df_prices.bfill())
+    df_tot_return = pd.DataFrame(df_tot_return)
+    df_tot_return.columns = ['total_return']
+    df_tot_return.index.name = index_name
+    df_metrics = df_metrics.join(df_tot_return)
+
     return df_metrics
 
 
@@ -54,6 +60,7 @@ def get_rolling_greek_stats(ret, ret_bench, rolling_period=30):
     df_rolling_stats = df_rolling_stats.mean()
 
     return df_rolling_stats
+
 
 def cagr(df_prices: pd.DataFrame or pd.Series):
     if isinstance(df_prices, pd.Series):

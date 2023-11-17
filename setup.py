@@ -5,13 +5,13 @@
 import setuptools
 
 setuptools.setup(name='myPortfolioManagement',
-version='0.1',
+version='1.0',
 description='This package develops utilities that allows customization in the portfolio management of retail Investors',
 url='#',
 author='Safis Hajjouz',
-install_requires=['timebudget', 'itertools','quandl',
+install_requires=['timebudget','quandl',
                   'tsmoothie', 'tslearn',
-                  'pandas','numpy', 'datetime',
+                  'pandas','numpy', 'datetime', 'quantstats',
                   'ray', 'investpy', 'finvizfinance',
                   'yahoofinancials','yfinance'],
 dependency_links=['https://github.com/leopd/timebudget.git'],
