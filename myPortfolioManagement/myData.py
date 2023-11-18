@@ -11,6 +11,7 @@ from finvizfinance.screener.overview import Overview
 
 import numpy as np
 import quantstats as qs
+import ffn
 
 qs.extend_pandas()
 pd.options.mode.use_inf_as_na = True
@@ -66,8 +67,8 @@ def get_stock_prices(yahoo_tickers: list, start_date: str = '1950-01-01',
 
 
 def get_stock_prices_fx_adj(yahoo_tickers: list, start_date: str = '1950-01-01', base_currency='GBP',
-                           ticker_col_name: str = 'YahooTicker', wide_format: bool = False,
-                           df_currency: pd.DataFrame = None):
+                            ticker_col_name: str = 'YahooTicker', wide_format: bool = False,
+                            df_currency: pd.DataFrame = None):
     data_list = []
     for ticker in yahoo_tickers:
         # data = openbb.stocks.load(ticker, start_date=start_date)
@@ -256,39 +257,42 @@ def get_sector_info(yahoo_tickers: list = None):
     return df_sectors
 
 
-def get_stock_info(yahoo_tickers: list = None):
+def get_stock_info(yahoo_tickers: list = None, data_type: str = "overview") -> pd.DataFrame:
+    '''
+    Data
+    type between: overview, valuation, financial, ownership, performance, technical
+
+    :param yahoo_tickers:
+    :return:
+    '''
+
     # add industries
     # ==============
     index_name = 'YahooTicker'
 
-    df_sectors = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type="overview")
-    df_sectors = df_sectors[["Ticker\n\n", 'Sector', 'Industry', 'Country']]
-    df_sectors = df_sectors.rename(columns={"Ticker\n\n": index_name})
-    df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
-    df_sectors = df_sectors.set_index(index_name)
+    if data_type != 'all':
+        df_sectors = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type=data_type)
+        df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
+        df_info = df_sectors.set_index(index_name)
 
-    # get market shares
-    yahoo_financials = YahooFinancials(yahoo_tickers, concurrent=True, max_workers=5)
-    temp_ccy = yahoo_financials.get_currency()
-    temp_ccy = pd.DataFrame.from_dict(temp_ccy.items())
-    temp_ccy.columns = [index_name, 'Currency']
-    temp_ccy.Currency = [x.upper() for x in temp_ccy.Currency]
-    temp_ccy = temp_ccy.set_index(index_name)
+        if data_type == 'overview':
+            if df_info['Sector'].any():
+                df_info['Sector'] = df_info['Sector'].replace(np.nan, 'Unclassified')
+            if df_info['Country'].any():
+                df_info['Country'] = df_info['Country'].replace(np.nan, 'Unclassified')
+            if df_info['Industry'].any():
+                df_info['Industry'] = df_info['Industry'].replace(np.nan, 'Unclassified')
 
-    if temp_ccy.shape[0] >= df_sectors.shape[0]:
-        df_info = temp_ccy.join(df_sectors)
-    else:
-        df_info = df_sectors.join(temp_ccy)
+    if data_type == 'all':
 
-    df_info = df_info[list(df_sectors.columns) + list(temp_ccy.columns)]
+        df_stock_info_list = []
+        for ty in ['overview', 'valuation', 'financial', 'performance', 'technical', 'ownership']:
+            df_stock_info = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type=ty)
+            df_stock_info.columns = df_stock_info.columns[1:, ].insert(0, index_name)
+            df_stock_info = df_stock_info.set_index(index_name)
+            df_stock_info_list.append(df_stock_info)
 
-    if df_info['Sector'].any():
-        df_info['Sector'] = df_info['Sector'].replace(np.nan, 'Unclassified')
-
-    if df_info['Country'].any():
-        df_info['Country'] = df_info['Country'].replace(np.nan, 'Unclassified')
-
-    if df_info['Industry'].any():
-        df_info['Industry'] = df_info['Industry'].replace(np.nan, 'Unclassified')
+        df_info = pd.concat(df_stock_info_list, axis=1)
+        df_info = ffn.drop_duplicate_cols(df_info)
 
     return df_info

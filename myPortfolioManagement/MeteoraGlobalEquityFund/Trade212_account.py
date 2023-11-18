@@ -36,17 +36,12 @@ for i in range(0, len(inv_212)):
 
 df_212['tickers_212'] = tickers_raw
 
-
-
-
-
 data_orders_list = []
 for i in range(0, data_list[3]['items'].shape[0]):
     data_ord_temp = pd.DataFrame(data_list[3]['items'].iloc[i])
     data_orders_list.append(data_ord_temp)
 
 data_orders = pd.concat(data_orders_list)
-
 
 query = {"cursor": "0", "ticker": "string", "limit": "20"}
 
@@ -60,8 +55,6 @@ url_my_portfolio_specific_pie = url_main + 'pies' + myPie_ID
 response = requests.get(url_my_portfolio_specific_position, headers=headers)
 data = response.json()
 
-
-
 # Load API
 myAPI = "4666063ZUKaNsJbECbaOGawwQgMdesMbKGwG"
 account_id = '4666063'
@@ -72,3 +65,5 @@ url_fetch_all_pies = "https://live.trading212.com/api/v0/equity/pies"
 
 response = requests.get(url_my_portfolio, headers=headers)
 data = response.json()
+
+

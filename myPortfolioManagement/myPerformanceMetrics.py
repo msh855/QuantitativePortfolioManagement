@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from myPortfolioManagement.myDataCleaning import data_overview
 from myPortfolioManagement.myUtils import balance_dates
+from myPortfolioManagement.myUtils import check_date_index
 from sklearn.preprocessing import minmax_scale
 
 import ffn
@@ -14,47 +15,37 @@ import quantstats as qs
 
 
 def get_main_stats(df_prices=None, rf=0.05, smart=False, index_name='YahooTicker'):
-    # Gain to Pain Ratio (Daily Data)—0.30 or higher
-    # Gain to Pain Ratio (Monthly Data)—2.0 or higher
+    # Gain to Pain Ratio (Daily Data)— 0.30 or higher
+    # Gain to Pain Ratio (Monthly Data)— 2.0 or higher
     # Sortino Ratio/√2—2.0 or higher
     # ref: https://archive.is/2rwFW#selection-651.0-669.14
+
+    check_date_index(df_prices)
 
     tickers = df_prices.columns
     df_metrics_list = []
     for tick in tickers:
-        ret_stock = df_prices[[tick]].fillna(method='ffill').pct_change()
+        ret_stock = df_prices[[tick]].pct_change().dropna()
         metrics = {'max_drawdown': [ret_stock.max_drawdown()[0]],
+                   'cagr': [qs.stats.cagr(ret_stock)[0]],
                    'calmar': ret_stock.calmar()[0],
                    'adjusted_sortino': [ret_stock.adjusted_sortino(rf=rf, smart=smart)[0]],
                    'sharpe': [ret_stock.sharpe(rf=rf, smart=smart)[0]],
-                   'probabilistic_sortino': [
-                       qs.stats.probabilistic_ratio(ret_stock, rf=rf, base='adjusted_sortino')[0]],
-                   'probabilistic_sharpe': [qs.stats.probabilistic_ratio(ret_stock, rf=rf, base='sharpe')[0]],
-                   'Gain_to_pain_ratio': [ret_stock.gain_to_pain_ratio()[0]]}
+                   'Age(sample)': [ret_stock.index[-1].year - ret_stock.index[0].year]}
+                 #  'probabilistic_sortino': [
+                 #      qs.stats.probabilistic_ratio(ret_stock, rf=rf, base='adjusted_sortino')[0]],
+                 #  'probabilistic_sharpe': [qs.stats.probabilistic_ratio(ret_stock, rf=rf, base='sharpe')[0]]}
+                 #  'Gain_to_pain_ratio': [ret_stock.gain_to_pain_ratio()[0]]}
         df_metrics = pd.DataFrame(metrics, index=[tick])
         df_metrics.index.name = index_name
         df_metrics_list.append(df_metrics)
 
     df_metrics = pd.concat(df_metrics_list)
-
-    # add cgr
-    df_cgr = pd.DataFrame(qs.stats.cagr(df_prices))
-    df_cgr.index.name = index_name
-    df_cgr.columns = ['cagr']
-    df_metrics = df_metrics.join(df_cgr)
-
-    df_tot_return = ffn.core.calc_total_return(df_prices.bfill())
-    df_tot_return = pd.DataFrame(df_tot_return)
-    df_tot_return.columns = ['total_return']
-    df_tot_return.index.name = index_name
-    df_metrics = df_metrics.join(df_tot_return)
-
     return df_metrics
 
 
 def get_rolling_greek_stats(ret, ret_bench, rolling_period=30):
     ret_temp = ret.join(ret_bench)
-    # ret_temp.iloc[:,0].greeks(ret_temp.iloc[:,1].dropna())
     df_rolling_stats = ret_temp.iloc[:, 0].rolling_greeks(ret_temp.iloc[:, 1], periods=rolling_period).dropna()
     df_rolling_stats['alpha_beta_corr'] = df_rolling_stats.corr()['alpha'][0]
     df_rolling_stats = df_rolling_stats.mean()
