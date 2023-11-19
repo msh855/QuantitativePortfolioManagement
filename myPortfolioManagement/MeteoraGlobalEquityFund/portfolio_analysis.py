@@ -66,3 +66,8 @@ df_main_stats = get_main_stats(prices).sort_values('Age(sample)', ascending=Fals
 df_main_stats[['cagr']].sort_values('cagr').plot.bar()
 
 get_stock_info(yahoo_tickers=tickers, data_type='all')
+
+# investment performance
+# ======================
+df_per_fx_adj = performance_overview(df_prices, prices=True, short=True)
+df_per_fx_adj[['cagr']].sort_values('cagr', ascending=False)
