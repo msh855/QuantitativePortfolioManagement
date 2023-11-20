@@ -1,7 +1,6 @@
 import pandas as pd
 from arch.bootstrap import StationaryBootstrap, CircularBlockBootstrap, IIDBootstrap, MovingBlockBootstrap, \
     optimal_block_length
-import numpy as np
 
 from tsmoothie.bootstrap import BootstrappingWrapper
 from tsmoothie.smoother import *
@@ -72,7 +71,7 @@ def BootstrapCircular(series: pd.Series = None, block_size: int or float = 12, n
 
     if optimal_block:
         opt = optimal_block_length(series)
-        block_size = opt.loc[series.name, 'circular']
+        block_size = max(opt.loc[series.name, 'circular'],1)
 
     nobs = len(series)
     bs = CircularBlockBootstrap(block_size, series, seed=seed)
