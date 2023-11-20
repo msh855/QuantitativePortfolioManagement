@@ -1,9 +1,7 @@
 import pandas as pd
-from openbb_terminal.sdk import TerminalStyle
 import warnings
 from matplotlib import pyplot as plt
-from myPortfolioManagement.myDataPreparation import remove_outliers
-from myPortfolioManagement.myData import get_stock_prices_from_openBB, get_sector_info
+from myPortfolioManagement.myDataCleaning import remove_outliers
 from myPortfolioManagement.DFM_stocks.prepare_macro_data import get_macro_data
 import statsmodels.api as sm
 import seaborn as sns
@@ -12,7 +10,6 @@ import numpy as np
 import os
 
 warnings.filterwarnings("ignore")
-theme = TerminalStyle("light", "light", "light")
 plt.style.use('seaborn')
 
 # load macro data
@@ -42,11 +39,11 @@ df_prices = df_prices.set_index('date')
 
 # Group stocks for DFM
 # ======================================================================================================================
-df_sectors = get_sector_info(yahoo_tickers=tickers)
-df_sectors.groupby('Sector').count()[['Industry']].sort_values(by=['Industry'], ascending=False)
-groups = df_sectors.drop(['Country'], axis=1)
-groups = groups.join(df_tickers[['YahooTicker', 'Company']].set_index('YahooTicker'))
-groups = groups.drop(['Industry'], axis=1)
+df_sectors = pd.read_excel('/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/MeteoraGlobalEquityFund/Data/stock_screening.xlsx')
+groups = df_sectors.copy()
+groups = groups.set_index('YahooTicker')
+#df_sectors.groupby('Sector').count()[['Industry']].sort_values(by=['Industry'], ascending=False)
+groups = groups.drop(['Industry', 'adj_weight_GBP'], axis=1)
 groups.columns = ['group', 'description']
 
 # Construct the variable => list of factors dictionary
@@ -89,13 +86,14 @@ results.factors.smoothed  # use full dataset
 
 # Get estimates of the global and labor market factors,
 # conditional on the full dataset ("smoothed")
+slice_date = '2019-01-01'
 factor_names = ['Global.1', 'Global.2', 'Technology']
 mean = results.factors.smoothed[factor_names]
-mean = mean[mean.index >= '2023-01-01']
+mean = mean[mean.index >= slice_date]
 
 std = pd.concat([results.factors.smoothed_cov.loc[name, name]
                  for name in factor_names], axis=1)
-std = std[std.index >= '2023-01-01']
+std = std[std.index >= slice_date]
 crit = norm.ppf(1 - 0.05 / 2)
 lower = mean - crit * std
 upper = mean + crit * std

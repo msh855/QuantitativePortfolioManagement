@@ -12,10 +12,11 @@ import pyfolio as pf
 from IPython.core.display import display as iDisplay
 from numpy import ndarray
 from timebudget import timebudget
+import quantstats as qs
 
 from myPortfolioManagement.myPlots import *
 from myPortfolioManagement.myReports import metrics
-from myPortfolioManagement.myReturns import average_returns
+from myPortfolioManagement.myUtils import balance_dates
 
 
 @timebudget
@@ -23,7 +24,7 @@ def bootstrap_stats(returns: pd.Series,
                     returns_benchmark: pd.Series = None,
                     rf: float = 0.02,
                     periods: int = 252,
-                    n_sim: int = 10000) -> pd.DataFrame:
+                    n_sim: int = 1000) -> pd.DataFrame:
     """
     
 
@@ -44,16 +45,10 @@ def bootstrap_stats(returns: pd.Series,
             returns_benchmark = pd.Series(dtype='int64')
 
     # metrics to calculate 
-    metrics_functions = [
-        # qs.stats.cagr,
-        # qs.stats.geometric_mean,
-        average_returns,
-        qs.stats.volatility,
-        qs.stats.sharpe,
-        qs.stats.sortino,
-        qs.stats.skew,
-        # qs.stats.calmar,
-        qs.stats.comp]
+    metrics_functions = [qs.stats.cagr,
+                         qs.stats.volatility,
+                         qs.stats.sharpe,
+                         qs.stats.adjusted_sortino]
 
     if not returns_benchmark.empty:
         metrics_functions = metrics_functions + [ep.alpha, ep.beta]
@@ -76,7 +71,7 @@ def bootstrap_stats(returns: pd.Series,
             returns_i = returns.iloc[idx].reset_index(drop=False)
             returns_i = returns_i.set_index('Date')
 
-            if func in (average_returns, qs.stats.sharpe, qs.stats.sortino):
+            if func in (qs.stats.sharpe, qs.stats.adjusted_sortino):
                 out[i] = func(returns_i, rf=rf, periods=periods)
 
             if func == qs.stats.volatility:
@@ -88,17 +83,16 @@ def bootstrap_stats(returns: pd.Series,
                     returns_bench_i = returns_bench_i.set_index('Date')
 
                 if func == ep.alpha:
-                    out[i] = func(returns=returns_i, factor_returns=returns_bench_i,
-                                  risk_free=rf,
+                    out[i] = func(returns=returns_i, factor_returns=returns_bench_i, risk_free=rf,
                                   annualization=periods)
                 elif func == ep.beta:
                     out[i] = func(returns=returns_i,
                                   factor_returns=returns_bench_i,
                                   risk_free=rf)
 
-            if func not in (average_returns, qs.stats.volatility,
+            if func not in (qs.stats.volatility,
                             ep.beta, ep.alpha, qs.stats.sharpe,
-                            qs.stats.sortino):
+                            qs.stats.adjusted_sortino):
                 out[i] = func(returns_i)
 
         out = sorted(out)

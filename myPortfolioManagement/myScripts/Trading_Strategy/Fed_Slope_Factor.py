@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-from myPortfolioManagement.myData import get_stock_prices, get_US_yields, get_FX_spots
+from myPortfolioManagement.Macroeconomics.getdata import get_US_yields, get_FX_spots
+from myPortfolioManagement.myData import get_stock_prices
 from myPortfolioManagement.myDataPreparation import make_sma
 from myPortfolioManagement.myBacktesting import performance
 from myPortfolioManagement.myPerformanceMetrics import performance_overview

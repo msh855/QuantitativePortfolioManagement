@@ -5,7 +5,7 @@ import statsmodels.api as sm
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+from scipy.stats import norm
 import os
 
 
@@ -166,8 +166,7 @@ with sns.color_palette('deep'):
 
     fig.tight_layout(rect=[0, 0.00, 1, 0.95]);
 
-data_path = "S:\Investment Solutions Group\Quant_research\Moustafa\Github\QuantitativePortfolioManagement\myPortfolioManagement\Data"
-
+data_path = "/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/Data"
 data_des_month = os.path.join(data_path, 'fredmd_definitions.csv')
 data_des_quart = os.path.join(data_path, 'fredqd_definitions.csv')
 
@@ -182,7 +181,6 @@ defn_q.index = defn_q.fred
 # Example of the information in these files:
 defn_m.head()
 
-# Replace the names of the columns in each monthly and quarterly dataset
 # Replace the names of the columns in each monthly and quarterly dataset
 map_m = defn_m['description'].to_dict()
 map_q = defn_q['description'].to_dict()
@@ -243,9 +241,8 @@ results.summary()
 factor_names = ['Global.1', 'Global.2', 'Labor Market']
 mean = results.factors.smoothed[factor_names]
 
-# Compute 95% confidence intervals
-from scipy.stats import norm
 
+# Compute 95% confidence intervals
 std = pd.concat([results.factors.smoothed_cov.loc[name, name]
                  for name in factor_names], axis=1)
 crit = norm.ppf(1 - 0.05 / 2)
@@ -263,7 +260,6 @@ with sns.color_palette('deep'):
     fig.tight_layout();
 
 # #### Explanatory power of the factors
-
 rsquared = results.get_coefficients_of_determination(method='individual')
 
 top_ten = []
@@ -277,7 +273,6 @@ for factor_name in rsquared.columns[:2]:
 pd.concat(top_ten, axis=1)
 
 # **Plotting $R^2$**
-
 with sns.color_palette('deep'):
     fig = results.plot_coefficients_of_determination(method='individual', figsize=(14, 9))
     fig.suptitle(r'$R^2$ - regression on individual factors', fontsize=14, fontweight=600)

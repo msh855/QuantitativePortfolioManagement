@@ -14,9 +14,9 @@ plt.style.use('seaborn')
 warnings.filterwarnings("ignore")
 
 # ======================================================================================================================
-
 # load tickers
-df_tickers = pd.read_excel('/Users/safishajjouz/PycharmProjects/myWatchlist/Data/stock_screening.xlsx')
+df_tickers = pd.read_excel(
+    '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/MeteoraGlobalEquityFund/Data/stock_screening.xlsx')
 df_tickers.dropna(inplace=True)
 index_name = 'YahooTicker'
 
@@ -42,7 +42,7 @@ returns = prices.pct_change()
 # returns_training = returns.dropna()
 returns_training = returns.fillna(0)
 
-df_weights = df_tickers[[index_name, 'adjusted_weights']]
+df_weights = df_tickers[[index_name, 'adj_weight_GBP']]
 
 # optimal weight
 # ===============
@@ -102,6 +102,8 @@ plot_bar.tick_params(axis='x', which='both', labelsize=6)
 df_sectors = openbb.stocks.ca.screener(similar=tickers, data_type="overview")
 df_sectors = df_sectors[["Ticker\n\n", 'Sector', 'Industry', 'Country']]
 df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
+
+openbb.stocks.ca.screener(similar=['NIO'], data_type="overview")
 
 # overview of Data
 df_overview = df_peak_prices.set_index([index_name]).join(df_sectors.set_index([index_name]))
@@ -212,23 +214,3 @@ ax2.set_title('Market Value')
 ax2.set(ylabel=None)
 ax2.tick_params(axis='x', which='both', labelsize=6)
 plt.show()
-
-# Get the nominal price returns for 2022
-stocks_dataframe = openbb.stocks.load("BMWYY",start_date="2022-03-01", end_date="2023-03-01")
-price_start = stocks_dataframe["Close"].iloc[0]
-price_end = stocks_dataframe["Close"].iloc[-1]
-
-nominal_returns = (price_end - price_start) / price_start
-print(f"Nominal price returns: {nominal_returns}")
-
-# Get the inflation rate in percentage points for 2022
-inflation = openbb.economy.cpi(["united_states"],units="growth_same",start_date="2022-03-01",end_date="2023-03-01",frequency="monthly").to_dataframe()
-
-# We're only asking for one country, we can drop the country level index
-inflation.columns = inflation.columns.droplevel(0)
-inflation = inflation["value"].iloc[-1] / 100
-print(f"Inflation: {inflation}")
-
-# Calculate inflation adjusted (real) returns
-real_returns = (1 + nominal_returns) / (1 + inflation) - 1
-print(f"Real returns: {real_returns}")

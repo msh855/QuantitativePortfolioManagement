@@ -4,7 +4,7 @@ import os
 
 # prepare Portfolio dataset
 # ======================================================================================================================
-file_path_tickers = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/MeteoraGlobalEquityFund/Data/stock_screening.xlsx'
+file_path_tickers = '/myPortfolioManagement/MeteoraGlobalEquityFund/Data/stock_screening.xlsx'
 df_tickers = pd.read_excel(file_path_tickers)
 df_tickers.dropna(inplace=True)
 index_name = 'YahooTicker'
@@ -12,7 +12,7 @@ index_name = 'YahooTicker'
 tickers = list(df_tickers.YahooTicker)
 companies = list(df_tickers['Company'])
 
-file_path = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/MeteoraGlobalEquityFund/Data/df_prices.csv'
+file_path = '/myPortfolioManagement/MeteoraGlobalEquityFund/Data/df_prices.csv'
 df_prices = pd.read_csv(file_path)
 df_prices = df_prices.set_index('date')
 

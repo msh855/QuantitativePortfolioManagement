@@ -111,7 +111,7 @@ def get_macro_data(csv_dates=['2020-02', '2020-03', '2020-04', '2020-05', '2020-
     dta = {date: load_fredmd_data(date)
            for date in csv_dates}
 
-    data_path = "S:\Investment Solutions Group\Quant_research\Moustafa\Github\QuantitativePortfolioManagement\myPortfolioManagement\Data"
+    data_path = "/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/Data"
 
     data_des_month = os.path.join(data_path, 'fredmd_definitions.csv')
     data_des_quart = os.path.join(data_path, 'fredqd_definitions.csv')

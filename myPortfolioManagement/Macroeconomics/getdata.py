@@ -6,8 +6,8 @@ from openbb_terminal.sdk import openbb
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 
-from myPortfolioManagement.myDataAnalysis import remove_outliers
-from myPortfolioManagement.myDataAnalysis import transform
+from myPortfolioManagement.myDataCleaning import remove_outliers
+from myPortfolioManagement.myDataCleaning import transform
 
 
 def load_fredmd_data(vintage):

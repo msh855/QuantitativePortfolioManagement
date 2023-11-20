@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
-from myPortfolioManagement.myData import get_US_yield_spreads, get_stock_prices, get_US_yields
+from myPortfolioManagement.Macroeconomics.getdata import get_US_yield_spreads, get_US_yields
+from myPortfolioManagement.myData import get_stock_prices
 from myPortfolioManagement.myBacktesting import performance
 
 from pypfopt.expected_returns import prices_from_returns
