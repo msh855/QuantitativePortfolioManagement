@@ -1,5 +1,3 @@
-import polars
-
 from myPortfolioManagement.myData import get_stock_prices
 import pandas as pd
 import polars as pl
@@ -40,6 +38,9 @@ def BootstrapIDD(series: pd.Series = None, n_samples: int = 1000):
 
 func = qs.stats.adjusted_sortino
 df_results = BootstrapIDD(ret_bench[bench_name], n_samples=10000)
+
+df_results = func(df_results)
+
 df_func = df_results.apply(func)
 
 df_pl = pl.from_pandas(df_results)
