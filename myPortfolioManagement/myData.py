@@ -8,10 +8,9 @@ from os import path
 import glob
 
 from finvizfinance.screener.overview import Overview
+from myPortfolioManagement.myUtils import _helper_get_stock_info, chunk_the_list
 
-import numpy as np
 import quantstats as qs
-import ffn
 
 qs.extend_pandas()
 pd.options.mode.use_inf_as_na = True
@@ -256,43 +255,14 @@ def get_sector_info(yahoo_tickers: list = None):
 
     return df_sectors
 
+@timebudget
+def get_stock_info(yahoo_tickers: list = None, data_type: str = 'overview'):
+    if len(yahoo_tickers) > 800:
+        chunk_size = 200
+        chunks_list = list(chunk_the_list(yahoo_tickers, n=chunk_size))
+        df_temp_list = [_helper_get_stock_info(yahoo_tickers=ticks, data_type=data_type) for ticks in chunks_list]
+        df = pd.concat(df_temp_list)
+    else:
+        df = _helper_get_stock_info(yahoo_tickers=yahoo_tickers, data_type=data_type)
 
-def get_stock_info(yahoo_tickers: list = None, data_type: str = "overview") -> pd.DataFrame:
-    '''
-    Data
-    type between: overview, valuation, financial, ownership, performance, technical
-
-    :param yahoo_tickers:
-    :return:
-    '''
-
-    # add industries
-    # ==============
-    index_name = 'YahooTicker'
-
-    if data_type != 'all':
-        df_sectors = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type=data_type)
-        df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
-        df_info = df_sectors.set_index(index_name)
-
-        if data_type == 'overview':
-            if df_info['Sector'].any():
-                df_info['Sector'] = df_info['Sector'].replace(np.nan, 'Unclassified')
-            if df_info['Country'].any():
-                df_info['Country'] = df_info['Country'].replace(np.nan, 'Unclassified')
-            if df_info['Industry'].any():
-                df_info['Industry'] = df_info['Industry'].replace(np.nan, 'Unclassified')
-
-    if data_type == 'all':
-
-        df_stock_info_list = []
-        for ty in ['overview', 'valuation', 'financial', 'performance', 'technical', 'ownership']:
-            df_stock_info = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type=ty)
-            df_stock_info.columns = df_stock_info.columns[1:, ].insert(0, index_name)
-            df_stock_info = df_stock_info.set_index(index_name)
-            df_stock_info_list.append(df_stock_info)
-
-        df_info = pd.concat(df_stock_info_list, axis=1)
-        df_info = ffn.drop_duplicate_cols(df_info)
-
-    return df_info
+    return df

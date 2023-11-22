@@ -1,7 +1,10 @@
 import warnings
+
+warnings.filterwarnings('ignore')
+
 from openbb_terminal.sdk import openbb
 import ffn
-warnings.filterwarnings('ignore')
+
 import pandas as pd
 import os
 from myPortfolioManagement.myData import get_stock_prices
@@ -16,7 +19,6 @@ import quantstats as qs
 df_pies = get_pies()  # all pies
 df_pie_details = get_pie_details(id='1547833')  # global Meteora
 df_trade212_all_stocks = get_portfolio_info()
-
 df_pie_weights = df_pie_details[['tickers_212', 'expectedShare']]
 
 # import tickers
@@ -82,12 +84,14 @@ bench_name = 'SP500'
 ret_bench.columns = [bench_name]
 ret_all = ret_port.join(ret_bench).dropna()
 
-# backtest
-qs.reports.html(ret_all['myPortfolio'], benchmark=ret_all[bench_name], output='/Users/safishajjouz/Downloads',
-                download_filename='port_perf.html', eoy=True)
-
 price_index = ffn.core.to_price_index(ret_all, start=1)
 price_index = ffn.core.rebase(price_index, value=1)
 price_index.plot()
 
 get_main_stats(price_index).transpose()
+
+# backtest
+qs.reports.html(ret_all['myPortfolio'], benchmark=ret_all[bench_name], output='/Users/safishajjouz/Downloads',
+                download_filename='port_perf.html', eoy=True)
+
+qs.reports.basic(ret_all['myPortfolio'], benchmark=ret_all[bench_name], rf=0.05)
