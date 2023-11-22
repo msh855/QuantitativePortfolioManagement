@@ -14,33 +14,63 @@ from scipy.stats import skew
 import quantstats as qs
 
 
-def get_main_stats(df_prices=None, rf=0.05, smart=False, index_name='YahooTicker'):
+
+def age(series):
+    start_date = series.first_valid_index()
+    series = series[series.index >= start_date]
+    sample_age = series.index[-1].year - series.index[0].year
+    return sample_age
+
+
+def get_main_stats(df: pd.DataFrame = None, rf: float = 0.05, smart: bool = True) -> pd.DataFrame:
+    '''
+    @param df: a wide dataframe with either prices or returns of stocks
+    @param rf: risk-free annualised
+    @param smart:
+
+    an advantage of using qs.stats over ffn library is that the inputs can be either returns or prices as qs.stats
+
+    reference for performance metrics
+
     # Gain to Pain Ratio (Daily Data)— 0.30 or higher
     # Gain to Pain Ratio (Monthly Data)— 2.0 or higher
     # Sortino Ratio/√2—2.0 or higher
     # ref: https://archive.is/2rwFW#selection-651.0-669.14
 
-    check_date_index(df_prices)
+    '''
 
-    tickers = df_prices.columns
+    from parallel_pandas import ParallelPandas
+
+    ParallelPandas.initialize(n_cpu=7, disable_pr_bar=False)
+
+    check_date_index(df)
+
+    functions = [qs.stats.cagr,
+                 qs.stats.adjusted_sortino,
+                 qs.stats.sharpe, qs.stats.calmar, qs.stats.max_drawdown, age]
+
     df_metrics_list = []
-    for tick in tickers:
-        ret_stock = df_prices[[tick]].pct_change().dropna()
-        metrics = {'max_drawdown': [ret_stock.max_drawdown()[0]],
-                   'cagr': [qs.stats.cagr(ret_stock)[0]],
-                   'calmar': ret_stock.calmar()[0],
-                   'adjusted_sortino': [ret_stock.adjusted_sortino(rf=rf, smart=smart)[0]],
-                   'sharpe': [ret_stock.sharpe(rf=rf, smart=smart)[0]],
-                   'Age(sample)': [ret_stock.index[-1].year - ret_stock.index[0].year]}
-                 #  'probabilistic_sortino': [
-                 #      qs.stats.probabilistic_ratio(ret_stock, rf=rf, base='adjusted_sortino')[0]],
-                 #  'probabilistic_sharpe': [qs.stats.probabilistic_ratio(ret_stock, rf=rf, base='sharpe')[0]]}
-                 #  'Gain_to_pain_ratio': [ret_stock.gain_to_pain_ratio()[0]]}
-        df_metrics = pd.DataFrame(metrics, index=[tick])
-        df_metrics.index.name = index_name
-        df_metrics_list.append(df_metrics)
+    for func in functions:
+        kwargs = {}
+        if func in [qs.stats.adjusted_sortino, qs.stats.sharpe]:
+            kwargs['smart'] = smart
+            kwargs['rf'] = rf
+        if func in [qs.stats.cagr]:
+            kwargs['periods'] = 365
+
+        df_func_temp = df.p_apply(func, raw=False, executor='processes', **kwargs)
+        df_func_temp = pd.DataFrame(df_func_temp)
+        df_func_temp.columns = ['value']
+        df_func_temp['metric'] = func.__name__
+        df_metrics_list.append(df_func_temp)
 
     df_metrics = pd.concat(df_metrics_list)
+    df_metrics = df_metrics.pivot(columns='metric', values='value')
+
+    col_order = [x.__name__ for x in functions]
+    df_metrics = df_metrics[col_order]
+    df_metrics = df_metrics.rename(columns={'age': 'age_sample'})
+
     return df_metrics
 
 

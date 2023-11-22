@@ -1,5 +1,7 @@
 import pandas as pd
 import quantstats as qs
+from openbb_terminal.sdk import openbb
+import ffn
 pd.options.mode.use_inf_as_na = True  # show NAs instead of inf
 
 
@@ -34,10 +36,10 @@ def balance_dates(returns, returns_benchmark):
     return ret_balanced_dates, ret_bench
 
 
-
 def check_date_index(df):
     if not isinstance(df.index, pd.DatetimeIndex):
         raise ValueError("Index is not a date index")
+
 
 def data_check_TS(x) -> pd.DataFrame or pd.Series:
     # check if dataframe has a date index
@@ -48,5 +50,39 @@ def data_check_TS(x) -> pd.DataFrame or pd.Series:
             x = x.iloc[:, 0]
             return x
         else:
-            raise 'You passed a dataframe with the one column. Pass pandas series'
+            raise 'You passed a dataframe with one column. Pass pandas series'
 
+
+def chunk_the_list(lst, n):
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+
+
+def _helper_get_stock_info(yahoo_tickers: list = None, data_type: str = 'overview') -> pd.DataFrame:
+    """
+
+    :param yahoo_tickers:
+    :param data_type:
+    :return:
+    """
+    if data_type == 'all':
+        funs = openbb.stocks.ca.screener
+        datatypes = ['overview', 'valuation', 'financial', 'ownership', 'performance', 'technical']
+        df_list = [funs(similar=yahoo_tickers, data_type=datatype) for datatype in datatypes]
+        df = pd.concat(df_list, axis=1)
+        df = ffn.drop_duplicate_cols(df)
+    else:
+        df = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type=data_type)
+
+    df.set_index('Ticker', inplace=True)
+    df = _fix_missing(df)
+    return df
+
+
+def _fix_missing(df):
+    df['Sector'].fillna('Unclassified', inplace=True)
+    df['Country'].fillna('Unclassified', inplace=True)
+    df['Industry'].fillna('Unclassified', inplace=True)
+    return df

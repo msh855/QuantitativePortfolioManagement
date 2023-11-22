@@ -155,7 +155,9 @@ def data_overview(df: pd.DataFrame,
     df_overview = df1.merge(df2, how="left")
 
     df_overview["trading_days"] = df_overview["Date_max"] - df_overview["Date_min"]
-    df_overview['years_available'] = df_overview['trading_days'] / np.timedelta64(1, 'Y')
+    df_overview['trading_days'] = [df_overview['trading_days'][i].days for i in range(len(df_overview['trading_days']))]
+    df_overview['years_available'] = df_overview['trading_days']/365
+
 
     df_overview = df_overview.rename(columns={'Stock': my_assets_col_name})
     df_overview = df_overview.drop_duplicates()
@@ -195,7 +197,6 @@ def remove_outliers(dta):
     treated[mask] = np.nan
 
     return treated
-
 
 
 def ts_standarise(x: pd.Series, window: int, mode='rolling') -> pd.Series:
@@ -307,4 +308,3 @@ def transform(column, transforms):
         column = ((column / column.shift(1)) ** mult - 1.0) * 100
 
     return column
-
