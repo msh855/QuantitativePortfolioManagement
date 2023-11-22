@@ -12,7 +12,7 @@ from pypfopt.expected_returns import returns_from_prices
 
 from scipy.stats import skew
 import quantstats as qs
-
+import multiprocessing
 
 
 def age(series):
@@ -39,9 +39,12 @@ def get_main_stats(df: pd.DataFrame = None, rf: float = 0.05, smart: bool = True
 
     '''
 
+    num_cores = multiprocessing.cpu_count()
+    n_cpu = int(max(num_cores-1, 1))
+
     from parallel_pandas import ParallelPandas
 
-    ParallelPandas.initialize(n_cpu=7, disable_pr_bar=False)
+    ParallelPandas.initialize(n_cpu=n_cpu, disable_pr_bar=False)
 
     check_date_index(df)
 

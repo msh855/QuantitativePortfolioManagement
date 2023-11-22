@@ -6,6 +6,12 @@ pd.options.mode.use_inf_as_na = True  # show NAs instead of inf
 
 
 def balance_dates(returns, returns_benchmark):
+    """
+
+    :param returns:
+    :param returns_benchmark:
+    :return:
+    """
     if isinstance(returns_benchmark, pd.DataFrame):
         returns_benchmark = pd.Series(returns_benchmark.iloc[:, 0])
 
@@ -37,6 +43,10 @@ def balance_dates(returns, returns_benchmark):
 
 
 def check_date_index(df):
+    """
+
+    :param df:
+    """
     if not isinstance(df.index, pd.DatetimeIndex):
         raise ValueError("Index is not a date index")
 

@@ -242,19 +242,6 @@ def get_nasdaq_tickers() -> pd.DataFrame:
 
     return df
 
-
-def get_sector_info(yahoo_tickers: list = None):
-    # ==============
-    index_name = 'YahooTicker'
-
-    df_sectors = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type="overview")
-    df_sectors = df_sectors[["Ticker\n\n", 'Sector', 'Industry', 'Country']]
-    df_sectors = df_sectors.rename(columns={"Ticker\n\n": index_name})
-    df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
-    df_sectors = df_sectors.set_index(index_name)
-
-    return df_sectors
-
 @timebudget
 def get_stock_info(yahoo_tickers: list = None, data_type: str = 'overview'):
     if len(yahoo_tickers) > 800:
