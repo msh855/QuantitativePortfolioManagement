@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from myPortfolioManagement.Macroeconomics.getdata import get_US_yields, get_FX_spots
+from pyData.getdata import get_US_yields, get_FX_spots
 from myPortfolioManagement.myData import get_stock_prices
 from myPortfolioManagement.myDataPreparation import make_sma
 from myPortfolioManagement.myBacktesting import performance
@@ -66,8 +66,12 @@ g = sns.relplot(data=dfm, x='Date', y='val', col='Stock', col_wrap=3, kind='line
 # stats
 df_perm_stats = performance_overview(df_perm, short=True).sort_values(by=['cagr'], ascending=False)
 
+import os
+
 ret_bench = returns_from_prices(df_stock)
+os.path.join(os.getcwd(), str + '.html')
+
 for str in ['EURUSDstr1', 'JPYUSDstr1']:
     df_temp = df_perm[[str]].join(ret_bench).dropna()
-    qs.reports.html(df_temp[str], benchmark=df_temp['Nasdaq'], output='/Users/safishajjouz/Downloads',
+    qs.reports.html(df_temp[str], benchmark=df_temp['Nasdaq'], output=os.path.join(os.getcwd(), str + '.html'),
                     download_filename=str + '.html')

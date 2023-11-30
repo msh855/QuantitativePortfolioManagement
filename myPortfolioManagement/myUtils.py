@@ -2,6 +2,7 @@ import pandas as pd
 import quantstats as qs
 from openbb_terminal.sdk import openbb
 import ffn
+
 pd.options.mode.use_inf_as_na = True  # show NAs instead of inf
 
 
@@ -69,7 +70,6 @@ def chunk_the_list(lst, n):
         yield lst[i:i + n]
 
 
-
 def _helper_get_stock_info(yahoo_tickers: list = None, data_type: str = 'overview') -> pd.DataFrame:
     """
 
@@ -95,4 +95,14 @@ def _fix_missing(df):
     df['Sector'].fillna('Unclassified', inplace=True)
     df['Country'].fillna('Unclassified', inplace=True)
     df['Industry'].fillna('Unclassified', inplace=True)
+    return df
+
+
+# cleaning
+def _helper(df: pd.DataFrame = None, series: pd.Series = None, n_samples: int = None) -> pd.DataFrame:
+    string_name = series.name
+    cols = [string_name + '_path' + str(x) for x in range(1, n_samples + 1)]
+    df.columns = cols
+    df.index = series.index
+
     return df

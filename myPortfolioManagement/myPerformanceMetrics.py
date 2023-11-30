@@ -6,7 +6,7 @@ from myPortfolioManagement.myDataCleaning import data_overview
 from myPortfolioManagement.myUtils import balance_dates
 from myPortfolioManagement.myUtils import check_date_index
 from sklearn.preprocessing import minmax_scale
-
+from timebudget import timebudget
 import ffn
 from pypfopt.expected_returns import returns_from_prices
 
@@ -21,8 +21,8 @@ def age(series):
     sample_age = series.index[-1].year - series.index[0].year
     return sample_age
 
-
-def get_main_stats(df: pd.DataFrame = None, rf: float = 0.05, smart: bool = True) -> pd.DataFrame:
+@timebudget
+def get_main_stats(df: pd.DataFrame = None, rf: float = 0.05, smart: bool = True, add_age=False) -> pd.DataFrame:
     '''
     @param df: a wide dataframe with either prices or returns of stocks
     @param rf: risk-free annualised
@@ -50,7 +50,9 @@ def get_main_stats(df: pd.DataFrame = None, rf: float = 0.05, smart: bool = True
 
     functions = [qs.stats.cagr,
                  qs.stats.adjusted_sortino,
-                 qs.stats.sharpe, qs.stats.calmar, qs.stats.max_drawdown, age]
+                 qs.stats.sharpe, qs.stats.calmar, qs.stats.max_drawdown]
+    if add_age:
+        functions = functions + [age]
 
     df_metrics_list = []
     for func in functions:
@@ -72,7 +74,9 @@ def get_main_stats(df: pd.DataFrame = None, rf: float = 0.05, smart: bool = True
 
     col_order = [x.__name__ for x in functions]
     df_metrics = df_metrics[col_order]
-    df_metrics = df_metrics.rename(columns={'age': 'age_sample'})
+
+    if add_age:
+        df_metrics = df_metrics.rename(columns={'age': 'age_sample'})
 
     return df_metrics
 

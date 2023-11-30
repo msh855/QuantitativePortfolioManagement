@@ -17,6 +17,7 @@ import quantstats as qs
 # Trade212 Account
 # ======================================================================================================================
 df_pies = get_pies()  # all pies
+# [
 df_pie_details = get_pie_details(id='1547833')  # global Meteora
 df_trade212_all_stocks = get_portfolio_info()
 df_pie_weights = df_pie_details[['tickers_212', 'expectedShare']]

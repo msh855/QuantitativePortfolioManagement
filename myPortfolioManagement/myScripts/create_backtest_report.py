@@ -11,7 +11,7 @@ from myPortfolioManagement.myReturns import get_multi_asset_returns
 from myPortfolioManagement.myPerformanceAnalytics import *
 from myPortfolioManagement.myBacktesting import fan_chart, backtest_report, tear_sheet_pyfolio
 from myPortfolioManagement.myPerformanceMetrics import probabilistic_sharpe_ratio, information_ratio
-from myPortfolioManagement.myReports import metrics
+from myPortfolioManagement.MeteoraGlobalEquityFund.Archive.myReports import metrics
 import quantstats as qs
 from myPortfolioManagement.myPlots import monthly_heatmap
 import ffn
@@ -129,12 +129,6 @@ import numpy as np
 import pandas_datareader.data as web
 import datetime
 import random
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-from cycler import cycler
-
-from scipy.stats.kde import gaussian_kde
-from scipy.stats import norm
 
 start, end = datetime.datetime(2009, 12, 30), datetime.datetime(2016, 12, 31)
 

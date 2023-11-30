@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from myPortfolioManagement.Macroeconomics.getdata import get_US_yield_spreads, get_US_yields
+from pyData.getdata import get_US_yields, get_FX_spots, get_US_yield_spreads
 from myPortfolioManagement.myData import get_stock_prices
 from myPortfolioManagement.myBacktesting import performance
 
