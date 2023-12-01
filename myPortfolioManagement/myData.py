@@ -1,5 +1,5 @@
 import pandas as pd
-
+# from openbb import obb
 from openbb_terminal.sdk import openbb, TerminalStyle
 from datetime import date, timedelta
 from timebudget import timebudget
@@ -79,6 +79,11 @@ def get_stock_prices_fx_adj(yahoo_tickers: list, start_date: str = '1950-01-01',
         if data['Currency'].drop_duplicates()[0] != base_currency:
             fx_temp = openbb.forex.load(to_symbol=base_currency, from_symbol=data['Currency'].drop_duplicates()[0],
                                         start_date=start_date)
+            # to_symbol = base_currency
+            # from_symbol = data['Currency'].drop_duplicates()[0]
+            # currency = to_symbol + from_symbol
+            # fx_temp = obb.currency.price.historical(symbol=currency,
+            #                                         start_date=start_date)
             fx_temp.index.name = 'Date'
             fx_temp = fx_temp[['Adj Close']]
             fx_temp.columns = ['Spot']
@@ -241,6 +246,7 @@ def get_nasdaq_tickers() -> pd.DataFrame:
     df = foverview.screener_view()
 
     return df
+
 
 @timebudget
 def get_stock_info(yahoo_tickers: list = None, data_type: str = 'overview'):

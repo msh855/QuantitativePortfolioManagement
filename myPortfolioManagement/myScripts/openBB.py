@@ -4,6 +4,9 @@ from openbb_terminal.sdk import openbb
 openbb.keys.quandl(key="fhbmNKX6oNP7PpFuZJNo")
 openbb.keys.fred(key="cc628b51e21828ae6b98c06f4eef6714")
 
+from openbb import obb
+
+
 # load data
 mystocks = ['SMT.L', 'MSFT', 'AAPL', 'NIO', 'V']
 

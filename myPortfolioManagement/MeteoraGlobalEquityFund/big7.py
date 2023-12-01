@@ -10,6 +10,7 @@ from myPortfolioManagement.myPerformanceMetrics import get_main_stats
 from myPortfolioManagement.myReturns import calculate_portfolio_returns
 from myPortfolioManagement.MeteoraGlobalEquityFund.Trade212_Account.get_account_info import get_pie_details, get_pies
 from myPortfolioManagement.myBootstrapping import bootstrappingTS
+import pickle
 import quantstats as qs
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -55,6 +56,8 @@ price_index.plot()
 df_main_stats = get_main_stats(price_index, smart=True, rf=0.05).transpose()
 
 qs.reports.basic(ret_all['myPortfolio'], benchmark=ret_all[bench_name], rf=0.05)
+qs.reports.html(ret_all['myPortfolio'], benchmark=ret_all[bench_name], rf=0.05,
+                output='/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/big7_port.html')
 
 # Look at Big 7
 # ======================================================================================================================
@@ -99,45 +102,44 @@ get_main_stats(ret_all, smart=True, rf=0.05)
 
 # see Expected Returns and Risks via Bootstrapping
 # ======================================================================================================================
-
+#
 bootstrap_types = ['cbb', 'sb', 'nbb', 'mbb']
-results_all = {}
-results_all['boostrap_type'] = []
+# results_all = {}
+# results_all['boostrap_type'] = []
+#
+# for boost_type in bootstrap_types:
+#
+#     # get sample of returns
+#     data = {}
+#     data['results'] = []
+#     data['stats'] = []
+#
+#     for tik in tickers:
+#         if boost_type in ['sb', 'cbb']:
+#             ret_boostp = bootstrappingTS(ret[tik], n_samples=10000, bootstrap_type=boost_type, optimal_block=True,
+#                                          seed=123)
+#         else:
+#             ret_boostp = bootstrappingTS(ret[tik], n_samples=10000, bootstrap_type=boost_type, block_size=365 * 2,
+#                                          seed=123)
+#         stats_boostp = get_main_stats(ret_boostp)
+#         data['results'].append({tik: ret_boostp})
+#         data['stats'].append({tik: stats_boostp})
+#
+#     results_all['boostrap_type'].append(data)
+#
+# import pickle
+#
+# with open('simulate_results.pkl', 'wb') as f:
+#     pickle.dump(results_all, f)
 
-for boost_type in bootstrap_types:
-
-    # get sample of returns
-    data = {}
-    data['results'] = []
-    data['stats'] = []
-
-    for tik in tickers:
-        if boost_type in ['sb', 'cbb']:
-            ret_boostp = bootstrappingTS(ret[tik], n_samples=10000, bootstrap_type=boost_type, optimal_block=True,
-                                         seed=123)
-        else:
-            ret_boostp = bootstrappingTS(ret[tik], n_samples=10000, bootstrap_type=boost_type, block_size=365 * 2,
-                                         seed=123)
-        stats_boostp = get_main_stats(ret_boostp)
-        data['results'].append({tik: ret_boostp})
-        data['stats'].append({tik: stats_boostp})
-
-    results_all['boostrap_type'].append(data)
-
-import pickle
-
-with open('simulate_results.pkl', 'wb') as f:
-    pickle.dump(results_all, f)
+with open('/Users/safishajjouz/Library/CloudStorage/OneDrive-Personal/QuantPort_Results/simulate_results.pkl',
+          'rb') as f:
+    results_all = pickle.load(f)
 
 data_lists = {}
 for i, tp in enumerate(bootstrap_types):
     data_temp = results_all['boostrap_type'][i]
     data_lists[tp] = data_temp
-
-len(data_lists)
-for i, dd in enumerate(data_lists):
-    print(i)
-    print(dd)
 
 grand_list = []
 for j, dd in enumerate(data_lists):
@@ -193,12 +195,13 @@ def greate_score(df_stats_data):
     scaled_df2 = pd.DataFrame(d2, columns=df_score.columns, index=df_score.index)
     return scaled_df2.sort_values(by=['score'], ascending=False)
 
-df_expected_scores =[]
+
+df_expected_scores = []
 expected_stats = results_final.groupby(['Ticker', 'btype']).median().reset_index()
 
 for tp in bootstrap_types:
     sats = expected_stats[expected_stats['btype'] == tp]
-    sats = sats.drop('btype', axis =1)
+    sats = sats.drop('btype', axis=1)
     sats = sats.set_index('Ticker')
     df_temp = greate_score(sats)
     df_temp['btype'] = tp
@@ -207,9 +210,6 @@ for tp in bootstrap_types:
 df_expected_best_inv = pd.concat(df_expected_scores)
 
 df_expected_best_inv.pivot(values='score', columns='btype').plot.bar()
-
-
-
 
 temp = df_stats[['cagr', 'Ticker']].reset_index().copy()
 temp = temp.drop(['index'], axis=1)
@@ -241,4 +241,6 @@ s.plot.barh(title='Most Correlated Features with Overall Performance Metrics')
 sns.regplot(x=df_inf_new['score'], y=df_inf_new['Fwd P/E'], lowess=True,
             line_kws={'color': 'red'})
 
+# compare Margins
 df_stock_info[['Profit M']].sort_values('Profit M').plot.barh()
+df_inf_new[['score']].sort_values('score').plot.bar()
