@@ -244,3 +244,8 @@ sns.regplot(x=df_inf_new['score'], y=df_inf_new['Fwd P/E'], lowess=True,
 # compare Margins
 df_stock_info[['Profit M']].sort_values('Profit M').plot.barh()
 df_inf_new[['score']].sort_values('score').plot.bar()
+
+import pandas as pd
+from openbb import obb
+df_daily = obb.equity.price.historical(symbol = "spy", provider="yfinance")
+df_daily.to_df().head(1)
