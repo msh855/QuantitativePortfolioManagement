@@ -4,9 +4,9 @@ from pyData.getdata import get_US_yields, get_FX_spots
 from myPortfolioManagement.myData import get_stock_prices
 from myPortfolioManagement.myDataPreparation import make_sma
 from myPortfolioManagement.myBacktesting import performance
-from myPortfolioManagement.myPerformanceMetrics import performance_overview
+from myPortfolioManagement.myPerformanceMetrics import performance_overview, get_main_stats
 import seaborn as sns
-
+from myPortfolioManagement.myPlots import monthly_heatmap
 import quantstats as qs
 from myPortfolioManagement.myReturns import returns_from_prices
 
@@ -69,9 +69,17 @@ df_perm_stats = performance_overview(df_perm, short=True).sort_values(by=['cagr'
 import os
 
 ret_bench = returns_from_prices(df_stock)
-os.path.join(os.getcwd(), str + '.html')
+
 
 for str in ['EURUSDstr1', 'JPYUSDstr1']:
     df_temp = df_perm[[str]].join(ret_bench).dropna()
     qs.reports.html(df_temp[str], benchmark=df_temp['Nasdaq'], output=os.path.join(os.getcwd(), str + '.html'),
                     download_filename=str + '.html')
+
+
+get_main_stats(df_temp[df_temp.index>='2012-01-01'])
+
+qs.plots.monthly_returns(df_temp[str], eoy=True)
+monthly_heatmap(df_temp[str], eoy=True)
+
+qs.stats.monthly_returns(df_temp[str], eoy=True) * 100

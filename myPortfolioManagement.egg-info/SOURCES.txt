@@ -1,0 +1,214 @@
+.DS_Store
+.gitignore
+LICENSE
+README.md
+setup.py
+.idea/.gitignore
+.idea/QuantitativePortfolioManagement.iml
+.idea/aws.xml
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
+.idea/inspectionProfiles/Project_Default.xml
+.idea/inspectionProfiles/profiles_settings.xml
+.ipynb_checkpoints/OptionImpliedPDF-checkpoint.ipynb
+myPortfolioManagement/.DS_Store
+myPortfolioManagement/_init_.py
+myPortfolioManagement/metrics.py
+myPortfolioManagement/myBacktesting.py
+myPortfolioManagement/myBootstrapping.py
+myPortfolioManagement/myClustering.py
+myPortfolioManagement/myData.py
+myPortfolioManagement/myDataCleaning.py
+myPortfolioManagement/myDataPreparation.py
+myPortfolioManagement/myPerformanceMetrics.py
+myPortfolioManagement/myPlots.py
+myPortfolioManagement/myPortfolioOptimisation.py
+myPortfolioManagement/myPortfolioRisks.py
+myPortfolioManagement/myPortfolioSelection.py
+myPortfolioManagement/myReturns.py
+myPortfolioManagement/myUtils.py
+myPortfolioManagement.egg-info/PKG-INFO
+myPortfolioManagement.egg-info/SOURCES.txt
+myPortfolioManagement.egg-info/dependency_links.txt
+myPortfolioManagement.egg-info/not-zip-safe
+myPortfolioManagement.egg-info/requires.txt
+myPortfolioManagement.egg-info/top_level.txt
+myPortfolioManagement/DFM_stocks/prepare_macro_data.py
+myPortfolioManagement/DFM_stocks/statespace_large_dynamic_factor_models.py
+myPortfolioManagement/Data/BBG_CommodityIndex.xlsx
+myPortfolioManagement/Data/df_prices.csv
+myPortfolioManagement/Data/fredmd_definitions.csv
+myPortfolioManagement/Data/fredqd_definitions.csv
+myPortfolioManagement/Data/list_of_funds.xlsx
+myPortfolioManagement/Data/returns_sample.csv
+myPortfolioManagement/Data/FidelityPrices/funds/.Rhistory
+myPortfolioManagement/Data/FidelityPrices/funds/AbsoluteAlpha/Pyrford Glbl Tot Ret(Sterling)B GBP Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/AbsoluteAlpha/VT Argonaut Absolute Return R GBP Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/ASI Global Inflation-Link Bd P1 Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/ASI Global Smaller Companies P1 Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Allianz Strategic Bond.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/BGF World Mining D2 GBP Hedged.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Baillie Gifford American B Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Baillie Gifford Global Discovery B Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Baillie Gifford Global Inc Growth B Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Baillie Gifford Pacific B Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Baillie Gifford Positive Change B Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/BlackRock European Absolute Alpha D Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/BlackRock Ntrl Resources Gr & Inc D Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Fidelity Asian Smaller Coms Y-Acc-GBP.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Fidelity Asian Smaller Coms Y-Acc-GBP.xlsx
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Fidelity Global Special Sits W Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Fidelity Global Technology W-Acc-GBP.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Fundsmith Equity I Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Fundsmith Equity I Acc.xlsx
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/JPM Global Macro Opportunities C Net Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/JPM US Select C Net Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Janus Henderson Mlt-Ast AbsRet I Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Jupiter Strategic AbsRt Bd I £ H Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/JupiterMerian Glb Eq AbsRt I £ H Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/L&G All Stocks Index Linked Gt Idx I Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/L&G Global Technology Index I Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Liontrust Global Alpha C Acc GBP.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/MI Chelverton UK Equity Growth B Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/MS INVF Asia Opportunity I GBP.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/MS INVF Asia Opportunity I GBP.xlsx
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Merian Global Strategic Bond I GBP Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Pictet - Global Envir Opps I dy GBP.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Pictet - Global Envir Opps I dy GBP.xlsx
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Rathbone Ethical Bond I Inc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Rathbone Global Opportunities S Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Rathbone Global Opportunities S Acc.xlsx
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Rathbone Multi Asset Enhanced Gr S Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Rathbone Multi Asset Strategic Gr S Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/RobecoSAM Sustainable Water Eqs I GBP.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Stewart Inv APAC Ldrs Sstby B GBP Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Stewart Inv APAC Ldrs Sstby B GBP Acc.xlsx
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Threadneedle (Lux) Glb Smlr Coms GBP ZGH.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Trojan Fund X Accumulation.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Vanguard FTSE Dev Wld ex-UK Eq Idx £ Acc.xlsx
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Vanguard Glb Bd Idx £ H Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/Vanguard Glb Small-Cp Idx £ Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/csv_files_equity/Fidelity Asian Smaller Coms Y-Acc-GBP.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/csv_files_equity/Fundsmith Equity I Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/csv_files_equity/MS INVF Asia Opportunity I GBP.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/csv_files_equity/Pictet - Global Envir Opps I dy GBP.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/csv_files_equity/Rathbone Global Opportunities S Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/csv_files_equity/Stewart Inv APAC Ldrs Sstby B GBP Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Archive/csv_files_equity/Vanguard FTSE Dev Wld ex-UK Eq Idx £ Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Bonds/Allianz Strategic Bond C Inc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Bonds/L&G Cash Trust I Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Bonds/M&G Emerging Markets Bond GBP I Inc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Bonds/Royal London Sterl Extra Yld Bd A.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Bonds/Vanguard Glb Bd Idx £ H Dist.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Bonds/Vanguard UK Infl-Lnkd Gilt Idx £ Inc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Bonds/abrdn Short Dur Gbl Infl Lnk P1 Inc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Commodities/BlackRock Natural Res Gr & Inc D Inc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Commodities/BlackRock.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Equity/Fidelity Global Technology W-Acc-GBP.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Equity/Fundsmith Equity I Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/Equity/Vanguard FTSE Dev Wld ex-UK Eq Idx £ Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/VolatilityManaged/Royal London Sustainable Div C Acc.csv
+myPortfolioManagement/Data/FidelityPrices/funds/VolatilityManaged/SLI UK Real Estate Platform 1 Inc.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/Allianz Technology Trust Ord.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/BlackRock Throgmorton Trust Ord.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/BlackRock World Mining Trust Ord.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/Fidelity Asian Values Ord.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/Fidelity China Special Ord.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/JPMorgan China Growth & Income Ord.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/Pacific Horizon Ord.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/Rio Tinto PLC.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/iShares $ TIPS ETF USD Acc GBP.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/iShares Agribusiness ETF USD Acc GBP.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/iShares Global Water ETF USD Dist GBP.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/Alternatives/HarbourVest Global Priv Equity Ord.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/Alternatives/HgCapital Trust Ord.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/Commodities/WisdomTree Physical Gold GBP.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/Equity/Invesco EQQQ NASDAQ-100 ETF GBP.csv
+myPortfolioManagement/Data/FidelityPrices/trusts_etfs/Equity/Scottish Mortgage Ord.csv
+myPortfolioManagement/MeteoraGlobalEquityFund/DFM_prepare_data.py
+myPortfolioManagement/MeteoraGlobalEquityFund/big7.py
+myPortfolioManagement/MeteoraGlobalEquityFund/dynamicFactorModel_Stocks.py
+myPortfolioManagement/MeteoraGlobalEquityFund/optionsimpliedPDF.py
+myPortfolioManagement/MeteoraGlobalEquityFund/portfolio_analysis.py
+myPortfolioManagement/MeteoraGlobalEquityFund/portfolio_monitoring.py
+myPortfolioManagement/MeteoraGlobalEquityFund/Archive/fx_impact_on_portfolio.py
+myPortfolioManagement/MeteoraGlobalEquityFund/Archive/get_weathlist_data.py
+myPortfolioManagement/MeteoraGlobalEquityFund/Archive/myReports.py
+myPortfolioManagement/MeteoraGlobalEquityFund/Archive/port_optimisation_and_backtest.py
+myPortfolioManagement/MeteoraGlobalEquityFund/Archive/portfolio_backtest_detailed.py
+myPortfolioManagement/MeteoraGlobalEquityFund/Archive/predictors_of_good_companies.py
+myPortfolioManagement/MeteoraGlobalEquityFund/Archive/similar_stocks.py
+myPortfolioManagement/MeteoraGlobalEquityFund/Archive/stock_picking_top_down.py
+myPortfolioManagement/MeteoraGlobalEquityFund/Archive/stock_valuation_and_weighting.py
+myPortfolioManagement/MeteoraGlobalEquityFund/Data/df_prices.csv
+myPortfolioManagement/MeteoraGlobalEquityFund/Data/port_perf.html
+myPortfolioManagement/MeteoraGlobalEquityFund/Data/similar_companies.xlsx
+myPortfolioManagement/MeteoraGlobalEquityFund/Data/stock_screening.xlsx
+myPortfolioManagement/MeteoraGlobalEquityFund/Output/ret_stocks.csv
+myPortfolioManagement/MeteoraGlobalEquityFund/Trade212_Account/Trade212_account_test_script.py
+myPortfolioManagement/MeteoraGlobalEquityFund/Trade212_Account/get_account_info.py
+myPortfolioManagement/NoteBooks_Examples/All_weather.ipynb
+myPortfolioManagement/NoteBooks_Examples/Diversified Portfolio.ipynb
+myPortfolioManagement/NoteBooks_Examples/Portfolio_Backtesting.ipynb
+myPortfolioManagement/NoteBooks_Examples/Portfolio_Optimisation.ipynb
+myPortfolioManagement/NoteBooks_Examples/Stocks_plotly.ipynb
+myPortfolioManagement/NoteBooks_Examples/myPortfolio_Analytics.ipynb
+myPortfolioManagement/NoteBooks_Examples/portfolio_selection.ipynb
+myPortfolioManagement/NoteBooks_Examples/yield_curve.ipynb
+myPortfolioManagement/NoteBooks_Examples/Archive/Hierarchical_Clustering_illustration_SP500_stocks.ipynb
+myPortfolioManagement/NoteBooks_Examples/Archive/basic_backtest_process.ipynb
+myPortfolioManagement/NoteBooks_Examples/Archive/bootstrapping.ipynb
+myPortfolioManagement/NoteBooks_Examples/Archive/compare_portoflios.ipynb
+myPortfolioManagement/NoteBooks_Examples/Clustering/Clustering_my_funds.ipynb
+myPortfolioManagement/NoteBooks_Examples/Clustering/Clustering_of_Assets.ipynb
+myPortfolioManagement/NoteBooks_Examples/Clustering/Optimal Clustering .ipynb
+myPortfolioManagement/NoteBooks_Examples/Clustering/Regime_Clustering.ipynb
+myPortfolioManagement/NoteBooks_Examples/Clustering/cluster_stocks.ipynb
+myPortfolioManagement/myScripts/.DS_Store
+myPortfolioManagement/myScripts/Inflation_Stock_Prices.py
+myPortfolioManagement/myScripts/bootstrapping_test.py
+myPortfolioManagement/myScripts/create_backtest_report.py
+myPortfolioManagement/myScripts/fed_balance_sheet.py
+myPortfolioManagement/myScripts/openBB.py
+myPortfolioManagement/myScripts/openBB_new.py
+myPortfolioManagement/myScripts/openBBkeys.py
+myPortfolioManagement/myScripts/probability_of_recovery.py
+myPortfolioManagement/myScripts/test_new_classes.py
+myPortfolioManagement/myScripts/Archive/US_yields_analysis.py
+myPortfolioManagement/myScripts/Strategies/.DS_Store
+myPortfolioManagement/myScripts/Strategies/BEAR_Strategy/BEAR_strategy.py
+myPortfolioManagement/myScripts/Strategies/BEAR_Strategy/EUR_slope_factor.py
+myPortfolioManagement/myScripts/Strategies/BEAR_Strategy/GBP_VAR_strategy.py
+myPortfolioManagement/myScripts/Strategies/BEAR_Strategy/Strategy.py
+myPortfolioManagement/myScripts/Strategies/Global_Yield_Factor/Global_yield_Factors.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/Mix_strategies.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/Momentum_logistic_simple.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/dynamic_logistic_PnL.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/dynamic_momentum_learning.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/meta_labelling.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/momentum_strategies_logistci_rolling.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/momentum_strategies_technical_indicators.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/one_euro.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/rolling_factor.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/Dynamic Learning/DFM_example.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/Dynamic Learning/Dynamic_Factor_Momentum.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/Dynamic Learning/dynamic_learning_clustering.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/Dynamic Learning/momemntum_factor_via_DFM.py
+myPortfolioManagement/myScripts/Strategies/Momentum_strategies/ensample_learning/momentum_ensample.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/Fed_and_Foreign_Factor_Results.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/MP_and_rel_slope_factor.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/Slope_Factor_MEDH.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/Archive/Fed_Factor_Only_Results.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/Archive/Fed_Factor_pure.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/Archive/Slope_Factor_Delay.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/Archive/Slope_Factor_Live_Trading.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/Archive/Slope_factor_refined.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/Archive/yield_strategy_historical.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/DataComparison/Compare_MacroBond_BBQ_Data.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/DataComparison/Fed_and_Foreign_Factor_NY_close.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/DataComparison/Fed_and_Foreign_Factor_Results_bbq_data.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/DataComparison/data_comparison_raw.py
+myPortfolioManagement/myScripts/Strategies/Slope_Factor/DataComparison/drivers_of_differences.py
+myPortfolioManagement/myScripts/Trading_Strategy/Fed_Slope_Factor.py
+myPortfolioManagement/myScripts/Trading_Strategy/yield_curve_trading_signal.py

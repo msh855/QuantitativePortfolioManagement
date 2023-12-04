@@ -1,0 +1,13 @@
+timebudget
+quandl
+tsmoothie
+tslearn
+pandas
+numpy
+datetime
+quantstats
+ray
+investpy
+finvizfinance
+yahoofinancials
+yfinance
