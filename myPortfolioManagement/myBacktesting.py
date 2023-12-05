@@ -297,6 +297,7 @@ def prep_dist(x: pd.DataFrame, name_perc: list = None) -> pd.DataFrame:
 
     if name_perc is None:
         name_perc = ['0.05', '0.20', '0.35', '0.65', '0.80', '0.95']
+
     for perc in name_perc:
         x[perc] = np.percentile(x, float(perc) * 100, axis=1)
 
@@ -543,6 +544,8 @@ def tear_sheet_pyfolio(returns=None, returns_benchmark=None, **kwargs):
                                  **kwargs)
 
     return
+
+
 #
 #
 # def backtest_report(returns: pd.DataFrame,

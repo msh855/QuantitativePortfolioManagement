@@ -83,3 +83,6 @@ qs.plots.monthly_returns(df_temp[str], eoy=True)
 monthly_heatmap(df_temp[str], eoy=True)
 
 qs.stats.monthly_returns(df_temp[str], eoy=True) * 100
+
+from fanchart import load_boe_history, load_boe_parameters
+from fanchart import fan
