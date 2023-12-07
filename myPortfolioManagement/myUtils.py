@@ -1,6 +1,5 @@
 import pandas as pd
 import quantstats as qs
-#from openbb import obb
 from openbb_terminal.sdk import openbb
 import ffn
 
