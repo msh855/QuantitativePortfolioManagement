@@ -1,5 +1,6 @@
 import pandas as pd
 import quantstats as qs
+from myPortfolioManagement.myDataCleaning import cap_outliersTS
 
 def balance_dates(returns, returns_benchmark):
     """
@@ -114,4 +115,10 @@ def convert_date_index(df):
     df.index = pd.to_datetime(df.index)
 
     return df
+
+def clean_stock_prices(prices: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    ret_raw = prices.pct_change().dropna()
+    prices_capped = cap_outliersTS(ret_raw, **kwargs)
+    ret_bench = prices_capped.pct_change()
+    return ret_bench
 

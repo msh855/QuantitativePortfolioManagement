@@ -49,13 +49,6 @@ def calculate_portfolio_returns(returns: pd.DataFrame,
     if not isinstance(returns, pd.DataFrame):
         raise ValueError("you must pass a Pandas DataFrame")
 
-    # if returns.index.inferred_type != "datetime64":
-    #     raise TypeError('Date not an Index')
-
-    # # slice returns dataframe
-    # returns = returns[myassets_list]
-    # weights = np.array(myweights_list)
-
     weights_temp = myweights.transpose()
     weights_temp.columns = weights_temp.iloc[0, :]
     returns = returns[weights_temp.columns]
@@ -70,9 +63,10 @@ def calculate_portfolio_returns(returns: pd.DataFrame,
     else:
         port_returns = pd.Series(port_returns, name=portfolio_name)
 
-    port_returns = pd.DataFrame(port_returns)
+    port_returns = pd.to_numeric(port_returns, errors='coerce')
+    ret = pd.DataFrame(port_returns)
 
-    return port_returns
+    return ret
 
 
 def create_portfolios(returns: pd.DataFrame, weights: pd.DataFrame) -> pd.DataFrame:

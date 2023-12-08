@@ -7,7 +7,7 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 
 from finvizfinance.screener.overview import Overview
-from myPortfolioManagement.base import _add_stock_main_info, _load_stock, _load_fx, _add_stock_mini_info
+from myPortfolioManagement.base import _load_stock, _load_fx, _add_stock_info
 import yfinance as yf
 
 
@@ -48,7 +48,7 @@ def func_adj_fx(prices: pd.DataFrame, yahoo_tickers: list, base_currency: str = 
 @timebudget
 def get_stock_prices(yahoo_tickers: list, start_date: str = None,
                      end_date: str = None,
-                     time_interval: str = 'daily', add_info: bool = False, fix_data: bool = False,
+                     time_interval: str = 'daily', fix_data: bool = False,
                      auto_adjust: bool = False,
                      adj_fx: bool = False, base_currency: str = 'GBP',
                      wide_format=False,
@@ -63,7 +63,7 @@ def get_stock_prices(yahoo_tickers: list, start_date: str = None,
 
     # collect dataframes
     results = pd.concat(results_temp)
-    df = get_stock_mini_info(yahoo_tickers)
+    df = get_stock_info(yahoo_tickers)
     df_all = results.reset_index().merge(df, on='yahooTicker')
     df_all = df_all.set_index('Date')
     df_all = df_all.rename(columns={'longName': 'name'})
@@ -71,16 +71,6 @@ def get_stock_prices(yahoo_tickers: list, start_date: str = None,
     # clean columns
     df_all.columns = [x.lower() for x in df_all.columns]
     df_all.columns = [x.replace(" ", "") for x in df_all.columns]
-
-    if add_info:
-        # get additional info and merge
-        df = get_stock_main_info(yahoo_tickers)
-        df_all = results.reset_index().merge(df, on='yahooTicker')
-        df_all = df_all.set_index('Date')
-
-        # clean columns
-        df_all.columns = [x.lower() for x in df_all.columns]
-        df_all.columns = [x.replace(" ", "") for x in df_all.columns]
 
     if adj_fx:
         prices = df_all.pivot(values='adjclose', columns='name')
@@ -136,19 +126,20 @@ def get_nasdaq_tickers() -> pd.DataFrame:
 #     return df
 
 
-def get_stock_main_info(yahoo_tickers: list = None):
+def get_stock_info(yahoo_tickers: list = None):
     ncpus = max(mp.cpu_count() - 1, 1)
     results = Parallel(n_jobs=ncpus, prefer="threads")(
-        delayed(_add_stock_main_info)(yahoo_ticker=tic) for tic in tqdm(yahoo_tickers))
+        delayed(_add_stock_info)(yahoo_ticker=tic) for tic in tqdm(yahoo_tickers))
     return pd.concat(results, ignore_index=True)
 
 
-
-def get_stock_mini_info(yahoo_tickers: list = None):
-    ncpus = max(mp.cpu_count() - 1, 1)
-    results = Parallel(n_jobs=ncpus, prefer="threads")(
-        delayed(_add_stock_mini_info)(yahoo_ticker=tic) for tic in tqdm(yahoo_tickers))
-    return pd.concat(results, ignore_index=True)
+#
+#
+# def get_stock_mini_info(yahoo_tickers: list = None):
+#     ncpus = max(mp.cpu_count() - 1, 1)
+#     results = Parallel(n_jobs=ncpus, prefer="threads")(
+#         delayed(_add_stock_info)(yahoo_ticker=tic) for tic in tqdm(yahoo_tickers))
+#     return pd.concat(results, ignore_index=True)
 
 
 def get_option_exp_dates(yahoo_ticker: str):

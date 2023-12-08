@@ -4,7 +4,8 @@ from sklearn.preprocessing import MinMaxScaler
 import quantstats
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
-
+from feature_engine.outliers import OutlierTrimmer
+import ffn
 
 class RollingStandardScaler(BaseEstimator, TransformerMixin):
     """Rolling standard Scaler
@@ -308,3 +309,22 @@ def transform(column, transforms):
         column = ((column / column.shift(1)) ** mult - 1.0) * 100
 
     return column
+
+
+def cap_outliersTS(returns: pd.DataFrame = None, capping_method='iqr',
+                   tail='both',
+                   fold=5,
+                   plot: bool = False, **kwargs):
+    # ref: https://nbviewer.org/github/feature-engine/feature-engine-examples/blob/main/outliers/OutlierTrimmer.ipynb
+    # ref: https://feature-engine.trainindata.com/en/latest/user_guide/outliers/OutlierTrimmer.html
+    capper = OutlierTrimmer(capping_method=capping_method,
+                            tail=tail,
+                            fold=fold, **kwargs)
+    capper.fit(returns)
+    # capper.right_tail_caps_  # outlier values
+    train_t = capper.transform(returns)
+    prices_nomalised = ffn.to_price_index(train_t.dropna(), start=100)
+    if plot:
+        prices_nomalised.plot()
+    else:
+        return prices_nomalised

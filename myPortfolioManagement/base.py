@@ -5,22 +5,21 @@ from operator import itemgetter
 from openbb import obb
 
 
-def _add_stock_main_info(yahoo_ticker: str = None) -> dict:
+def _add_stock_sectors(yahoo_ticker: str = None) -> pd.DataFrame:
     stock_info = yf.Ticker(yahoo_ticker)
     d = stock_info.info
 
-    mykeys_l = ['marketCap']
-    mykeys_exp = mykeys_l + ['industry', 'sector', 'country']
+    mykeys_exp = ['industry', 'sector', 'country']
 
     if not d.keys() & {'industry', 'sector', 'country'}:
+        str_other = 'Other'
+        data = {'industry': [str_other],
+                'sector': [str_other],
+                'country': [str_other]}
+        df_dv = pd.DataFrame(data)
 
-        dv = itemgetter('marketCap')(d)
-        df_dv = pd.DataFrame([dv], columns=mykeys_l)
-        df_dv['industry'] = 'Other'
-        df_dv['sector'] = 'Other'
-        df_dv['country'] = 'Other'
     else:
-        dv = itemgetter('marketCap', 'industry', 'sector', 'country')(
+        dv = itemgetter('industry', 'sector', 'country')(
             d)
         df_dv = pd.DataFrame([dv], columns=mykeys_exp)
 
@@ -29,18 +28,27 @@ def _add_stock_main_info(yahoo_ticker: str = None) -> dict:
     return df_dv[order]
 
 
-def _add_stock_mini_info(yahoo_ticker: str = None) -> dict:
+def _add_stock_types(yahoo_ticker: str = None) -> pd.DataFrame:
     stock_info = yf.Ticker(yahoo_ticker)
     d = stock_info.info
     mykeys_l = ['type', 'longName', 'exchange', 'currency']
     dv = itemgetter('quoteType', 'longName', 'exchange', 'currency')(
         d)
     df_dv = pd.DataFrame([dv], columns=mykeys_l)
+    df_dv.rename(columns={'longName': "name"})
 
     df_dv['currency'] = [x.upper() for x in df_dv['currency']]
     df_dv['yahooTicker'] = yahoo_ticker
     order = ['yahooTicker'] + mykeys_l
     return df_dv[order]
+
+
+def _add_stock_info(yahoo_ticker: str = None) -> pd.DataFrame:
+    df1 = _add_stock_sectors(yahoo_ticker)
+    df2 = _add_stock_types(yahoo_ticker)
+    df_info = df2.merge(df1, on='yahooTicker')
+
+    return df_info
 
 
 def _load_stock(yahoo_ticker: str, period: str = 'max', start_date: str = None,
@@ -61,12 +69,10 @@ def _load_stock(yahoo_ticker: str, period: str = 'max', start_date: str = None,
     return prices
 
 
-def _load_fx(cross: str = "EURUSD", start_date: str = '1950-01-01', end_date: str = None):
+def _load_fx(cross: str = "EURUSD", start_date: str = '1950-01-01', end_date: str = None) -> pd.DataFrame:
     df_fx = obb.currency.price.historical(symbol=cross, start_date=start_date, end_date=end_date,
                                           provider='yfinance').to_df()
     df_fx = df_fx[['close']]
     df_fx.index.name = 'Date'
     df_fx.columns = [cross]
-    # df_fx['fx'] = cross
-    # df_fx['currency'] = cross[0:3]
     return df_fx
