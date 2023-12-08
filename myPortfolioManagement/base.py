@@ -4,28 +4,42 @@ from myPortfolioManagement.myUtils import convert_date_index
 from operator import itemgetter
 from openbb import obb
 
+
 def _add_stock_main_info(yahoo_ticker: str = None) -> dict:
     stock_info = yf.Ticker(yahoo_ticker)
     d = stock_info.info
 
-    mykeys_l = ['type', 'marketCap', 'longName', 'exchange', 'currency']
+    mykeys_l = ['marketCap']
     mykeys_exp = mykeys_l + ['industry', 'sector', 'country']
 
     if not d.keys() & {'industry', 'sector', 'country'}:
 
-        dv = itemgetter('quoteType', 'marketCap', 'longName', 'exchange', 'currency')(d)
+        dv = itemgetter('marketCap')(d)
         df_dv = pd.DataFrame([dv], columns=mykeys_l)
         df_dv['industry'] = 'Other'
         df_dv['sector'] = 'Other'
         df_dv['country'] = 'Other'
     else:
-        dv = itemgetter('quoteType', 'marketCap', 'longName', 'exchange', 'currency', 'industry', 'sector', 'country')(
+        dv = itemgetter('marketCap', 'industry', 'sector', 'country')(
             d)
         df_dv = pd.DataFrame([dv], columns=mykeys_exp)
 
-    df_dv['currency'] = [x.upper() for x in df_dv['currency']]
     df_dv['yahooTicker'] = yahoo_ticker
     order = ['yahooTicker'] + mykeys_exp
+    return df_dv[order]
+
+
+def _add_stock_mini_info(yahoo_ticker: str = None) -> dict:
+    stock_info = yf.Ticker(yahoo_ticker)
+    d = stock_info.info
+    mykeys_l = ['type', 'longName', 'exchange', 'currency']
+    dv = itemgetter('quoteType', 'longName', 'exchange', 'currency')(
+        d)
+    df_dv = pd.DataFrame([dv], columns=mykeys_l)
+
+    df_dv['currency'] = [x.upper() for x in df_dv['currency']]
+    df_dv['yahooTicker'] = yahoo_ticker
+    order = ['yahooTicker'] + mykeys_l
     return df_dv[order]
 
 
@@ -53,8 +67,6 @@ def _load_fx(cross: str = "EURUSD", start_date: str = '1950-01-01', end_date: st
     df_fx = df_fx[['close']]
     df_fx.index.name = 'Date'
     df_fx.columns = [cross]
-    #df_fx['fx'] = cross
-    #df_fx['currency'] = cross[0:3]
+    # df_fx['fx'] = cross
+    # df_fx['currency'] = cross[0:3]
     return df_fx
-
-
