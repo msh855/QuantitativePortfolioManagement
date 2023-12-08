@@ -1,16 +1,9 @@
-from myPortfolioManagement.myData import get_stock_prices, get_stock_main_info
+from myPortfolioManagement.myData import get_stock_prices
 import pandas as pd
-from openbb import obb
-from datetime import date, timedelta
-from myPortfolioManagement.MeteoraGlobalEquityFund.Trade212_Account.get_account_info import get_pie_details, get_pies, \
+from myPortfolioManagement.Trade212_Account.get_account_info import get_pie_details, get_pies, \
     get_portfolio_info
-from myPortfolioManagement.base import _load_fx
 import os
-import yfinance as yf
-from operator import itemgetter
 from openbb import obb
-from joblib import Parallel, delayed
-from tqdm import tqdm
 
 # Trade212 Account
 # ======================================================================================================================
@@ -48,21 +41,5 @@ tickers = list(df_port_main_info['YahooTicker']) + ['AAPL', 'TSLA', 'NESN.SW', '
 prices = get_stock_prices(tickers, wide_format=True)
 prices_fx_adj = get_stock_prices(tickers, adj_fx = True)
 
-
-
-currency_exposure = list(set(list(prices['currency'])))
-
-currency_exposure = list(set(list(prices['currency'])))
-currency_exposure.remove('USD')
-crosses = [x + 'USD' for x in currency_exposure]
-
-df_list = []
-for cur in crosses:
-    df_temp = _load_fx(cross=cur)
-    df_list.append(df_temp)
-
-df_fx = pd.concat(df_list)
-
-df_pr = prices.merge(df_fx, how='left', on='currency')
 
 obb.equity.fundamental.overview(symbol="SMT", provider='yfinance').to_df()

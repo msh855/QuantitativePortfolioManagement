@@ -8,8 +8,7 @@ import numpy as np
 from myPortfolioManagement.myData import get_stock_prices, get_sp500_tickers, get_stock_info
 from myPortfolioManagement.myPerformanceMetrics import get_main_stats
 from myPortfolioManagement.myReturns import calculate_portfolio_returns
-from myPortfolioManagement.MeteoraGlobalEquityFund.Trade212_Account.get_account_info import get_pie_details, get_pies
-from myPortfolioManagement.myBootstrapping import bootstrappingTS
+from myPortfolioManagement.Trade212_Account.get_account_info import get_pie_details, get_pies
 import pickle
 import quantstats as qs
 import seaborn as sns
