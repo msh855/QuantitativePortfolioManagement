@@ -97,8 +97,9 @@ def _fix_missing(df):
 
 # cleaning
 def _helper(df: pd.DataFrame = None, series: pd.Series = None, n_samples: int = None) -> pd.DataFrame:
-    string_name = series.name
-    cols = [string_name + '_path' + str(x) for x in range(1, n_samples + 1)]
+    #string_name = series.name
+    #cols = [string_name + '_path' + str(x) for x in range(1, n_samples + 1)]
+    cols = ['path' + str(x) for x in range(1, n_samples + 1)]
     df.columns = cols
     df.index = series.index
 

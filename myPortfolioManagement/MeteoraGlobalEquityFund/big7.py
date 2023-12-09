@@ -9,6 +9,7 @@ from myPortfolioManagement.myData import get_stock_prices, get_sp500_tickers, ge
 from myPortfolioManagement.myPerformanceMetrics import get_main_stats
 from myPortfolioManagement.myReturns import calculate_portfolio_returns
 from myPortfolioManagement.Trade212_Account.get_account_info import get_pie_details, get_pies
+from myPortfolioManagement.myBootstrapping import bootstrappingTS
 import pickle
 import quantstats as qs
 import seaborn as sns
@@ -31,12 +32,13 @@ start_date = '1950-01-01'
 
 # identify Non GBP stocks and download FX
 # ======================================================================================================================
-df_prices = get_stock_prices(yahoo_tickers=tickers, start_date=start_date, fix_data=True)
-df_prices_wide = df_prices.pivot(columns='yahooTicker', values='adjclose')
+df_prices = get_stock_prices(yahoo_tickers=tickers)
+df_prices_wide = df_prices.pivot(columns='yahooticker', values='adjclose')
 
 # Backtest
 # ======================================================================================================================
 ret = df_prices_wide.pct_change().dropna()
+ret.cumsum().plot()
 
 # portfolio returns
 ret_port = calculate_portfolio_returns(returns=ret, myweights=df_pie_weights[['tickers_212', 'expectedShare']])
@@ -52,7 +54,7 @@ price_index = ffn.core.to_price_index(ret_all, start=1)
 price_index = ffn.core.rebase(price_index, value=1)
 price_index.plot()
 
-df_main_stats = get_main_stats(price_index, smart=True, rf=0.05).transpose()
+df_main_stats = get_main_stats(price_index.pct_change(), smart=True, rf=0.05).transpose()
 
 qs.reports.basic(ret_all['myPortfolio'], benchmark=ret_all[bench_name], rf=0.05)
 qs.reports.html(ret_all['myPortfolio'], benchmark=ret_all[bench_name], rf=0.05,
@@ -87,7 +89,7 @@ df_big7[['Ticker', 'big7_weight']].set_index('Ticker').plot.bar(y='big7_weight')
 # yearly
 # TODO: The function does not work when I resample. Need to be flexible to adjust to the frequency of the data
 # df_prices_yearly = df_prices_wide.resample('Y').last()
-df_main_stats_big7 = get_main_stats(df_prices_wide, smart=True, rf=0.05)
+df_main_stats_big7 = get_main_stats(df_prices_wide.pct_change(), smart=True, rf=0.05)
 
 df_main_stats_big7['adjusted_sortino'].sort_values().plot.bar()
 df_main_stats_big7['cagr'].sort_values().plot.bar()
@@ -101,39 +103,39 @@ get_main_stats(ret_all, smart=True, rf=0.05)
 
 # see Expected Returns and Risks via Bootstrapping
 # ======================================================================================================================
-#
+
 bootstrap_types = ['cbb', 'sb', 'nbb', 'mbb']
-# results_all = {}
-# results_all['boostrap_type'] = []
-#
-# for boost_type in bootstrap_types:
-#
-#     # get sample of returns
-#     data = {}
-#     data['results'] = []
-#     data['stats'] = []
-#
-#     for tik in tickers:
-#         if boost_type in ['sb', 'cbb']:
-#             ret_boostp = bootstrappingTS(ret[tik], n_samples=10000, bootstrap_type=boost_type, optimal_block=True,
-#                                          seed=123)
-#         else:
-#             ret_boostp = bootstrappingTS(ret[tik], n_samples=10000, bootstrap_type=boost_type, block_size=365 * 2,
-#                                          seed=123)
-#         stats_boostp = get_main_stats(ret_boostp)
-#         data['results'].append({tik: ret_boostp})
-#         data['stats'].append({tik: stats_boostp})
-#
-#     results_all['boostrap_type'].append(data)
+results_all = {}
+results_all['boostrap_type'] = []
+
+for boost_type in bootstrap_types:
+
+    # get sample of returns
+    data = {}
+    data['results'] = []
+    data['stats'] = []
+
+    for tik in tickers:
+        if boost_type in ['sb', 'cbb']:
+            ret_boostp = bootstrappingTS(ret[tik], n_samples=10000, bootstrap_type=boost_type, optimal_block=True,
+                                         seed=123)
+        else:
+            ret_boostp = bootstrappingTS(ret[tik], n_samples=10000, bootstrap_type=boost_type, block_size=365 * 2,
+                                         seed=123)
+        stats_boostp = get_main_stats(ret_boostp)
+        data['results'].append({tik: ret_boostp})
+        data['stats'].append({tik: stats_boostp})
+
+    results_all['boostrap_type'].append(data)
 #
 # import pickle
 #
 # with open('simulate_results.pkl', 'wb') as f:
 #     pickle.dump(results_all, f)
-
-with open('/Users/safishajjouz/Library/CloudStorage/OneDrive-Personal/QuantPort_Results/simulate_results.pkl',
-          'rb') as f:
-    results_all = pickle.load(f)
+#
+# with open('/Users/safishajjouz/Library/CloudStorage/OneDrive-Personal/QuantPort_Results/simulate_results.pkl',
+#           'rb') as f:
+#     results_all = pickle.load(f)
 
 data_lists = {}
 for i, tp in enumerate(bootstrap_types):
@@ -175,7 +177,7 @@ with PdfPages('ad_sortino_bootstrapping.pdf') as pdf:
         # plt.show()
         # We can also set the file's metadata via the PdfPages object:
 
-results_final.groupby(['Ticker', 'btype']).median().plot.bar()
+results_final.groupby(['Ticker', 'btype']).median()[['total_ret']].plot.bar()
 
 
 # Expected Best investment
@@ -226,20 +228,20 @@ sns.displot(data=scaled_df.reset_index(), hue='Ticker', x='cagr',
 # ======================================================================================================================
 
 scaled_df2 = greate_score(df_main_stats_big7)
-
-# see all information for stocks
-df_stock_info = get_stock_info(yahoo_tickers=tickers, data_type='all')
-string_columns = df_stock_info.select_dtypes(include='object').columns
-df_inf_new = df_stock_info.drop(string_columns, axis=1)
-df_inf_new = df_inf_new.join(scaled_df2)
-
-s = df_inf_new.corr().loc['score'].sort_values()
-s = s.drop(s.index[-1])
-s.plot.barh(title='Most Correlated Features with Overall Performance Metrics')
-
-sns.regplot(x=df_inf_new['score'], y=df_inf_new['Fwd P/E'], lowess=True,
-            line_kws={'color': 'red'})
-
-# compare Margins
-df_stock_info[['Profit M']].sort_values('Profit M').plot.barh()
-df_inf_new[['score']].sort_values('score').plot.bar()
+#
+# # see all information for stocks
+# df_stock_info = get_stock_info(yahoo_tickers=tickers, data_type='all')
+# string_columns = df_stock_info.select_dtypes(include='object').columns
+# df_inf_new = df_stock_info.drop(string_columns, axis=1)
+# df_inf_new = df_inf_new.join(scaled_df2)
+#
+# s = df_inf_new.corr().loc['score'].sort_values()
+# s = s.drop(s.index[-1])
+# s.plot.barh(title='Most Correlated Features with Overall Performance Metrics')
+#
+# sns.regplot(x=df_inf_new['score'], y=df_inf_new['Fwd P/E'], lowess=True,
+#             line_kws={'color': 'red'})
+#
+# # compare Margins
+# df_stock_info[['Profit M']].sort_values('Profit M').plot.barh()
+# df_inf_new[['score']].sort_values('score').plot.bar()

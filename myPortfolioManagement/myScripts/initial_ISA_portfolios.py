@@ -1,4 +1,5 @@
 import ffn
+import matplotlib.pyplot as plt
 import numpy as np
 from myPortfolioManagement.myData import get_stock_prices, get_stock_info
 import os
@@ -8,7 +9,8 @@ from myPortfolioManagement.myUtils import clean_stock_prices
 from myPortfolioManagement.myPerformanceMetrics import get_main_stats, performance_overview
 from myPortfolioManagement.myBootstrapping import bootstrappingTS
 from myPortfolioManagement.myBacktesting import prep_dist
-from aeon.forecasting.trend import TrendForecaster
+from myPortfolioManagement.myDataPreparation import Trends, decomposeTS
+from myPortfolioManagement.myTimeSeriesFunction import forecast_trend
 
 file_path = '/Users/safishajjouz/GitHub/myFinances'
 file_name = 'portfoliols_eval_all.xlsx'
@@ -112,32 +114,48 @@ df_perf.sort_values(by='cagr', ascending=False).head(top)
 df_perf.sort_values(by='cagr', ascending=False)[['cagr']]
 
 # bootstrapping
-df_prices = get_stock_prices(['EQQQ.L'], wide_format=True)
+# ======================================================================================================================
+df_prices = get_stock_prices(['SMT.L'], start_date='2012-01-01', wide_format=True)
+price_d = decomposeTS(df_prices)
+price_d = price_d.HPfilter(freq='daily')
 
-ret_funds = clean_stock_prices(df_prices, fold=10)
+# training
+prices_tr = df_prices[(df_prices.index <= '2020-07-01')]
+prices_out_of_sample = df_prices[df_prices.index > '2020-07-01']
 
-ret_funds_training = ret_funds[(ret_funds.index <= '2020-01-01') & (ret_funds.index >= '2012-01-01')]
-ret_funds_training.cumsum().plot()
-ret_funds_training.plot()
-ret_funds.iloc[:, 0].cumsum().plot()
+trends = Trends(prices_tr)
+price_dec = decomposeTS(prices_tr)
+price_dec = price_dec.HPfilter(freq='daily')
+data = price_dec.filter(like='trend')
+
+forcast_period = list(range(1, prices_out_of_sample.shape[0] + 1))
+pred = forecast_trend(data, steps=forcast_period)
+
+data_pred = pd.concat([data, pred])
+data_pred.index = df_prices.index
+data_pred.columns = ['trend_pred']
+
+df_all = price_d.join(data_pred)
+df_all.iloc[:, [0, 3]].plot()
 
 #
-ret_boots = bootstrappingTS(ret_funds_training, block_size=365 * 2, n_samples=10000)
-ret_dist = prep_dist(ret_boots)
+ret_tr = prices_tr.iloc[:, 0].pct_change().dropna()
+from datetime import datetime, timedelta
 
-max_path = ret_boots.max(axis=1)
-min_path = ret_boots.max(axis=1)
+# Get the date three years ago from today
+three_years_ago = ret_tr.index[-1].to_pydatetime() - timedelta(days=3 * 365)
 
-ret_temp = ret_dist.iloc[:, 0]
-y = ret_temp.to_period('d')
-forecaster = TrendForecaster()
-forecaster.fit(y)  # fit the forecaster
+# Select data from three years ago until today
+df_three_years = ret_tr[str(three_years_ago.date()):]
 
-out_of_sample_length = len(ret_funds[ret_funds.index > '2020-01-01'].index)
-forcast_period = list(range(1, out_of_sample_length))
+ret_boots = bootstrappingTS(df_three_years, bootstrap_type='sb', optimal_block=True, n_samples=10000)
+total_ret_oos = get_main_stats(prices_out_of_sample.pct_change())['total_ret'][0]
 
-pred = forecaster.predict(fh=forcast_period)  # predict the next value
+stats_boost = get_main_stats(ret_boots)
+stats_hist = get_main_stats(pd.DataFrame(df_three_years))
 
-pd.concat([y, pred]).plot()
-
-pred.plot()
+# outcome
+stats_boost['total_ret'].plot.density()
+plt.axvline(x=total_ret_oos, color='red', label = 'Realized')
+plt.axvline(x=stats_hist['total_ret'].values[0], color='black', label = 'historical')
+plt.legend()
