@@ -5,7 +5,7 @@ import os
 import pandas as pd
 from myPortfolioManagement.myReturns import calculate_portfolio_returns, get_benchmark_porfolios
 from myPortfolioManagement.myUtils import clean_stock_prices
-from myPortfolioManagement.myPerformanceMetrics import get_main_stats, performance_overview
+from myPortfolioManagement.myPerformanceMetrics import get_main_stats, performance_overview, p_get_main_stats
 from myPortfolioManagement.myBootstrapping import bootstrappingTS
 from myPortfolioManagement.myBacktesting import prep_dist
 from aeon.forecasting.trend import TrendForecaster
@@ -33,7 +33,7 @@ for i in range(num_portf):
 
     # load currencies
     prices = get_stock_prices(tickers, start_date=start_trading_date, wide_format=True)
-    ret = clean_stock_prices(prices)
+    ret = clean_stock_prices(prices, fold=10)
 
     ret_port = calculate_portfolio_returns(ret, df_weights, portfolio_name='portfolio' + str(i + 1))
     ret_port['portfolio' + str(i + 1)].cumsum().plot()
@@ -46,7 +46,7 @@ df_port_ret.cumsum().plot()
 # get benchmarks
 tickers_bench = ['VWRP.L', 'EQQQ.L', 'VUAG.L']
 prices_bench = get_stock_prices(tickers_bench, start_date=start_trading_date, wide_format=True)
-ret_bench = clean_stock_prices(prices_bench)
+ret_bench = clean_stock_prices(prices_bench, fold=10)
 ret_bench.columns = ['Nasdaq', 'FTSE World', 'S&P 500']
 ret_bench.cumsum().plot()
 
@@ -69,11 +69,19 @@ df_main_stats = df_main_stats.join(df_total_ret)
 metric = 'total_return'
 df_main_stats[[metric, 'adjusted_sortino']].sort_values(by=metric).plot.barh()
 
+import quantstats as qs
+
 # fund performance
+# ======================================================================================================================
 df_funds = pd.concat(portfolio_list)
 funds = df_funds['yahooTicker'].unique()
 df_fund_prices = get_stock_prices(funds, wide_format=True, start_date=start_trading_date)
 ret_funds = clean_stock_prices(df_fund_prices)
+
+
+p_get_main_stats(ret_funds, add_age=True)
+
+
 
 prices_funds = ffn.to_price_index(ret_funds)
 total_ret_funds = pd.Series(ffn.calc_total_return(prices_funds), name='total_return')
@@ -107,43 +115,33 @@ df_perf.sort_values(by='cagr', ascending=False).head(top)
 df_perf.sort_values(by='cagr', ascending=False)[['cagr']]
 
 # bootstrapping
-df_prices = get_stock_prices('SMT.L', wide_format=True)
-ret_funds = df_prices.pct_change()
+df_prices = get_stock_prices(['EQQQ.L'], wide_format=True)
+
+ret_funds = clean_stock_prices(df_prices, fold=10)
+
 ret_funds_training = ret_funds[(ret_funds.index <= '2020-01-01') & (ret_funds.index >= '2012-01-01')]
-ret_t.cumsum().plot()
+ret_funds_training.cumsum().plot()
+ret_funds_training.plot()
+ret_funds.iloc[:, 0].cumsum().plot()
 
 #
-ret_boots = bootstrappingTS(ret_t, block_size=365 * 2, n_samples=10000)
+ret_boots = bootstrappingTS(ret_funds_training, block_size=365 * 2, n_samples=10000)
 ret_dist = prep_dist(ret_boots)
 
 max_path = ret_boots.max(axis=1)
 min_path = ret_boots.max(axis=1)
 
-ret_temp = ret_dist.iloc[:,0]
+ret_temp = ret_dist.iloc[:, 0]
 y = ret_temp.to_period('d')
 forecaster = TrendForecaster()
 forecaster.fit(y)  # fit the forecaster
 
-out_of_sample_length = len(ret_funds[ret_funds.index>'2020-01-01'].index)
+out_of_sample_length = len(ret_funds[ret_funds.index > '2020-01-01'].index)
 forcast_period = list(range(1, out_of_sample_length))
 
 pred = forecaster.predict(fh=forcast_period)  # predict the next value
-
 
 pd.concat([y, pred]).plot()
 
 pred.plot()
 
-def _fun_metrics(func, df, smart, rf):
-    kwargs = {}
-    if func in [qs.stats.adjusted_sortino, qs.stats.sharpe]:
-        kwargs['smart'] = smart
-        kwargs['rf'] = rf
-    if func in [qs.stats.cagr]:
-        kwargs['periods'] = 365
-
-    df_func_temp = df.p_apply(func, raw=False, executor='processes', **kwargs)
-    df_func_temp = pd.DataFrame(df_func_temp)
-    df_func_temp.columns = ['value']
-    df_func_temp['metric'] = func.__name__
-    return df_func_temp
