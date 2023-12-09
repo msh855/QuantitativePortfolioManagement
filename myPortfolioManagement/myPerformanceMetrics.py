@@ -13,6 +13,8 @@ from pypfopt.expected_returns import returns_from_prices
 from scipy.stats import skew
 import quantstats as qs
 import multiprocessing
+from joblib import Parallel, delayed
+from tqdm import tqdm
 
 
 def age(series):
@@ -20,65 +22,6 @@ def age(series):
     series = series[series.index >= start_date]
     sample_age = series.index[-1].year - series.index[0].year
     return sample_age
-
-@timebudget
-def get_main_stats(df: pd.DataFrame = None, rf: float = 0.05, smart: bool = True, add_age=False) -> pd.DataFrame:
-    '''
-    @param df: a wide dataframe with either prices or returns of stocks
-    @param rf: risk-free annualised
-    @param smart:
-
-    an advantage of using qs.stats over ffn library is that the inputs can be either returns or prices as qs.stats
-
-    reference for performance metrics
-
-    # Gain to Pain Ratio (Daily Data)— 0.30 or higher
-    # Gain to Pain Ratio (Monthly Data)— 2.0 or higher
-    # Sortino Ratio/√2—2.0 or higher
-    # ref: https://archive.is/2rwFW#selection-651.0-669.14
-
-    '''
-
-    num_cores = multiprocessing.cpu_count()
-    n_cpu = int(max(num_cores-1, 1))
-
-    from parallel_pandas import ParallelPandas
-
-    ParallelPandas.initialize(n_cpu=n_cpu, disable_pr_bar=False)
-
-    check_date_index(df)
-
-    functions = [qs.stats.cagr,
-                 qs.stats.adjusted_sortino,
-                 qs.stats.sharpe, qs.stats.calmar, qs.stats.max_drawdown]
-    if add_age:
-        functions = functions + [age]
-
-    df_metrics_list = []
-    for func in functions:
-        kwargs = {}
-        if func in [qs.stats.adjusted_sortino, qs.stats.sharpe]:
-            kwargs['smart'] = smart
-            kwargs['rf'] = rf
-        if func in [qs.stats.cagr]:
-            kwargs['periods'] = 365
-
-        df_func_temp = df.p_apply(func, raw=False, executor='processes', **kwargs)
-        df_func_temp = pd.DataFrame(df_func_temp)
-        df_func_temp.columns = ['value']
-        df_func_temp['metric'] = func.__name__
-        df_metrics_list.append(df_func_temp)
-
-    df_metrics = pd.concat(df_metrics_list)
-    df_metrics = df_metrics.pivot(columns='metric', values='value')
-
-    col_order = [x.__name__ for x in functions]
-    df_metrics = df_metrics[col_order]
-
-    if add_age:
-        df_metrics = df_metrics.rename(columns={'age': 'age_sample'})
-
-    return df_metrics
 
 
 def get_rolling_greek_stats(ret, ret_bench, rolling_period=30):
@@ -594,3 +537,69 @@ def reward_metric(df, rolling_window=3,
     df_temp = df_temp[[my_assets_col_name, col_name]]
 
     return df_temp
+
+
+def _fun_metrics(func, df, smart, rf):
+
+    num_cores = multiprocessing.cpu_count()
+    n_cpu = int(max(num_cores - 1, 1))
+
+    from parallel_pandas import ParallelPandas
+    ParallelPandas.initialize(n_cpu=n_cpu, disable_pr_bar=True)
+
+    kwargs = {}
+    if func in [qs.stats.adjusted_sortino, qs.stats.sharpe]:
+        kwargs['smart'] = smart
+        kwargs['rf'] = rf
+    if func in [qs.stats.cagr]:
+        kwargs['periods'] = 365
+
+    df_func_temp = df.p_apply(func, raw=False, executor='processes', **kwargs)
+    df_func_temp = pd.DataFrame(df_func_temp)
+    df_func_temp.columns = ['value']
+    df_func_temp['metric'] = func.__name__
+    return df_func_temp
+
+
+@timebudget
+def get_main_stats(df: pd.DataFrame = None, rf: float = 0.05, smart: bool = True, add_age=False) -> pd.DataFrame:
+    '''
+    @param df: a wide dataframe with either prices or returns of stocks
+    @param rf: risk-free annualised
+    @param smart:
+
+    an advantage of using qs.stats over ffn library is that the inputs can be either returns or prices as qs.stats
+
+    reference for performance metrics
+
+    # Gain to Pain Ratio (Daily Data)— 0.30 or higher
+    # Gain to Pain Ratio (Monthly Data)— 2.0 or higher
+    # Sortino Ratio/√2—2.0 or higher
+    # ref: https://archive.is/2rwFW#selection-651.0-669.14
+
+    '''
+
+    num_cores = multiprocessing.cpu_count()
+    n_cpu = int(max(num_cores - 1, 1))
+
+    check_date_index(df)
+
+    functions = [qs.stats.cagr,
+                 qs.stats.adjusted_sortino,
+                 qs.stats.sharpe, qs.stats.calmar, qs.stats.max_drawdown]
+    if add_age:
+        functions = functions + [age]
+
+    df_metrics_list = Parallel(n_jobs=n_cpu, prefer="threads")(
+        delayed(_fun_metrics)(func=fctn, df=df, smart=smart, rf=rf) for fctn in tqdm(functions))
+
+    df_metrics = pd.concat(df_metrics_list)
+    df_metrics = df_metrics.pivot(columns='metric', values='value')
+
+    col_order = [x.__name__ for x in functions]
+    df_metrics = df_metrics[col_order]
+
+    if add_age:
+        df_metrics = df_metrics.rename(columns={'age': 'age_sample'})
+
+    return df_metrics

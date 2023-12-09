@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import quantstats as qs
 import numpy as np
-import phik
 
 
 def scatter_plot_simple(df, x: str, y: str):

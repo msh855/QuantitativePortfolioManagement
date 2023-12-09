@@ -18,7 +18,7 @@ def func_adj_fx(prices: pd.DataFrame, yahoo_tickers: list, base_currency: str = 
     col_order_original = prices.columns
 
     # find foreign stocks stocks
-    df_stock_main_info = get_stock_mini_info(yahoo_tickers)
+    df_stock_main_info = get_stock_info(yahoo_tickers)
     df_stock_main_info = df_stock_main_info[['yahooTicker', 'longName', 'currency']]
     df_temp = df_stock_main_info[df_stock_main_info['currency'] != base_currency]
 

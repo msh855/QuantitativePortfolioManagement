@@ -117,7 +117,8 @@ def convert_date_index(df):
     return df
 
 def clean_stock_prices(prices: pd.DataFrame, **kwargs) -> pd.DataFrame:
-    ret_raw = prices.pct_change().dropna()
+    ret_raw = prices.pct_change()
+    ret_raw.dropna(inplace=True)
     prices_capped = cap_outliersTS(ret_raw, **kwargs)
     ret_bench = prices_capped.pct_change()
     return ret_bench
