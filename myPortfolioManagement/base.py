@@ -35,7 +35,7 @@ def _add_stock_types(yahoo_ticker: str = None) -> pd.DataFrame:
     dv = itemgetter('quoteType', 'longName', 'exchange', 'currency')(
         d)
     df_dv = pd.DataFrame([dv], columns=mykeys_l)
-    df_dv.rename(columns={'longName': "name"})
+   #df_dv.rename(columns={'longName': "name"})
 
     df_dv['currency'] = [x.upper() for x in df_dv['currency']]
     df_dv['yahooTicker'] = yahoo_ticker

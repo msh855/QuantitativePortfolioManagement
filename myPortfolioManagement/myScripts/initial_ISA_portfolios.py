@@ -5,7 +5,7 @@ import os
 import pandas as pd
 from myPortfolioManagement.myReturns import calculate_portfolio_returns, get_benchmark_porfolios
 from myPortfolioManagement.myUtils import clean_stock_prices
-from myPortfolioManagement.myPerformanceMetrics import get_main_stats, performance_overview, p_get_main_stats
+from myPortfolioManagement.myPerformanceMetrics import get_main_stats, performance_overview
 from myPortfolioManagement.myBootstrapping import bootstrappingTS
 from myPortfolioManagement.myBacktesting import prep_dist
 from aeon.forecasting.trend import TrendForecaster
@@ -78,10 +78,7 @@ funds = df_funds['yahooTicker'].unique()
 df_fund_prices = get_stock_prices(funds, wide_format=True, start_date=start_trading_date)
 ret_funds = clean_stock_prices(df_fund_prices)
 
-
-p_get_main_stats(ret_funds, add_age=True)
-
-
+get_main_stats(ret_funds, add_age=True)
 
 prices_funds = ffn.to_price_index(ret_funds)
 total_ret_funds = pd.Series(ffn.calc_total_return(prices_funds), name='total_return')
@@ -144,4 +141,3 @@ pred = forecaster.predict(fh=forcast_period)  # predict the next value
 pd.concat([y, pred]).plot()
 
 pred.plot()
-

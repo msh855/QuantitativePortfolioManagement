@@ -16,18 +16,19 @@ import yfinance as yf
 
 def func_adj_fx(prices: pd.DataFrame, yahoo_tickers: list, base_currency: str = 'GBP'):
     col_order_original = prices.columns
+    names = 'longName'
 
     # find foreign stocks stocks
     df_stock_main_info = get_stock_info(yahoo_tickers)
-    df_stock_main_info = df_stock_main_info[['yahooTicker', 'longName', 'currency']]
+    df_stock_main_info = df_stock_main_info[['yahooTicker', names, 'currency']]
     df_temp = df_stock_main_info[df_stock_main_info['currency'] != base_currency]
 
-    which_com_to_adjust = list(df_temp['longName'])
+    which_com_to_adjust = list(df_temp[names])
     prices_mini = prices[which_com_to_adjust]
     price_adj_fx = prices_mini.copy()
     srt_date = price_adj_fx.index[0]
     df_lists = []
-    for company, cur in zip(df_temp['longName'], df_temp['currency']):
+    for company, cur in zip(df_temp[names], df_temp['currency']):
         fx = cur + base_currency
         df_fx_temp = _load_fx(fx, start_date=srt_date)
         df_adj_temp = pd.concat([prices_mini[company], df_fx_temp], axis=1)
@@ -53,6 +54,7 @@ def get_stock_prices(yahoo_tickers: list, start_date: str = None,
                      adj_fx: bool = False, base_currency: str = 'GBP',
                      wide_format=False,
                      **kwarg):
+
     ncpus = max(mp.cpu_count() - 1, 1)
     results_temp = Parallel(n_jobs=ncpus, prefer="threads")(
         delayed(_load_stock)(yahoo_ticker=tic, start_date=start_date,
@@ -66,18 +68,20 @@ def get_stock_prices(yahoo_tickers: list, start_date: str = None,
     df = get_stock_info(yahoo_tickers)
     df_all = results.reset_index().merge(df, on='yahooTicker')
     df_all = df_all.set_index('Date')
-    df_all = df_all.rename(columns={'longName': 'name'})
 
     # clean columns
+    # df_all = df_all.rename(columns={'longName': 'name'})
+
     df_all.columns = [x.lower() for x in df_all.columns]
     df_all.columns = [x.replace(" ", "") for x in df_all.columns]
 
     if adj_fx:
-        prices = df_all.pivot(values='adjclose', columns='name')
+        wide_format= False
+        prices = df_all.pivot(values='adjclose', columns='longname')
         df_all = func_adj_fx(prices=prices, yahoo_tickers=yahoo_tickers, base_currency=base_currency)
 
     if wide_format:
-        df_all = df_all.pivot(values='adjclose', columns='name')
+        df_all = df_all.pivot(values='adjclose', columns='longname')
 
     return df_all
 
