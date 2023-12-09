@@ -576,7 +576,6 @@ def get_main_stats(returns: pd.DataFrame = None, rf: float = 0.05, smart: bool =
     return metrics
 
 
-@timebudget
 # def get_main_stats(returns: pd.DataFrame = None, rf: float = 0.05, smart: bool = True, add_age=False):
 #     check_date_index(returns)
 #
