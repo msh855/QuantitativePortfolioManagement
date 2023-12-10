@@ -94,19 +94,21 @@ df_fund_main_stats.sort_values(by='cagr', ascending=False)[['cagr']].head(top)
 # Assess expected Returns
 # ======================================================================================================================
 df_funds = pd.concat(portfolio_list)
+date_tr = '2020-07-01'
+
 df_funds[['Name', 'yahooTicker']].drop_duplicates()
 df_prices = get_stock_prices(['0P0000X9F5.L'], start_date='2012-01-01', wide_format=True)
-ret_clipped = clean_stock_prices(df_prices, fold = 10)
+ret_clipped = clean_stock_prices(df_prices, fold=10)
 prices_clipped = ffn.to_price_index(ret_clipped, 100)
-ffn.rebase(df_prices, 100).join(pd.Series(prices_clipped.iloc[:,0], name = 'prices_clipped')).plot()
+ffn.rebase(df_prices, 100).join(pd.Series(prices_clipped.iloc[:, 0], name='prices_clipped')).plot()
 
 df_prices = prices_clipped
 
 # training
-prices_tr = df_prices[(df_prices.index <= '2020-07-01')]
+prices_tr = df_prices[(df_prices.index <= date_tr)]
 
 # out of sample
-prices_out_of_sample = df_prices[df_prices.index > '2020-07-01']
+prices_out_of_sample = df_prices[df_prices.index > date_tr]
 
 # boostrap
 ret_tr = prices_tr.iloc[:, 0].pct_change().dropna()
@@ -120,14 +122,37 @@ stats_boost = get_main_stats(ret_boots)
 stats_hist = get_main_stats(pd.DataFrame(df_three_years))
 
 # outcome
-stats_boost['total_ret'].plot.density(label = 'Expect Total Returns')
+stats_boost['total_ret'].plot.density(label='Expect Total Returns')
 plt.axvline(x=total_ret_oos, color='red', label='Realized (ex-post)')
 plt.axvline(x=stats_hist['total_ret'].values[0], color='black', label='historical (ex-ante)')
 plt.legend()
 plt.title('Ex-post Evaluation: ' + stats_hist.index[0])
 
-#
+# check yields to detect balance of risks
+df_yields = get_US_yields(freq='d')
+df_yields['Spread'] = df_yields['2Y'] - df_yields['3M']
+df_yields_tr = df_yields[df_yields.index <= date_tr]
+#df_yields_tr = look_back(df_yields_tr, 3)
+df_yields_out = df_yields[df_yields.index > date_tr]
 
+# boostrap yields
+boost_tep = 'mbb'
+blc_years = 5*365
+yields_boots3y = bootstrappingTS(df_yields_tr['3Y'], bootstrap_type=boost_tep, block_size = blc_years, n_samples=10000)
+yields_boots1y = bootstrappingTS(df_yields_tr['1Y'], bootstrap_type=boost_tep, block_size = blc_years, n_samples=10000)
+yields_boots10 = bootstrappingTS(df_yields_tr['10Y'], bootstrap_type=boost_tep, block_size = blc_years, n_samples=10000)
+yields_bootsYC = bootstrappingTS(df_yields_tr['Spread'], bootstrap_type=boost_tep, block_size = blc_years, n_samples=10000)
+
+
+for col, yeld in zip(['3Y', '1Y', '10Y', 'Spread'], [yields_boots3y, yields_boots1y, yields_boots10, yields_bootsYC]):
+    plt.figure()
+    yeld.mean().plot.density()
+    df_yields[col].plot.density()
+    plt.axvline(x=df_yields_tr[col].mean(), color='black', label='historical (ex-ante)')
+    plt.axvline(x=df_yields_out[col].mean(), color='red', label='Realized (ex-post)')
+    plt.legend()
+    plt.title('Ex-post Evaluation: ' + col)
+    plt.show()
 
 # ======================================================================================================================
 # Forecasting
