@@ -5,7 +5,7 @@ warnings.filterwarnings('ignore')
 import ffn
 import pandas as pd
 import numpy as np
-from myPortfolioManagement.myData import get_stock_prices, get_sp500_tickers, get_stock_info
+from myPortfolioManagement.myData import get_stock_prices, get_sp500_tickers
 from myPortfolioManagement.myPerformanceMetrics import get_main_stats
 from myPortfolioManagement.myReturns import calculate_portfolio_returns
 from myPortfolioManagement.Trade212_Account.get_account_info import get_pie_details, get_pies

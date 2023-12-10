@@ -9,8 +9,8 @@ from myPortfolioManagement.myUtils import clean_stock_prices
 from myPortfolioManagement.myPerformanceMetrics import get_main_stats, performance_overview
 from myPortfolioManagement.myBootstrapping import bootstrappingTS
 from myPortfolioManagement.myBacktesting import prep_dist
-from myPortfolioManagement.myDataPreparation import Trends, decomposeTS
-from myPortfolioManagement.myTimeSeriesFunction import forecast_trend
+from myPortfolioManagement.myTimeSeries import Trends, decomposeTS, forecast_trend, look_back
+from maData.getdata import get_US_yields
 
 file_path = '/Users/safishajjouz/GitHub/myFinances'
 file_name = 'portfoliols_eval_all.xlsx'
@@ -24,7 +24,10 @@ for i in range(num_portf):
     prt_temp['porfolio'] = 'portfolio' + str(i + 1)
     portfolio_list.append(prt_temp)
 
-# Initial portfolio
+# ======================================================================================================================
+# Initial portfolio performance
+# ======================================================================================================================
+
 ret_port_list = []
 for i in range(num_portf):
     df_port = portfolio_list[i]
@@ -63,16 +66,10 @@ ret_all.cumsum().plot()
 # stats
 df_main_stats = get_main_stats(ret_all)
 
-prices_all = ffn.to_price_index(ret_all)
-total_ret = pd.Series(ffn.calc_total_return(prices_all), name='total_return')
-df_total_ret = pd.DataFrame(total_ret)
-df_main_stats = df_main_stats.join(df_total_ret)
-
-metric = 'total_return'
+metric = 'total_ret'
 df_main_stats[[metric, 'adjusted_sortino']].sort_values(by=metric).plot.barh()
 
-import quantstats as qs
-
+# ======================================================================================================================
 # fund performance
 # ======================================================================================================================
 df_funds = pd.concat(portfolio_list)
@@ -80,49 +77,65 @@ funds = df_funds['yahooTicker'].unique()
 df_fund_prices = get_stock_prices(funds, wide_format=True, start_date=start_trading_date)
 ret_funds = clean_stock_prices(df_fund_prices)
 
-get_main_stats(ret_funds, add_age=True)
-
-prices_funds = ffn.to_price_index(ret_funds)
-total_ret_funds = pd.Series(ffn.calc_total_return(prices_funds), name='total_return')
-total_ret_funds = pd.DataFrame(total_ret_funds)
-prices_funds.plot()
-
 df_fund_main_stats = get_main_stats(ret_funds, add_age=True)
-df_fund_main_stats = df_fund_main_stats.join(total_ret_funds)
 
-metric = 'total_return'
+metric = 'total_ret'
 df_fund_main_stats[[metric, 'adjusted_sortino']].sort_values(by=metric).plot.barh(rot=0, fontsize=8)
 
-df_perf = performance_overview(prices_funds, prices=True)
-df_perf.sort_values(by='total_return', ascending=False, inplace=True)
-df_perf.drop(['start', 'end'], axis=1, inplace=True)
-round(df_perf, 2)
-
-for col in df_perf:
-    df_perf[col] = pd.to_numeric(df_perf[col])
-
-df_perf = round(df_perf, 2)
-
-top = 5
-
 # top perf
-df_perf.head(top)
-df_perf.sort_values(by='yearly_sharpe', ascending=False).head(top)
-df_perf.sort_values(by='yearly_sortino', ascending=False).head(top)
-df_perf.sort_values(by='calmar', ascending=False).head(top)
-df_perf.sort_values(by='cagr', ascending=False).head(top)
-df_perf.sort_values(by='cagr', ascending=False)[['cagr']]
+top = 5
+df_fund_main_stats.sort_values(by='total_ret', ascending=False).head(top)
+df_fund_main_stats.sort_values(by='sharpe', ascending=False).head(top)
+df_fund_main_stats.sort_values(by='adjusted_sortino', ascending=False).head(top)
+df_fund_main_stats.sort_values(by='calmar', ascending=False).head(top)
+df_fund_main_stats.sort_values(by='cagr', ascending=False)[['cagr']].head(top)
 
-# bootstrapping
 # ======================================================================================================================
-df_prices = get_stock_prices(['SMT.L'], start_date='2012-01-01', wide_format=True)
-price_d = decomposeTS(df_prices)
-price_d = price_d.HPfilter(freq='daily')
+# Assess expected Returns
+# ======================================================================================================================
+df_funds = pd.concat(portfolio_list)
+df_funds[['Name', 'yahooTicker']].drop_duplicates()
+df_prices = get_stock_prices(['0P0000X9F5.L'], start_date='2012-01-01', wide_format=True)
+ret_clipped = clean_stock_prices(df_prices, fold = 10)
+prices_clipped = ffn.to_price_index(ret_clipped, 100)
+ffn.rebase(df_prices, 100).join(pd.Series(prices_clipped.iloc[:,0], name = 'prices_clipped')).plot()
+
+df_prices = prices_clipped
 
 # training
 prices_tr = df_prices[(df_prices.index <= '2020-07-01')]
+
+# out of sample
 prices_out_of_sample = df_prices[df_prices.index > '2020-07-01']
 
+# boostrap
+ret_tr = prices_tr.iloc[:, 0].pct_change().dropna()
+df_three_years = look_back(ret_tr, years=3)
+df_three_years.cumsum().plot()
+
+ret_boots = bootstrappingTS(df_three_years, bootstrap_type='sb', optimal_block=True, n_samples=10000)
+total_ret_oos = get_main_stats(prices_out_of_sample.pct_change())['total_ret'][0]
+
+stats_boost = get_main_stats(ret_boots)
+stats_hist = get_main_stats(pd.DataFrame(df_three_years))
+
+# outcome
+stats_boost['total_ret'].plot.density(label = 'Expect Total Returns')
+plt.axvline(x=total_ret_oos, color='red', label='Realized (ex-post)')
+plt.axvline(x=stats_hist['total_ret'].values[0], color='black', label='historical (ex-ante)')
+plt.legend()
+plt.title('Ex-post Evaluation: ' + stats_hist.index[0])
+
+#
+
+
+# ======================================================================================================================
+# Forecasting
+# ======================================================================================================================
+price_d = decomposeTS(df_prices)
+price_d = price_d.HPfilter(freq='daily')
+
+# estimate trends
 trends = Trends(prices_tr)
 price_dec = decomposeTS(prices_tr)
 price_dec = price_dec.HPfilter(freq='daily')
@@ -136,26 +149,6 @@ data_pred.index = df_prices.index
 data_pred.columns = ['trend_pred']
 
 df_all = price_d.join(data_pred)
-df_all.iloc[:, [0, 3]].plot()
 
-#
-ret_tr = prices_tr.iloc[:, 0].pct_change().dropna()
-from datetime import datetime, timedelta
-
-# Get the date three years ago from today
-three_years_ago = ret_tr.index[-1].to_pydatetime() - timedelta(days=3 * 365)
-
-# Select data from three years ago until today
-df_three_years = ret_tr[str(three_years_ago.date()):]
-
-ret_boots = bootstrappingTS(df_three_years, bootstrap_type='sb', optimal_block=True, n_samples=10000)
-total_ret_oos = get_main_stats(prices_out_of_sample.pct_change())['total_ret'][0]
-
-stats_boost = get_main_stats(ret_boots)
-stats_hist = get_main_stats(pd.DataFrame(df_three_years))
-
-# outcome
-stats_boost['total_ret'].plot.density()
-plt.axvline(x=total_ret_oos, color='red', label = 'Realized')
-plt.axvline(x=stats_hist['total_ret'].values[0], color='black', label = 'historical')
-plt.legend()
+df_all.iloc[:, [0, 2, 3]].plot()
+plt.axvline(x='2020-07-01', color='red', label='Realized')

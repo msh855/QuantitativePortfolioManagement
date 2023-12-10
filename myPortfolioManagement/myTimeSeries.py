@@ -16,6 +16,12 @@ from myPortfolioManagement.myUtils import check_date_index, data_check_TS
 import pywt
 from pykalman import KalmanFilter
 
+from aeon.forecasting.trend import TrendForecaster
+import pandas as pd
+from datetime import timedelta
+from myPortfolioManagement.myUtils import check_date_index
+
+
 
 # Functions to decompose TS to cycle and trend
 # ======================================================================================================================
@@ -354,3 +360,20 @@ class decomposeTS:
 
     def CFfilter(self, low: int = 6, high: int = 32, drift: bool = True) -> pd.DataFrame:
         return CFfilter(self.df, low, high, drift)
+
+
+def forecast_trend(data: pd.DataFrame or pd.Series = None, steps: list = [1, 2, 3], feq: str = 'd'):
+    y = data.to_period(feq)
+    forecaster = TrendForecaster()
+    forecaster.fit(y)  # fit the forecaster
+    pred = forecaster.predict(fh=steps)  # predict the next value
+    return pred
+
+def look_back(data:pd.DataFrame or pd.Series, years:int = 3):
+    check_date_index(data)
+    # Get the date three years ago from today
+    three_years_ago = data.index[-1].to_pydatetime() - timedelta(days=years * 365)
+    # Select data from three years ago until today
+    data_lookback = data[str(three_years_ago.date()):]
+    return data_lookback
+

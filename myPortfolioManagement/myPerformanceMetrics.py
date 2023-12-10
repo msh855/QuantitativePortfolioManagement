@@ -25,9 +25,11 @@ ParallelPandas.initialize(n_cpu=n_cpu, disable_pr_bar=True)
 
 
 def age(series):
-    start_date = series.first_valid_index()
-    series = series[series.index >= start_date]
-    sample_age = series.index[-1].year - series.index[0].year
+    check_date_index(series)
+    # start_date = series.first_valid_index()
+    # series = series[series.index >= start_date]
+    # sample_age = series.index[-1].year - series.index[0].year
+    sample_age = ffn.year_frac(series.index[0], series.index[-1])
     return sample_age
 
 
