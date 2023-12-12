@@ -128,32 +128,6 @@ plt.axvline(x=stats_hist['total_ret'].values[0], color='black', label='historica
 plt.legend()
 plt.title('Ex-post Evaluation: ' + stats_hist.index[0])
 
-# check yields to detect balance of risks
-df_yields = get_US_yields(freq='d')
-df_yields['Spread'] = df_yields['2Y'] - df_yields['3M']
-df_yields_tr = df_yields[df_yields.index <= date_tr]
-#df_yields_tr = look_back(df_yields_tr, 3)
-df_yields_out = df_yields[df_yields.index > date_tr]
-
-# boostrap yields
-boost_tep = 'mbb'
-blc_years = 5*365
-yields_boots3y = bootstrappingTS(df_yields_tr['3Y'], bootstrap_type=boost_tep, block_size = blc_years, n_samples=10000)
-yields_boots1y = bootstrappingTS(df_yields_tr['1Y'], bootstrap_type=boost_tep, block_size = blc_years, n_samples=10000)
-yields_boots10 = bootstrappingTS(df_yields_tr['10Y'], bootstrap_type=boost_tep, block_size = blc_years, n_samples=10000)
-yields_bootsYC = bootstrappingTS(df_yields_tr['Spread'], bootstrap_type=boost_tep, block_size = blc_years, n_samples=10000)
-
-
-for col, yeld in zip(['3Y', '1Y', '10Y', 'Spread'], [yields_boots3y, yields_boots1y, yields_boots10, yields_bootsYC]):
-    plt.figure()
-    yeld.mean().plot.density()
-    df_yields[col].plot.density()
-    plt.axvline(x=df_yields_tr[col].mean(), color='black', label='historical (ex-ante)')
-    plt.axvline(x=df_yields_out[col].mean(), color='red', label='Realized (ex-post)')
-    plt.legend()
-    plt.title('Ex-post Evaluation: ' + col)
-    plt.show()
-
 # ======================================================================================================================
 # Forecasting
 # ======================================================================================================================

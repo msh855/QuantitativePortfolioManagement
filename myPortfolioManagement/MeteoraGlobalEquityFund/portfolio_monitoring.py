@@ -1,23 +1,23 @@
 import warnings
 
-warnings.filterwarnings('ignore')
-
-from openbb_terminal.sdk import openbb
 import ffn
 
 import pandas as pd
 import os
-from myPortfolioManagement.myData import get_stock_prices
+from myPortfolioManagement.myData import get_stock_prices, get_stock_info
 from myPortfolioManagement.myPerformanceMetrics import get_main_stats
 from myPortfolioManagement.myReturns import calculate_portfolio_returns
 from myPortfolioManagement.Trade212_Account.get_account_info import get_pie_details, get_pies, \
     get_portfolio_info
 import quantstats as qs
+from myPortfolioManagement.myClustering import cluster_ftca
+from myPortfolioManagement.myTimeSeries import decomposeTS
+
+warnings.filterwarnings('ignore')
 
 # Trade212 Account
 # ======================================================================================================================
 df_pies = get_pies()  # all pies
-# [
 df_pie_details = get_pie_details(id='1547833')  # global Meteora
 df_trade212_all_stocks = get_portfolio_info()
 df_pie_weights = df_pie_details[['tickers_212', 'expectedShare']]
@@ -27,56 +27,34 @@ df_pie_weights = df_pie_details[['tickers_212', 'expectedShare']]
 working_directory = ('/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/'
                      'MeteoraGlobalEquityFund/Data')
 
-# get currency info
-# ======================================================================================================================
-file1 = os.path.join(working_directory, 'df_prices.csv')
-df_currency_info = pd.read_csv(file1)
-df_currency_info = df_currency_info[['YahooTicker', 'Currency']].drop_duplicates()
-df_currency_info['Currency'] = [x.upper() for x in df_currency_info['Currency']]
-
 file2 = os.path.join(working_directory, 'stock_screening.xlsx')
 df_port_info = pd.read_excel(file2)
-df_port_main_info = df_currency_info.merge(df_port_info)
 
 # download prices per date of purchase
 # ====================================
-df_port_main_info = df_port_main_info.merge(df_trade212_all_stocks[['Date_of_Purchase', 'tickers_212']])
+df_port_main_info = df_port_info.merge(df_trade212_all_stocks[['Date_of_Purchase', 'tickers_212']])
 df_port_main_info = df_port_main_info.merge(df_pie_details)
 
 ticker_col_name = df_port_main_info.columns[0]
+tickers = df_port_main_info[ticker_col_name]
 
-# identify Non GBP stocks and download FX
-# ======================================================================================================================
-base_currency = 'GBP'
-prices_list = []
-for item in zip(df_port_main_info[ticker_col_name], df_port_main_info['Date_of_Purchase'],
-                df_port_main_info['Currency']):
+# get weights
+df_st = get_stock_info(tickers)
+df_st_info_all = df_st.merge(df_port_main_info[[ticker_col_name, 'expectedShare']], on=ticker_col_name)
+df_weights = df_st_info_all[['longName', 'expectedShare']]
 
-    data = get_stock_prices(yahoo_tickers=[item[0]], start_date=str(item[1]), fix_data=True)
-
-    if item[2] != base_currency:
-        fx_temp = openbb.forex.load(to_symbol=base_currency, from_symbol=item[2],
-                                    start_date=str(item[1]))
-        fx_temp.index.name = 'Date'
-        fx_temp = fx_temp[['Adj Close']]
-        fx_temp.columns = ['Spot']
-
-        data = data.join(fx_temp)
-    else:
-        data['Spot'] = 1
-
-    prices_list.append(data)
-
-df_prices = pd.concat(prices_list)
-df_prices['price_fx_adj'] = df_prices['adjclose'] * df_prices['Spot']
-df_prices = df_prices.pivot(columns='yahooTicker', values='price_fx_adj')
+# get prices
+df_prices = get_stock_prices(yahoo_tickers=tickers, adj_fx=True)
 
 # Backtest
 # ======================================================================================================================
 ret = df_prices.pct_change().dropna()
+df_clusters = cluster_ftca(ret, col_name='longName')
+df_clusters = df_clusters.merge(df_st_info_all[['industry', 'sector', 'longName', 'expectedShare']])
+df_clusters[['cluster', 'expectedShare']].groupby(['cluster']).sum().sort_values('expectedShare').plot.bar()
 
 # portfolio returns
-ret_port = calculate_portfolio_returns(returns=ret, myweights=df_port_main_info[['YahooTicker', 'expectedShare']])
+ret_port = calculate_portfolio_returns(returns=ret, myweights=df_weights)
 
 # calculate benchmark
 # ===================
@@ -89,10 +67,9 @@ price_index = ffn.core.to_price_index(ret_all, start=1)
 price_index = ffn.core.rebase(price_index, value=1)
 price_index.plot()
 
-get_main_stats(price_index).transpose()
+port_stats = get_main_stats(ret_all).transpose()
 
 # backtest
-qs.reports.html(ret_all['myPortfolio'], benchmark=ret_all[bench_name], output='/Users/safishajjouz/Downloads',
-                download_filename='port_perf.html', eoy=True)
-
 qs.reports.basic(ret_all['myPortfolio'], benchmark=ret_all[bench_name], rf=0.05)
+
+qs.stats.monthly_returns(returns=ret_all, eoy=False).plot.bar()

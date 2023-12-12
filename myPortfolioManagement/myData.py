@@ -137,15 +137,6 @@ def get_stock_info(yahoo_tickers: list = None):
     return pd.concat(results, ignore_index=True)
 
 
-#
-#
-# def get_stock_mini_info(yahoo_tickers: list = None):
-#     ncpus = max(mp.cpu_count() - 1, 1)
-#     results = Parallel(n_jobs=ncpus, prefer="threads")(
-#         delayed(_add_stock_info)(yahoo_ticker=tic) for tic in tqdm(yahoo_tickers))
-#     return pd.concat(results, ignore_index=True)
-
-
 def get_option_exp_dates(yahoo_ticker: str):
     stock_info = yf.Ticker(yahoo_ticker)
     df_op_exp = pd.DataFrame(stock_info.options)

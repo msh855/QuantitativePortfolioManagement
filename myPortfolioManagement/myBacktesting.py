@@ -282,10 +282,8 @@ def sim_paths(returns: pd.Series, out_of_sample_date: str = None,
     return ret_possible_path_cum
 
 
-def prep_dist(x: pd.DataFrame, name_perc: list = None) -> pd.DataFrame:
+def prep_dist(df: pd.DataFrame, name_perc: list = None) -> pd.DataFrame:
     """
-    
-
     Args:
         x (TYPE): DESCRIPTION.
         name_perc (TYPE, optional): DESCRIPTION. Defaults to ['0.05', '0.20','0.35','0.65','0.80', '0.95'].
@@ -294,6 +292,7 @@ def prep_dist(x: pd.DataFrame, name_perc: list = None) -> pd.DataFrame:
         x (TYPE): DESCRIPTION.
 
     """
+    x = df.copy()
 
     if name_perc is None:
         name_perc = ['0.05', '0.20', '0.35', '0.65', '0.80', '0.95']
@@ -301,15 +300,7 @@ def prep_dist(x: pd.DataFrame, name_perc: list = None) -> pd.DataFrame:
     for perc in name_perc:
         x[perc] = np.percentile(x, float(perc) * 100, axis=1)
 
-    # x['0.05'] =  np.percentile(x, 5, axis = 1)
-    # x['0.20'] =  np.percentile(x, 20, axis = 1)
-    # x['0.35'] =  np.percentile(x, 35, axis = 1)
-    # x['0.65'] =  np.percentile(x, 65, axis = 1)
-    # x['0.80'] =  np.percentile(x, 80, axis = 1)
-    # x['0.95'] =  np.percentile(x, 95, axis = 1)
-
     x = x[name_perc]
-    # x = x[x.index>='2020-01-01']
     return x
 
 

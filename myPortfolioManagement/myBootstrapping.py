@@ -175,4 +175,13 @@ def bootstrappingTS(series: pd.Series = None, block_size: int = None, optimal_bl
     else:
         results = BootstrapFunc(series, n_samples=n_samples, seed=seed, block_size=block_size)
 
+    # if BootstrapFunc in [BootstrapCircular, BootstrapStationary]:
+    #     print('I am here')
+    #     results = BootstrapFunc(series, n_samples=n_samples, seed=seed, block_size=block_size,
+    #                             optimal_block=optimal_block)
+    # elif BootstrapFunc is BootstrapMovingBlock:
+    #     results = BootstrapFunc(series, n_samples=n_samples, seed=seed, block_size=block_size)
+    # else:
+    #     results = BootstrapFunc(series, n_samples=n_samples, seed=seed)
+
     return results
