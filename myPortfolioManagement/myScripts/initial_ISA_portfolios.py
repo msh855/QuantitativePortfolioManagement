@@ -74,7 +74,7 @@ df_main_stats[[metric, 'adjusted_sortino']].sort_values(by=metric).plot.barh()
 # ======================================================================================================================
 df_funds = pd.concat(portfolio_list)
 funds = df_funds['yahooTicker'].unique()
-df_fund_prices = get_stock_prices(funds, wide_format=True, start_date=start_trading_date)
+df_fund_prices = get_stock_prices(funds, start_date=start_trading_date, wide_format=True)
 ret_funds = clean_stock_prices(df_fund_prices)
 
 df_fund_main_stats = get_main_stats(ret_funds, add_age=True)
