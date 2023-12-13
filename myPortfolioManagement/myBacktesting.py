@@ -229,7 +229,7 @@ def sim_series(returns: pd.Series, weight_period: list = None,
     else:
         weights = None
 
-    ret_sim = returns.sample(frac=n_sample,
+    ret_sim = returns.sample(n=n_sample,
                              replace=True,
                              ignore_index=True,
                              weights=weights,

@@ -270,6 +270,11 @@ def denoise_series_welvet(x: pd.Series,
 
 
 def denoise_series_kf(x: pd.Series) -> pd.DataFrame:
+    """
+
+    :param x:
+    :return:
+    """
     x = data_check_TS(x)
     x_array = x.dropna().to_numpy()
 
@@ -291,6 +296,13 @@ def denoise_series_kf(x: pd.Series) -> pd.DataFrame:
 
 
 def make_sma(df: pd.DataFrame, spans: list = [50, 60, 90, 200], add_prod: bool = False) -> pd.DataFrame:
+    """
+
+    :param df:
+    :param spans:
+    :param add_prod:
+    :return:
+    """
     check_date_index(df)
 
     df_ema_list = []
