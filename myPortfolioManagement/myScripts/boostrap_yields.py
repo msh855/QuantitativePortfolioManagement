@@ -7,6 +7,7 @@ from myPortfolioManagement.myBacktesting import prep_dist
 import seaborn as sns
 from myPortfolioManagement.myBootstrapping import BootstrapStationary
 from myPortfolioManagement.myBacktesting import prep_dist, plot_fan_chart, sim_series, sim_paths
+from myPortfolioManagement.myClustering import cluster_ftca
 
 # ======================================================================================================================
 # specs
@@ -17,14 +18,16 @@ n_sample = 10000
 # ======================================================================================================================
 # load data
 # ======================================================================================================================
-df_yields = get_US_yields(freq='d')
+df_yields = get_US_yields(freq='a')
 df_yields['Spread'] = df_yields['2Y'] - df_yields['3M']
+
+cluster_ftca(df_yields, threshold=0.7)
 
 # ======================================================================================================================
 # trends
 # ======================================================================================================================
 trneds = decomposeTS(df_yields[['2Y']].dropna())
-#trends_bHP = trneds.BoostedHP(Max_Iter=10, stopping='nonstop')
+# trends_bHP = trneds.BoostedHP(Max_Iter=10, stopping='nonstop')
 trends_HP = trneds.HPfilter(freq='daily')
 trends_HP.plot()
 
@@ -37,8 +40,6 @@ ylds = df_yields[['2Y']].dropna()
 
 ylds.sample(frac=0.50, ignore_index=True, replace=True)
 yields_paths = sim_paths(df_yields[['2Y']].dropna(), out_of_sample_date=date_tr, n_sample=10)
-
-
 
 boost_tep = 'mbb'
 blc_years = 5 * 365

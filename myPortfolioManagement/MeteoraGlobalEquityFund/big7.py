@@ -1,8 +1,5 @@
-import warnings
-
-warnings.filterwarnings('ignore')
-
 import ffn
+from myPortfolioManagement.myClustering import cluster_ftca
 import pandas as pd
 import numpy as np
 from myPortfolioManagement.myData import get_stock_prices, get_sp500_tickers
@@ -16,18 +13,21 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from matplotlib.backends.backend_pdf import PdfPages
+import warnings
+
+warnings.filterwarnings('ignore')
 
 # Trade212 Account
 # ======================================================================================================================
 df_pies = get_pies()  # all pies
 df_pie_details = get_pie_details(id='1783656')  # big 7
 df_pie_weights = df_pie_details[['tickers_212', 'expectedShare']]
-df_pie_weights['tickers_212'] = np.where(df_pie_weights['tickers_212'] == 'FB', 'META', df_pie_weights['tickers_212'])
+# df_pie_weights['tickers_212'] = np.where(df_pie_weights['tickers_212'] == 'FB', 'META', df_pie_weights['tickers_212'])
 
 # download prices per date of purchase
 # ====================================
 ticker_col_name = 'YahooTickers'
-tickers = ['MSFT', 'GOOG', 'AAPL', 'NVDA', 'TSLA', 'AMZN', 'META']
+tickers = ['MSFT', 'GOOG', 'AAPL', 'NVDA', 'TSLA', 'AMZN']
 start_date = '1950-01-01'
 
 # identify Non GBP stocks and download FX
@@ -39,6 +39,17 @@ df_prices_wide = df_prices.pivot(columns='yahooticker', values='adjclose')
 # ======================================================================================================================
 ret = df_prices_wide.pct_change().dropna()
 ret.cumsum().plot()
+
+ret_m = df_prices_wide.resample('M').last().pct_change().dropna()
+ret_y = df_prices_wide.resample('Y').last().pct_change().dropna()
+
+cluster_ftca(ret, col_name='ticker', threshold=0.7)
+cluster_ftca(ret_m, col_name='ticker', threshold=0.7)
+cluster_ftca(ret_y, col_name='ticker', threshold=0.7)
+
+ret.corr()
+ret_y.corr()
+ret_m.corr()
 
 # portfolio returns
 ret_port = calculate_portfolio_returns(returns=ret, myweights=df_pie_weights[['tickers_212', 'expectedShare']])
@@ -245,3 +256,65 @@ scaled_df2 = greate_score(df_main_stats_big7)
 # # compare Margins
 # df_stock_info[['Profit M']].sort_values('Profit M').plot.barh()
 # df_inf_new[['score']].sort_values('score').plot.bar()
+
+
+amount = list(range(100, 3001, 500))
+df_opt_amount = pd.DataFrame(pd.Series(amount, name='amount'))
+df_opt_amount['gains'] = df_opt_amount['amount'] * exp_ret
+df_opt_amount['Extra Gains (%)'] = df_opt_amount['gains'].pct_change() * 100
+
+df_opt_amount.dropna().plot(kind='scatter', x='amount', y='Extra Gains (%)',
+                            title='Optimal Amount for Given returns')
+
+
+def optimal_amount(exp_ret=0.66, plot=False):
+    amount = list(range(100, 3001, 10))
+
+    df_opt_amount = pd.DataFrame(pd.Series(amount, name='amount'))
+    df_opt_amount['gains'] = df_opt_amount['amount'] * exp_ret
+    df_opt_amount['Extra Gains (%)'] = df_opt_amount['gains'].pct_change() * 100
+    df_opt_amount['ret_scenario'] = exp_ret
+    if plot:
+        df_opt_amount.dropna().plot(kind='scatter', x='amount', y='Extra Gains (%)',
+                                    title='Optimal Amount for Given returns')
+    else:
+        return df_opt_amount.dropna()
+
+
+df_scenarios = []
+for r in [0.10, 0.30, 0.60, 1]:
+    df_temp = optimal_amount(r)
+    df_scenarios.append(df_temp)
+
+df_opt_amount = pd.concat(df_scenarios)
+
+optimal_amount(0.10, plot=True)
+
+sns.scatterplot(data=df_opt_amount, x='amount', y='Extra Gains (%)', hue='ret_scenario')
+
+CAGRs = np.linspace(0.05, 0.30)
+ini_values = np.linspace(5000, 50000)
+Target_value = 200000
+Initial_Inve = 2000
+
+
+def num_of_years(target_wealth: float = None, initial_inv: float = None, cagr: float = None):
+    yrs = np.log(target_wealth / initial_inv) / np.log(1 + cagr)
+    return round(yrs)
+
+
+num_of_years(Target_value, 5000, 0.05)
+num_of_years(Target_value, 50000, 0.05)
+
+
+df_years = pd.DataFrame()
+df_years['cagr'] = CAGRs
+df_years['num_years'] = [num_of_years(Target_value, Initial_Inve, x) for x in CAGRs]
+df_years['ini_values'] = ini_values
+df_years['num_years_spiti_0.05'] = [num_of_years(Target_value, x, 0.05) for x in ini_values]
+df_years['num_years_spiti_0.10'] = [num_of_years(Target_value, x, 0.10) for x in ini_values]
+df_years['num_years_spiti_0.25'] = [num_of_years(Target_value, x, 0.25) for x in ini_values]
+
+
+for var in ['num_years_spiti_0.05', 'num_years_spiti_0.10', 'num_years_spiti_0.25']:
+    sns.scatterplot(data=df_years, x='ini_values', y=var)

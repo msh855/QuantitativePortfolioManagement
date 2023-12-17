@@ -56,7 +56,8 @@ def get_portfolio_info(myAPI: str = '4666063ZUKaNsJbECbaOGawwQgMdesMbKGwG'):
     response = requests.get(url_my_portfolio, headers=headers)
     data = response.json()
     df_212 = pd.DataFrame(data)
-    df_212['Date_of_Purchase'] = pd.to_datetime(df_212['initialFillDate']).dt.date
+    df_212['Date_of_Purchase'] = [str(x)[0:10] for x in df_212['initialFillDate']]
+    df_212['Date_of_Purchase'] = pd.to_datetime(df_212['Date_of_Purchase']).dt.date
     df_212 = df_212.drop(['frontend', 'maxBuy', 'maxSell', 'pieQuantity', 'initialFillDate'], axis=1)
 
     inv_212 = [x.split('_') for x in df_212['ticker']]
