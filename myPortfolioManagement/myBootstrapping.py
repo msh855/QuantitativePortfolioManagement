@@ -95,7 +95,7 @@ def BootstrapMovingBlock(series: pd.Series = None, block_size: int or float = 12
     df = pd.concat(ps_list, axis=1)
 
     # cleaning
-    # df = _helper(df, series, n_samples)
+    df = _helper(df, series, n_samples)
 
     return df
 

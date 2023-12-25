@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from pyData.getdata import get_US_yields, get_FX_spots
+from maData.getdata import get_US_yields, get_fx
 from myPortfolioManagement.myData import get_stock_prices
 from myPortfolioManagement.myTimeSeries import make_sma
 from myPortfolioManagement.myBacktesting import performance
@@ -39,7 +39,7 @@ df_all['Signal2'] = np.where(df_all['Slope1Y'] > df_all['Slope1Y_sm50'], 1, -1)
 # ======================================================================================================================
 df_stock = get_stock_prices(yahoo_tickers=['^IXIC'], wide_format=True)
 df_stock = df_stock.rename(columns={'^IXIC': 'Nasdaq'})
-df_fx = get_FX_spots(currencies=['EUR', 'JPY'], wide_format=True)
+df_fx = get_fx(currencies=['EUR', 'JPY'], wide_format=True)
 
 df_temp = pd.concat([df_stock, df_fx], axis=1)
 df_temp.index.name = df_all.index.name
