@@ -6,7 +6,7 @@ Created on Mon Apr  4 20:35:08 2022
 @author: safishajjouz
 """
 import pandas as pd
-
+import ffn
 from tslearn.clustering import TimeSeriesKMeans
 from tslearn.preprocessing import TimeSeriesScalerMeanVariance
 import math
@@ -72,14 +72,13 @@ def ts_clustering(df: pd.DataFrame, number_of_clusters: int = None,
 
 
 def detect_regimes(df: pd.DataFrame, series: str, optimal_clusters: int = 3,
-                   metric="dtw", plot_regimes=True) -> pd.DataFrame:
+                   metric="dtw", plot_regimes=True, **kwargs) -> pd.DataFrame:
     X = df[[series]]
     X_scaled = normalize(X, axis=0)
 
     # after optimal clustering 
 
-    smooth_km = TimeSeriesKMeans(n_clusters=optimal_clusters, metric=metric,
-                                 max_iter=10, random_state=33)
+    smooth_km = TimeSeriesKMeans(n_clusters=optimal_clusters, metric=metric, **kwargs)
     smooth_km.fit(X_scaled)
 
     # present reslults 
@@ -133,3 +132,19 @@ def kMeansClusterSeries(df: pd.DataFrame, method='ward', metric='euclidean', tit
         color_threshold=3, **kwargs)
     plt.yticks(fontsize=11)
     plt.show()
+
+
+# Cluster funds
+def cluster_ftca(returns: pd.DataFrame, threshold: float = 0.70, col_name: str = None):
+    clust = ffn.core.calc_ftca(returns, threshold=threshold)
+    df_clusters = (pd.DataFrame.from_dict(clust, orient="index")
+                   .sort_index()
+                   .stack()
+                   .reset_index(level=1, drop=True)
+                   .reset_index())
+    df_clusters.columns = ['cluster', 'stock']
+
+    if col_name is not None:
+        df_clusters = df_clusters.rename(columns={'stock': col_name})
+
+    return df_clusters

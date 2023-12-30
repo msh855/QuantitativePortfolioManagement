@@ -1,10 +1,6 @@
 import pandas as pd
 import quantstats as qs
-from openbb_terminal.sdk import openbb
-import ffn
-
-pd.options.mode.use_inf_as_na = True  # show NAs instead of inf
-
+from myPortfolioManagement.myDataCleaning import cap_outliersTS
 
 def balance_dates(returns, returns_benchmark):
     """
@@ -70,25 +66,26 @@ def chunk_the_list(lst, n):
         yield lst[i:i + n]
 
 
-def _helper_get_stock_info(yahoo_tickers: list = None, data_type: str = 'overview') -> pd.DataFrame:
-    """
-
-    :param yahoo_tickers:
-    :param data_type:
-    :return:
-    """
-    if data_type == 'all':
-        funs = openbb.stocks.ca.screener
-        datatypes = ['overview', 'valuation', 'financial', 'ownership', 'performance', 'technical']
-        df_list = [funs(similar=yahoo_tickers, data_type=datatype) for datatype in datatypes]
-        df = pd.concat(df_list, axis=1)
-        df = ffn.drop_duplicate_cols(df)
-    else:
-        df = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type=data_type)
-
-    df.set_index('Ticker', inplace=True)
-    df = _fix_missing(df)
-    return df
+#
+# def _helper_get_stock_info(yahoo_tickers: list = None, data_type: str = 'overview') -> pd.DataFrame:
+#     """
+#
+#     :param yahoo_tickers:
+#     :param data_type:
+#     :return:
+#     """
+#     if data_type == 'all':
+#         funs = openbb.stocks.ca.screener
+#         datatypes = ['overview', 'valuation', 'financial', 'ownership', 'performance', 'technical']
+#         df_list = [funs(similar=yahoo_tickers, data_type=datatype) for datatype in datatypes]
+#         df = pd.concat(df_list, axis=1)
+#         df = ffn.drop_duplicate_cols(df)
+#     else:
+#         df = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type=data_type)
+#
+#     df.set_index('Ticker', inplace=True)
+#     df = _fix_missing(df)
+#     return df
 
 
 def _fix_missing(df):
@@ -100,9 +97,30 @@ def _fix_missing(df):
 
 # cleaning
 def _helper(df: pd.DataFrame = None, series: pd.Series = None, n_samples: int = None) -> pd.DataFrame:
-    string_name = series.name
-    cols = [string_name + '_path' + str(x) for x in range(1, n_samples + 1)]
+    #string_name = series.name
+    #cols = [string_name + '_path' + str(x) for x in range(1, n_samples + 1)]
+    cols = ['path' + str(x) for x in range(1, n_samples + 1)]
     df.columns = cols
     df.index = series.index
 
     return df
+
+
+def convert_date_index(df):
+    # Convert the index to datetime
+    df.index = pd.to_datetime(df.index)
+
+    # Format the datetime index
+    df.index = df.index.strftime('%Y-%m-%d')
+
+    df.index = pd.to_datetime(df.index)
+
+    return df
+
+def clean_stock_prices(prices: pd.DataFrame, **kwargs) -> pd.DataFrame:
+    ret_raw = prices.pct_change()
+    ret_raw.dropna(inplace=True)
+    prices_capped = cap_outliersTS(ret_raw, **kwargs)
+    ret_bench = prices_capped.pct_change()
+    return ret_bench
+

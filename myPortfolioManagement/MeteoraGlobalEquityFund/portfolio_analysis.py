@@ -3,7 +3,7 @@ from myPortfolioManagement.myData import get_stock_prices, get_stock_info
 from myPortfolioManagement.myPerformanceMetrics import get_main_stats, reward_metric, performance_overview
 import pandas as pd
 import os
-from myPortfolioManagement.MeteoraGlobalEquityFund.Trade212_Account.get_account_info import get_pie_details, get_pies, \
+from myPortfolioManagement.Trade212_Account.get_account_info import get_pie_details, get_pies, \
     get_portfolio_info
 from openbb_terminal.sdk import openbb
 from myPortfolioManagement.myDataCleaning import data_overview
