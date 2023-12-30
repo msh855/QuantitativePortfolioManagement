@@ -2,7 +2,6 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-import numpy as np
 import ffn
 import pandas as pd
 import os
@@ -13,7 +12,6 @@ from myPortfolioManagement.Trade212_Account.get_account_info import get_pie_deta
     get_portfolio_info
 import quantstats as qs
 from myPortfolioManagement.myClustering import cluster_ftca
-from myPortfolioManagement.myTimeSeries import decomposeTS
 from myPortfolioManagement.myPlots import scatter_plot_simple
 from myPortfolioManagement.myDataCleaning import cap_outliersTS
 
