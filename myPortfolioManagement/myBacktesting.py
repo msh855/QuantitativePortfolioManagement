@@ -229,7 +229,7 @@ def sim_series(returns: pd.Series, weight_period: list = None,
     else:
         weights = None
 
-    ret_sim = returns.sample(n=n_sample,
+    ret_sim = returns.sample(frac=n_sample,
                              replace=True,
                              ignore_index=True,
                              weights=weights,
@@ -339,7 +339,7 @@ def plot_fan_chart(returns: pd.DataFrame, fcast: pd.DataFrame,
     fig, ax = plt.subplots(figsize=(9, 5))
     n_bands = int(np.floor(len(fcast.columns) / 2))
 
-    # dates_to_fill = ret_hist.index[(ret_hist.index>=from_forc)]
+    #dates_to_fill = ret_hist.index[(ret_hist.index>=from_forc)]
 
     for i in range(n_bands):
         # Choose alpha in a range of values
@@ -347,7 +347,7 @@ def plot_fan_chart(returns: pd.DataFrame, fcast: pd.DataFrame,
         # Fill in colour between bands (ie between each 'fan')
         ax.fill_between(
             fcast.index,
-            # dates_to_fill,
+            #dates_to_fill,
             fcast[fcast.columns[i]],
             fcast[fcast.columns[-i - 1]],
             color="xkcd:blue",

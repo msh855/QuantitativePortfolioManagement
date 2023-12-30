@@ -47,19 +47,31 @@ def func_adj_fx(prices: pd.DataFrame, yahoo_tickers: list, base_currency: str = 
 
 # function to get prices for a list of stocks
 @timebudget
-def get_stock_prices(yahoo_tickers: list, start_date: str = None,
+def get_stock_prices(yahoo_tickers: list = None, start_date: str = None,
                      end_date: str = None,
-                     time_interval: str = 'daily', fix_data: bool = False,
+                     freq: str = 'daily', fix_data: bool = False,
                      auto_adjust: bool = False,
                      adj_fx: bool = False, base_currency: str = 'GBP',
                      wide_format=False,
-                     **kwarg):
-
+                     **kwarg) -> pd.DataFrame:
+    """
+    :param yahoo_tickers: list of yahoo tickers. Defaults to None
+    :param start_date: (str) of start date in YYYY-MM-DD format. For example, 2020-01-20. None assumes max sample
+    :param end_date: (str) of start date in YYYY-MM-DD format. For example, 2020-01-20. None assumes latest available price
+    :param freq: str 'daily', 'monthly', 'quarterly'
+    :param fix_data: (bool) Detect currency unit 100x mixups and attempt repair. Default is False
+    :param auto_adjust: (bool) Adjust all OHLC automatically? Default is True
+    :param adj_fx: (bool) adjust prices to foreign currencies, so all prices are quoted on the same (base) currency
+    :param base_currency: (str) the base currency chosen if adj_fix is set to True
+    :param wide_format: (bool) the format of the output. This can be long or wide format. long format returns info of the stocks
+    :param kwarg: any other parameters. See qs.stock.history(
+    :return: (dataframe)
+    """
     ncpus = max(mp.cpu_count() - 1, 1)
     results_temp = Parallel(n_jobs=ncpus, prefer="threads")(
         delayed(_load_stock)(yahoo_ticker=tic, start_date=start_date,
                              end_date=end_date,
-                             time_interval=time_interval,
+                             time_interval=freq,
                              fix_data=fix_data, auto_adjust=auto_adjust, **kwarg) for tic in
         tqdm(yahoo_tickers))
 
@@ -76,7 +88,7 @@ def get_stock_prices(yahoo_tickers: list, start_date: str = None,
     df_all.columns = [x.replace(" ", "") for x in df_all.columns]
 
     if adj_fx:
-        wide_format= False
+        wide_format = False
         prices = df_all.pivot(values='adjclose', columns='longname')
         df_all = func_adj_fx(prices=prices, yahoo_tickers=yahoo_tickers, base_currency=base_currency)
 
