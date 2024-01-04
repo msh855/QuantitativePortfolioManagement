@@ -2,8 +2,9 @@ import numpy as np
 import pandas as pd
 import requests
 
+myAPI = '4666063ZGrEDEcHLjIquabEpUJOtrpVPvMNv'
 
-def get_pie_details(id: str = "1547833", myAPI: str = '4666063ZUKaNsJbECbaOGawwQgMdesMbKGwG') -> pd.DataFrame:
+def get_pie_details(id: str = "1547833", myAPI: str = myAPI) -> pd.DataFrame:
     url = "https://live.trading212.com/api/v0/equity/pies/" + id
     headers = {"Authorization": myAPI}
     response = requests.get(url, headers=headers)
@@ -49,7 +50,7 @@ def get_pie_details(id: str = "1547833", myAPI: str = '4666063ZUKaNsJbECbaOGawwQ
     return df_pie_portf
 
 
-def get_portfolio_info(myAPI: str = '4666063ZUKaNsJbECbaOGawwQgMdesMbKGwG'):
+def get_portfolio_info(myAPI: str = myAPI):
     # Trade212 Account overall portfolio
     headers = {"Authorization": myAPI}
     url_my_portfolio = "https://live.trading212.com/api/v0/equity/portfolio"
@@ -78,7 +79,7 @@ def get_portfolio_info(myAPI: str = '4666063ZUKaNsJbECbaOGawwQgMdesMbKGwG'):
     return df_212
 
 
-def get_pies(myAPI: str = '4666063ZUKaNsJbECbaOGawwQgMdesMbKGwG'):
+def get_pies(myAPI: str = myAPI):
     headers = {"Authorization": myAPI}
     url_fetch_all_pies = "https://live.trading212.com/api/v0/equity/pies"
     response = requests.get(url_fetch_all_pies, headers=headers)

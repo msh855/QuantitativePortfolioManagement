@@ -38,11 +38,13 @@ df_all['Signal2'] = np.where(df_all['Slope1Y'] > df_all['Slope1Y_sm50'], 1, -1)
 # Get data trading instruments: EURUSD, Stocks, Japan
 # ======================================================================================================================
 df_stock = get_stock_prices(yahoo_tickers=['^IXIC'], wide_format=True)
-df_stock = df_stock.rename(columns={'^IXIC': 'Nasdaq'})
-df_fx = get_fx(currencies=['EUR', 'JPY'], wide_format=True)
+df_stock = df_stock.rename(columns={'NASDAQ Composite': 'Nasdaq'})
+df_fx = get_fx(cross='JPYUSD')
+df_fx.columns = ['JPYUSD']
 
 df_temp = pd.concat([df_stock, df_fx], axis=1)
 df_temp.index.name = df_all.index.name
+
 
 # merge all
 # ======================================================================================================================
@@ -84,5 +86,3 @@ monthly_heatmap(df_temp[str], eoy=True)
 
 qs.stats.monthly_returns(df_temp[str], eoy=True) * 100
 
-from fanchart import load_boe_history, load_boe_parameters
-from fanchart import fan
