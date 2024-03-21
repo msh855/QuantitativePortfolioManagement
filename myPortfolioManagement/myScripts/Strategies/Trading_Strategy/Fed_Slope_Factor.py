@@ -45,7 +45,6 @@ df_fx.columns = ['JPYUSD']
 df_temp = pd.concat([df_stock, df_fx], axis=1)
 df_temp.index.name = df_all.index.name
 
-
 # merge all
 # ======================================================================================================================
 df_all = df_all.join(df_temp)
@@ -72,17 +71,15 @@ import os
 
 ret_bench = returns_from_prices(df_stock)
 
-
-for str in ['EURUSDstr1', 'JPYUSDstr1']:
+for str in ['JPYUSDstr1']:
     df_temp = df_perm[[str]].join(ret_bench).dropna()
     qs.reports.html(df_temp[str], benchmark=df_temp['Nasdaq'], output=os.path.join(os.getcwd(), str + '.html'),
                     download_filename=str + '.html')
 
-
-get_main_stats(df_temp[df_temp.index>='2012-01-01'])
+get_main_stats(df_temp[df_temp.index >= '2012-01-01'])
 
 qs.plots.monthly_returns(df_temp[str], eoy=True)
 monthly_heatmap(df_temp[str], eoy=True)
 
-qs.stats.monthly_returns(df_temp[str], eoy=True) * 100
-
+df_monthly = qs.stats.monthly_returns(df_temp[str], eoy=True) * 100
+df_monthly[df_monthly.index == '2023'].transpose().plot.bar()

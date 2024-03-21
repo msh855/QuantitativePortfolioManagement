@@ -1,5 +1,4 @@
 import warnings
-
 warnings.filterwarnings('ignore')
 
 import ffn
@@ -72,6 +71,7 @@ import seaborn as sns
 import numpy as np
 
 sns.heatmap(ret.resample('m').last().corr().abs(), annot=False)
+
 features = ret.columns
 selector = SelectNonCollinear(0.4)
 ret_resample = ret.resample('m').last()
