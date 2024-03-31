@@ -1,216 +1,101 @@
 import pandas as pd
+import multiprocessing as mp
 
-from openbb_terminal.sdk import openbb, TerminalStyle
 from datetime import date, timedelta
 from timebudget import timebudget
-from yahoofinancials import YahooFinancials
-from os import path
-import glob
+from joblib import Parallel, delayed
+from tqdm import tqdm
 
 from finvizfinance.screener.overview import Overview
-from myPortfolioManagement.myUtils import _helper_get_stock_info, chunk_the_list
+from myPortfolioManagement.base import _load_stock, _load_fx, _add_stock_info
+import yfinance as yf
 
-import quantstats as qs
 
-qs.extend_pandas()
-pd.options.mode.use_inf_as_na = True
-theme = TerminalStyle("light", "light", "light")
+# from openbb import obb
+# obb.user.credentials.fmp_api_key = 'eb50221eaef20292fe4b57f675be8b23'
+
+def func_adj_fx(prices: pd.DataFrame, yahoo_tickers: list, base_currency: str = 'GBP'):
+    col_order_original = prices.columns
+    names = 'longName'
+
+    # find foreign stocks stocks
+    df_stock_main_info = get_stock_info(yahoo_tickers)
+    df_stock_main_info = df_stock_main_info[['yahooTicker', names, 'currency']]
+    df_temp = df_stock_main_info[df_stock_main_info['currency'] != base_currency]
+
+    which_com_to_adjust = list(df_temp[names])
+    prices_mini = prices[which_com_to_adjust]
+    price_adj_fx = prices_mini.copy()
+    srt_date = price_adj_fx.index[0]
+    df_lists = []
+    for company, cur in zip(df_temp[names], df_temp['currency']):
+        fx = cur + base_currency
+        df_fx_temp = _load_fx(fx, start_date=srt_date)
+        df_adj_temp = pd.concat([prices_mini[company], df_fx_temp], axis=1)
+        df_adj_temp[company + '_fx_adj'] = df_adj_temp[company] * df_adj_temp[fx]
+        df_lists.append(df_adj_temp)
+
+    df_adj_prices = pd.concat(df_lists, axis=1)
+    df_adj_prices = df_adj_prices.filter(like='_fx_adj')
+    df_adj_prices.columns = which_com_to_adjust
+    priced_non_adj = prices.drop(which_com_to_adjust, axis=1)
+    prices_adj = pd.concat([priced_non_adj, df_adj_prices], axis=1)
+    prices_adj = prices_adj[col_order_original]
+
+    return prices_adj
 
 
 # function to get prices for a list of stocks
 @timebudget
-def get_stock_prices(yahoo_tickers: list, start_date: str = '1950-01-01',
+def get_stock_prices(yahoo_tickers: list = None, start_date: str = None,
                      end_date: str = None,
-                     time_interval: str = 'daily', wide_format: bool = False, fix_data: bool = False) -> pd.DataFrame:
-    if end_date is None:
-        end_date = date.today() - timedelta(days=1)
-        end_date = end_date.strftime("%Y-%m-%d")
+                     freq: str = 'daily', fix_data: bool = False,
+                     auto_adjust: bool = False,
+                     adj_fx: bool = False, base_currency: str = 'GBP',
+                     wide_format=False,
+                     **kwarg) -> pd.DataFrame:
+    """
+    :param yahoo_tickers: list of yahoo tickers. Defaults to None
+    :param start_date: (str) of start date in YYYY-MM-DD format. For example, 2020-01-20. None assumes max sample
+    :param end_date: (str) of start date in YYYY-MM-DD format. For example, 2020-01-20. None assumes latest available price
+    :param freq: str 'daily', 'monthly', 'quarterly'
+    :param fix_data: (bool) Detect currency unit 100x mixups and attempt repair. Default is False
+    :param auto_adjust: (bool) Adjust all OHLC automatically? Default is True
+    :param adj_fx: (bool) adjust prices to foreign currencies, so all prices are quoted on the same (base) currency
+    :param base_currency: (str) the base currency chosen if adj_fix is set to True
+    :param wide_format: (bool) the format of the output. This can be long or wide format. long format returns info of the stocks
+    :param kwarg: any other parameters. See qs.stock.history(
+    :return: (dataframe)
+    """
+    ncpus = max(mp.cpu_count() - 1, 1)
+    results_temp = Parallel(n_jobs=ncpus, prefer="threads")(
+        delayed(_load_stock)(yahoo_ticker=tic, start_date=start_date,
+                             end_date=end_date,
+                             time_interval=freq,
+                             fix_data=fix_data, auto_adjust=auto_adjust, **kwarg) for tic in
+        tqdm(yahoo_tickers))
 
-    # removes duplicates
-    yahoo_tickers = list(set(yahoo_tickers))
+    # collect dataframes
+    results = pd.concat(results_temp)
+    df = get_stock_info(yahoo_tickers)
+    df_all = results.reset_index().merge(df, on='yahooTicker')
+    df_all = df_all.set_index('Date')
 
-    # loads price data
-    yahoo_financials = YahooFinancials(yahoo_tickers)
-    data = yahoo_financials.get_historical_price_data(start_date=start_date,
-                                                      end_date=end_date,
-                                                      time_interval=time_interval)
+    # clean columns
+    # df_all = df_all.rename(columns={'longName': 'name'})
 
-    df = pd.DataFrame(
-        [{**p, 'yahooTicker': k, 'instrumentType': v['instrumentType']} for k, v in data.items() for p in
-         v['prices']]).drop(columns=['date']).set_index('formatted_date')
+    df_all.columns = [x.lower() for x in df_all.columns]
+    df_all.columns = [x.replace(" ", "") for x in df_all.columns]
 
-    if fix_data:
-        df_temp = df.copy()
-
-        # fix faulty yahoo data that jumps 100x
-        df_temp = df_temp.dropna(subset=['adjclose'])
-        df_temp = df_temp[df_temp['adjclose'] != 0]
-
-        jumps_up = df_temp['adjclose'] / df_temp['adjclose'].shift() > 50
-        jumps_down = df_temp['adjclose'] / df_temp['adjclose'].shift() < .02
-        correction_factor = 100. ** (jumps_down.cumsum() - jumps_up.cumsum())
-        df_temp['adjclose'] *= correction_factor
-        df = df_temp
-
-    # rename columns
-    df.index.name = 'Date'
-    # Convert to date object
-    df.index = pd.to_datetime(df.index, infer_datetime_format=True)
-
-    if wide_format:
-        df = df.pivot_table(index='Date',
-                            columns='yahooTicker',
-                            values='adjclose')
-
-    return df
-
-
-def get_stock_prices_fx_adj(yahoo_tickers: list, start_date: str = '1950-01-01', base_currency='GBP',
-                            ticker_col_name: str = 'YahooTicker', wide_format: bool = False,
-                            df_currency: pd.DataFrame = None):
-    data_list = []
-    for ticker in yahoo_tickers:
-        # data = openbb.stocks.load(ticker, start_date=start_date)
-        data = get_stock_prices(yahoo_tickers=[ticker], start_date=start_date, fix_data=True)
-        data = data.rename(columns={'yahooTicker': ticker_col_name})
-        # data[ticker_col_name] = ticker
-        data = data.reset_index()
-        data = data.merge(df_currency)
-        if data['Currency'].drop_duplicates()[0] != base_currency:
-            fx_temp = openbb.forex.load(to_symbol=base_currency, from_symbol=data['Currency'].drop_duplicates()[0],
-                                        start_date=start_date)
-            fx_temp.index.name = 'Date'
-            fx_temp = fx_temp[['Adj Close']]
-            fx_temp.columns = ['Spot']
-            fx_temp['FX'] = data['Currency'].drop_duplicates()[0] + base_currency
-            data = data.set_index('Date').join(fx_temp)
-        else:
-            data['Spot'] = 1
-            data['FX'] = base_currency + base_currency
-            data = data.set_index('Date')
-
-        data_list.append(data)
-
-    df_prices = pd.concat(data_list)
-    df_prices = df_prices[['adjclose', ticker_col_name, 'Currency', 'Spot', 'FX']]
-    df_prices['adj_close_' + base_currency] = df_prices['adjclose'] * df_prices['Spot']
+    if adj_fx:
+        wide_format = False
+        prices = df_all.pivot(values='adjclose', columns='longname')
+        df_all = func_adj_fx(prices=prices, yahoo_tickers=yahoo_tickers, base_currency=base_currency)
 
     if wide_format:
-        df_prices = df_prices.pivot_table(index='Date',
-                                          columns=ticker_col_name,
-                                          values='adj_close_' + base_currency)
-    return df_prices
+        df_all = df_all.pivot(values='adjclose', columns='longname')
 
-
-def get_fidelity_prices(filter_date: str = '2000-01-01') -> pd.DataFrame:
-    file_type = 'csv'
-    seperator = ','
-
-    path_to_funds = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/Data/FidelityPrices/funds'
-    path_to_etf_trusts = '/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/myPortfolioManagement/Data/FidelityPrices/trusts_etfs'
-
-    # asset classes
-    subfolder_class_equity = 'Equity'
-    subfolder_class_Absolute_Alpha = 'AbsoluteAlpha'
-    subfolder_class_Bonds = 'Bonds'
-    subfolder_class_volatility_managed = 'VolatilityManaged'
-    subfolder_class_commodities = 'Commodities'
-    subfolder_class_alternatives = 'Alternatives'
-
-    # pathsto funds
-    folder_name_equity = path.join(path_to_funds, subfolder_class_equity)
-    folder_name_Absolute_Alpha = path.join(path_to_funds, subfolder_class_Absolute_Alpha)
-    folder_name_Bonds = path.join(path_to_funds, subfolder_class_Bonds)
-    folder_name_vol_managed = path.join(path_to_funds, subfolder_class_volatility_managed)
-    folder_name_commodities_funds = path.join(path_to_funds, subfolder_class_commodities)
-
-    # load equity funds
-    dataframe_equity = pd.concat([pd.read_csv(f)
-                                  for f in glob.glob(folder_name_equity + "/*." + file_type)],
-                                 ignore_index=False)
-
-    dataframe_equity['Asset_Class'] = 'Equity'
-
-    # load Bond funds
-    dataframe_Bonds = pd.concat([pd.read_csv(f, sep=seperator)
-                                 for f in glob.glob(folder_name_Bonds + "/*." + file_type)],
-                                ignore_index=False)
-
-    dataframe_Bonds['Asset_Class'] = 'Bonds'
-
-    # load Absolute Alpha funds
-    dataframe_absolute_alpha = pd.concat([pd.read_csv(f)
-                                          for f in glob.glob(folder_name_Absolute_Alpha + "/*." + file_type)],
-                                         ignore_index=False)
-
-    dataframe_absolute_alpha['Asset_Class'] = 'Absolute_Alpha'
-
-    # load volatility managed funds
-    dataframe_market_neutral = pd.concat([pd.read_csv(f, sep=seperator)
-                                          for f in glob.glob(folder_name_vol_managed + "/*." + file_type)],
-                                         ignore_index=False)
-
-    dataframe_market_neutral['Asset_Class'] = 'Vol_managed'
-
-    # DataFrame Commodities
-    dataframe_commodities_funds = pd.concat([pd.read_csv(f, sep=seperator)
-                                             for f in glob.glob(folder_name_commodities_funds + "/*." + file_type)],
-                                            ignore_index=False)
-
-    dataframe_commodities_funds['Asset_Class'] = 'Commodities'
-
-    dataframe1 = pd.concat([dataframe_equity, dataframe_Bonds,
-                            dataframe_absolute_alpha,
-                            dataframe_market_neutral, dataframe_commodities_funds])
-
-    # clean dataframe
-    dataframe1 = dataframe1.rename(columns={'Name': 'fund', 'NAV': 'price'})
-    dataframe1['Date'] = pd.to_datetime(dataframe1['Date'], format='%m/%d/%Y')
-    dataframe1 = dataframe1[(dataframe1['Date'] >= filter_date)]
-
-    # dataframe1 = dataframe1.drop(['NAV'], axis = 1)
-    dataframe1 = dataframe1.set_index('Date')
-
-    # load trusts
-
-    # paths to ETFs and Trusts
-    folder_name_equity = path.join(path_to_etf_trusts, subfolder_class_equity)
-    folder_name_commodities = path.join(path_to_etf_trusts, subfolder_class_commodities)
-    folder_name_alternatives = path.join(path_to_etf_trusts, subfolder_class_alternatives)
-
-    dataframe_equity = pd.concat([pd.read_csv(f, sep=seperator)
-                                  for f in glob.glob(folder_name_equity + "/*." + file_type)],
-                                 ignore_index=False)
-
-    dataframe_equity['Asset_Class'] = 'Equity'
-
-    dataframe_alternatives = pd.concat([pd.read_csv(f, sep=seperator)
-                                        for f in glob.glob(folder_name_alternatives + "/*." + file_type)],
-                                       ignore_index=False)
-
-    dataframe_alternatives['Asset_Class'] = 'Alternatives'
-
-    dataframe_commodities = pd.concat([pd.read_csv(f, sep=seperator)
-                                       for f in glob.glob(folder_name_commodities + "/*." + file_type)],
-                                      ignore_index=False)
-
-    dataframe_commodities['Asset_Class'] = 'Commoditities'
-
-    dataframe2 = pd.concat([dataframe_equity,
-                            dataframe_alternatives,
-                            dataframe_commodities])
-
-    # clean dataframe
-    dataframe2 = dataframe2.rename(columns={'Name': 'fund', 'Close': 'price'})
-    dataframe2 = dataframe2.drop(['High', 'Low', 'Open', 'Volume'], axis=1)
-    dataframe2['Date'] = pd.to_datetime(dataframe2['Date'], format='%m/%d/%Y')
-    dataframe2 = dataframe2[(dataframe2['Date'] >= filter_date)]
-
-    dataframe2 = dataframe2.set_index('Date')
-
-    dataframe = pd.concat([dataframe1, dataframe2])
-
-    return dataframe
+    return df_all
 
 
 def get_sp500_tickers() -> pd.DataFrame:
@@ -243,26 +128,30 @@ def get_nasdaq_tickers() -> pd.DataFrame:
     return df
 
 
-def get_sector_info(yahoo_tickers: list = None):
-    # ==============
-    index_name = 'YahooTicker'
+#
+# @timebudget
+# def get_stock_info(yahoo_tickers: list = None, data_type: str = 'overview'):
+#     if len(yahoo_tickers) > 800:
+#         chunk_size = 200
+#         chunks_list = list(chunk_the_list(yahoo_tickers, n=chunk_size))
+#         df_temp_list = [_helper_get_stock_info(yahoo_tickers=ticks, data_type=data_type) for ticks in chunks_list]
+#         df = pd.concat(df_temp_list)
+#     else:
+#         df = _helper_get_stock_info(yahoo_tickers=yahoo_tickers, data_type=data_type)
+#
+#     return df
 
-    df_sectors = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type="overview")
-    df_sectors = df_sectors[["Ticker\n\n", 'Sector', 'Industry', 'Country']]
-    df_sectors = df_sectors.rename(columns={"Ticker\n\n": index_name})
-    df_sectors.columns = df_sectors.columns[1:, ].insert(0, index_name)
-    df_sectors = df_sectors.set_index(index_name)
 
-    return df_sectors
+def get_stock_info(yahoo_tickers: list = None):
+    ncpus = max(mp.cpu_count() - 1, 1)
+    results = Parallel(n_jobs=ncpus, prefer="threads")(
+        delayed(_add_stock_info)(yahoo_ticker=tic) for tic in tqdm(yahoo_tickers))
+    return pd.concat(results, ignore_index=True)
 
-@timebudget
-def get_stock_info(yahoo_tickers: list = None, data_type: str = 'overview'):
-    if len(yahoo_tickers) > 800:
-        chunk_size = 200
-        chunks_list = list(chunk_the_list(yahoo_tickers, n=chunk_size))
-        df_temp_list = [_helper_get_stock_info(yahoo_tickers=ticks, data_type=data_type) for ticks in chunks_list]
-        df = pd.concat(df_temp_list)
-    else:
-        df = _helper_get_stock_info(yahoo_tickers=yahoo_tickers, data_type=data_type)
 
-    return df
+def get_option_exp_dates(yahoo_ticker: str):
+    stock_info = yf.Ticker(yahoo_ticker)
+    df_op_exp = pd.DataFrame(stock_info.options)
+    df_op_exp.columns = ['Exp_Date']
+    df_op_exp['Stock'] = yahoo_ticker
+    return df_op_exp

@@ -12,7 +12,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import quantstats as qs
 import numpy as np
-import phik
 
 
 def scatter_plot_simple(df, x: str, y: str):
@@ -187,3 +186,22 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
 #                      linkage="ward", k=None, max_k=10,
 #                      alpha_tail=0.05, leaf_order=True,
 #                      kind='spring', ax=None)
+
+#df = pd.read_csv('https://raw.githubusercontent.com/plotly/datasets/master/finance-charts-apple.csv')
+#
+# fig = px.line(df.reset_index(), x='Date', y=df.columns, width=1000, height=800,
+#               title='Time Series with Range Slider and Selectors')
+#
+# fig.update_xaxes(
+#     rangeslider_visible=True,
+#     rangeselector=dict(
+#         buttons=list([
+#             dict(count=1, label="1m", step="month", stepmode="backward"),
+#             dict(count=6, label="6m", step="month", stepmode="backward"),
+#             dict(count=1, label="YTD", step="year", stepmode="todate"),
+#             dict(count=1, label="1y", step="year", stepmode="backward"),
+#             dict(step="all")
+#         ])
+#     )
+# )
+# fig.show()

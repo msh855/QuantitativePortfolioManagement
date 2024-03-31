@@ -5,16 +5,8 @@ from arch.bootstrap import StationaryBootstrap, CircularBlockBootstrap, IIDBoots
 from tsmoothie.bootstrap import BootstrappingWrapper
 from tsmoothie.smoother import *
 from tsmoothie.utils_func import _id_nb_bootstrap, _id_mb_bootstrap, _id_cb_bootstrap, _id_s_bootstrap
-
-
-# cleaning
-def _helper(df: pd.DataFrame = None, series: pd.Series = None, n_samples: int = None) -> pd.DataFrame:
-    string_name = series.name
-    cols = [string_name + '_path' + str(x) for x in range(1, n_samples + 1)]
-    df.columns = cols
-    df.index = series.index
-
-    return df
+from timebudget import timebudget
+from myPortfolioManagement.myUtils import _helper
 
 
 def BootstrapIDD(series: pd.Series = None, n_samples: int = 1000, seed: int = None):
@@ -71,7 +63,7 @@ def BootstrapCircular(series: pd.Series = None, block_size: int or float = 12, n
 
     if optimal_block:
         opt = optimal_block_length(series)
-        block_size = max(opt.loc[series.name, 'circular'],1)
+        block_size = int(max(opt.loc[series.name, 'circular'], 1))
 
     nobs = len(series)
     bs = CircularBlockBootstrap(block_size, series, seed=seed)
@@ -111,9 +103,9 @@ def BootstrapMovingBlock(series: pd.Series = None, block_size: int or float = 12
 # ts smoothie bootsrapping
 # =========================
 
-def tsmoothie_boostrapping(series: pd.Series = None, bootstrap_type: str = 'mbb', block_size: int = 12,
-                           n_samples: int = None,
-                           residual_method: bool = False, optimal_block: bool = False):
+def bootstrappingTS_smoothie(series: pd.Series = None, bootstrap_type: str = 'mbb', block_size: int = 12,
+                             n_samples: int = None,
+                             residual_method: bool = False, optimal_block: bool = False):
     # btype = ['nbb', 'mbb', 'cbb', 'sb'][1]
 
     if isinstance(series, pd.DataFrame):
@@ -155,3 +147,45 @@ def tsmoothie_boostrapping(series: pd.Series = None, bootstrap_type: str = 'mbb'
         df = _helper(df, series, n_samples)
 
     return df
+
+
+@timebudget
+def bootstrappingTS(series: pd.Series or pd.DataFrame = None, block_size: int = None, optimal_block: bool = False,
+                    n_samples: int = 1000,
+                    bootstrap_type: bool = 'mbb', seed: int or None = None) -> pd.DataFrame:
+    # convert dataframe to series. If a multi-column df is passed would only consider the first column.
+    if isinstance(series, pd.DataFrame):
+        series = pd.Series(series.iloc[:, 0], name=series.columns[0])
+
+    func_map = {
+        'nbb': BootstrapIDD,
+        'sb': BootstrapStationary,
+        'mbb': BootstrapMovingBlock,
+        'cbb': BootstrapCircular
+    }
+
+    BootstrapFunc = func_map.get(bootstrap_type)
+
+    if BootstrapFunc is None:
+        raise ValueError(f"Invalid bootstrap type: {bootstrap_type}")
+
+    kwargs = {}
+    if BootstrapFunc is not BootstrapIDD:
+        kwargs['block_size'] = block_size
+        kwargs['optimal_block'] = optimal_block
+
+    if BootstrapFunc is not BootstrapMovingBlock:
+        results = BootstrapFunc(series, n_samples=n_samples, seed=seed, **kwargs)
+    else:
+        results = BootstrapFunc(series, n_samples=n_samples, seed=seed, block_size=block_size)
+
+    # if BootstrapFunc in [BootstrapCircular, BootstrapStationary]:
+    #     print('I am here')
+    #     results = BootstrapFunc(series, n_samples=n_samples, seed=seed, block_size=block_size,
+    #                             optimal_block=optimal_block)
+    # elif BootstrapFunc is BootstrapMovingBlock:
+    #     results = BootstrapFunc(series, n_samples=n_samples, seed=seed, block_size=block_size)
+    # else:
+    #     results = BootstrapFunc(series, n_samples=n_samples, seed=seed)
+
+    return results

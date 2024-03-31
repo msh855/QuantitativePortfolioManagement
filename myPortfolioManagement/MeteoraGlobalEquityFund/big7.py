@@ -1,80 +1,320 @@
-import ffn.core
+import ffn
+from myPortfolioManagement.myClustering import cluster_ftca
 import pandas as pd
+import numpy as np
 from myPortfolioManagement.myData import get_stock_prices, get_sp500_tickers
 from myPortfolioManagement.myPerformanceMetrics import get_main_stats
 from myPortfolioManagement.myReturns import calculate_portfolio_returns
-from myPortfolioManagement.myBacktesting import bootstrap_stats
+from myPortfolioManagement.Trade212_Account.get_account_info import get_pie_details, get_pies
+from myPortfolioManagement.myBootstrapping import bootstrappingTS
+import pickle
 import quantstats as qs
-
-# ======================================================================================================================
-sp500 = get_sp500_tickers()
-
-sp500['sp_weight'] = sp500['Market Cap'] / sp500['Market Cap'].sum()
-df10 = sp500.sort_values(by=['sp_weight'], ascending=False).head(10)
-df10 = df10[df10.duplicated('Company') == False]
-google_weight = df10[df10['Ticker'] == 'GOOG']['sp_weight']
-google_mark_cap = df10[df10['Ticker'] == 'GOOG']['Market Cap']
-df10.loc[df10['Ticker'] == 'GOOG', ['sp_weight']] = google_weight * 2
-
-df10.loc[df10['Ticker'] == 'GOOG', ['Market Cap']] = google_mark_cap * 2
-df10 = df10[df10['Ticker'] != 'BRK-B']
-df10 = df10.sort_values(by=['sp_weight'], ascending=False)
-df10['adj_weight'] = df10['Market Cap'] / df10['Market Cap'].sum()
-
-# prices
-# get stock prices
-# ======================================================================================================================
-tickers = df10.Ticker
-df_prices = get_stock_prices(tickers, wide_format=True)
-df_main_stats = get_main_stats(df_prices).sort_values('cagr', ascending=False)
-
-
-df_main_stats['adjusted_sortino'].plot.bar()
-df_main_stats['cagr'].plot.bar()
-df10[['Ticker', 'adj_weight']].set_index('Ticker').plot.bar(y='adj_weight')
-
-# bootstapping
-# ======================================================================================================================
-ret = df_prices.pct_change()
-stats_boost_results = []
-for tik in tickers:
-    stats_temp = bootstrap_stats(ret[tik], n_sim=50)
-    stats_boost_results.append(stats_temp)
-
-import cProfile
-import pstats
-
-with cProfile.Profile() as pr:
-    stats_temp = bootstrap_stats(ret[tik], n_sim=50)
-
-stats = pstats.Stats(pr)
-stats.sort_stats(pstats.SortKey.TIME)
-# Now you have two options, either print the data or save it as a file
-stats.print_stats()  # Print The Stats
-
-
-import matplotlib.pyplot as plt
 import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from matplotlib.backends.backend_pdf import PdfPages
+import warnings
 
-df = stats_temp
-selection = df.columns
+warnings.filterwarnings('ignore')
 
-fig, axes = plt.subplots(1, len(selection))
-for i, col in enumerate(selection):
-    ax = sns.boxplot(y=df[col], ax=axes.flatten()[i])
-    ax.set_ylim(df[col].min(), df[col].max())
-    ax.set_ylabel(col)
-plt.show()
-
-# backtest
+# Trade212 Account
 # ======================================================================================================================
-ret_port = calculate_portfolio_returns(returns=df_prices.pct_change().dropna(),
-                                       myweights=df10[['Ticker', 'adj_weight']])
+df_pies = get_pies()  # all pies
+df_pie_details = get_pie_details(id='1783656')  # big 7
+df_pie_weights = df_pie_details[['tickers_212', 'expectedShare']]
+# df_pie_weights['tickers_212'] = np.where(df_pie_weights['tickers_212'] == 'FB', 'META', df_pie_weights['tickers_212'])
 
-ret_bench = get_stock_prices(yahoo_tickers=['VWRL.L'], wide_format=True).pct_change()
-bench_name = 'Vanguard Global'
+# download prices per date of purchase
+# ====================================
+ticker_col_name = 'YahooTickers'
+tickers = ['MSFT', 'GOOG', 'AAPL', 'NVDA', 'TSLA', 'AMZN']
+start_date = '1950-01-01'
+
+# identify Non GBP stocks and download FX
+# ======================================================================================================================
+df_prices = get_stock_prices(yahoo_tickers=tickers)
+df_prices_wide = df_prices.pivot(columns='yahooticker', values='adjclose')
+
+# Backtest
+# ======================================================================================================================
+ret = df_prices_wide.pct_change().dropna()
+ret.cumsum().plot()
+
+ret_m = df_prices_wide.resample('M').last().pct_change().dropna()
+ret_y = df_prices_wide.resample('Y').last().pct_change().dropna()
+
+cluster_ftca(ret, col_name='ticker', threshold=0.7)
+cluster_ftca(ret_m, col_name='ticker', threshold=0.7)
+cluster_ftca(ret_y, col_name='ticker', threshold=0.7)
+
+ret.corr()
+ret_y.corr()
+ret_m.corr()
+
+# portfolio returns
+ret_port = calculate_portfolio_returns(returns=ret, myweights=df_pie_weights[['tickers_212', 'expectedShare']])
+
+# calculate benchmark
+# ===================
+ret_bench = get_stock_prices(yahoo_tickers=['^GSPC'], wide_format=True).pct_change()
+bench_name = 'SP500'
 ret_bench.columns = [bench_name]
 ret_all = ret_port.join(ret_bench).dropna()
 
-qs.reports.html(ret_all['myPortfolio'], benchmark=ret_all[bench_name], output='/Users/safishajjouz/Downloads',
-                download_filename='port_perf.html', eoy=True)
+price_index = ffn.core.to_price_index(ret_all, start=1)
+price_index = ffn.core.rebase(price_index, value=1)
+price_index.plot()
+
+df_main_stats = get_main_stats(price_index.pct_change(), smart=True, rf=0.05).transpose()
+
+qs.reports.basic(ret_all['myPortfolio'], benchmark=ret_all[bench_name], rf=0.05)
+qs.reports.html(ret_all['myPortfolio'], benchmark=ret_all[bench_name], rf=0.05,
+                output='/Users/safishajjouz/GitHub/QuantitativePortfolioManagement/big7_port.html')
+
+# Look at Big 7
+# ======================================================================================================================
+sp500 = get_sp500_tickers()
+sp500['sp_weight_unadjusted_google'] = sp500['Market Cap'] / sp500['Market Cap'].sum()
+
+# sort per weight
+sp500 = sp500.sort_values(by=['sp_weight_unadjusted_google'], ascending=False)
+
+# calculate market cap of google
+google1_mark_cap = sp500[sp500['Ticker'] == 'GOOG']['Market Cap']
+google2_mark_cap = sp500[sp500['Ticker'] == 'GOOGL']['Market Cap']
+google_total = float(google1_mark_cap) + float(google2_mark_cap)
+
+# remove google
+sp500 = sp500[sp500['Ticker'] != 'GOOGL']
+sp500['Market Cap'] = np.where(sp500['Ticker'] == 'GOOG', google_total, sp500['Market Cap'])
+
+sp500['sp_weight'] = sp500['Market Cap'] / sp500['Market Cap'].sum()
+sp500 = sp500.sort_values(by=['sp_weight'], ascending=False)
+
+df10 = sp500.head(10)
+df_big7 = df10[df10['Ticker'].isin(tickers)]
+df_big7['big7_weight'] = df_big7['Market Cap'] / df_big7['Market Cap'].sum()
+
+df_big7[['Ticker', 'big7_weight']].set_index('Ticker').plot.bar(y='big7_weight')
+
+# yearly
+# TODO: The function does not work when I resample. Need to be flexible to adjust to the frequency of the data
+# df_prices_yearly = df_prices_wide.resample('Y').last()
+df_main_stats_big7 = get_main_stats(df_prices_wide.pct_change(), smart=True, rf=0.05)
+
+df_main_stats_big7['adjusted_sortino'].sort_values().plot.bar()
+df_main_stats_big7['cagr'].sort_values().plot.bar()
+
+# compare my weights with weight based on market value
+ret_port = calculate_portfolio_returns(returns=ret, myweights=df_big7[['Ticker', 'big7_weight']],
+                                       portfolio_name='port_big7')
+ret_all = ret_all.join(ret_port)
+
+get_main_stats(ret_all, smart=True, rf=0.05)
+
+# see Expected Returns and Risks via Bootstrapping
+# ======================================================================================================================
+
+bootstrap_types = ['cbb', 'sb', 'nbb', 'mbb']
+results_all = {}
+results_all['boostrap_type'] = []
+
+for boost_type in bootstrap_types:
+
+    # get sample of returns
+    data = {}
+    data['results'] = []
+    data['stats'] = []
+
+    for tik in tickers:
+        if boost_type in ['sb', 'cbb']:
+            ret_boostp = bootstrappingTS(ret[tik], n_samples=10000, bootstrap_type=boost_type, optimal_block=True,
+                                         seed=123)
+        else:
+            ret_boostp = bootstrappingTS(ret[tik], n_samples=10000, bootstrap_type=boost_type, block_size=365 * 2,
+                                         seed=123)
+        stats_boostp = get_main_stats(ret_boostp)
+        data['results'].append({tik: ret_boostp})
+        data['stats'].append({tik: stats_boostp})
+
+    results_all['boostrap_type'].append(data)
+#
+# import pickle
+#
+# with open('simulate_results.pkl', 'wb') as f:
+#     pickle.dump(results_all, f)
+#
+# with open('/Users/safishajjouz/Library/CloudStorage/OneDrive-Personal/QuantPort_Results/simulate_results.pkl',
+#           'rb') as f:
+#     results_all = pickle.load(f)
+
+data_lists = {}
+for i, tp in enumerate(bootstrap_types):
+    data_temp = results_all['boostrap_type'][i]
+    data_lists[tp] = data_temp
+
+grand_list = []
+for j, dd in enumerate(data_lists):
+    data = data_lists[dd]
+    stats_results_list = []
+    for i, tik in enumerate(tickers):
+        df_temp = data['stats'][i][tik]
+        df_temp['Ticker'] = tik
+        stats_results_list.append(df_temp)
+
+    df_stats = pd.concat(stats_results_list)
+    df_stats['btype'] = bootstrap_types[j]
+    grand_list.append(df_stats)
+
+results_final = pd.concat(grand_list)
+
+# plotting results
+# ======================================================================================================================
+
+metric = ['cagr', 'adjusted_sortino', 'max_drawdown'][1]
+with PdfPages('ad_sortino_bootstrapping.pdf') as pdf:
+    for tik in tickers:
+        data_plot = results_final[results_final['Ticker'] == tik]
+        data_plot = data_plot.drop(['Ticker'], axis=1)
+        hist_ave = df_main_stats_big7.loc[tik][metric]
+        fig1 = plt.figure()
+        sns.displot(data=data_plot.reset_index(), hue='btype', x=metric, palette='Set2',
+                    kind="kde", fill=False, legend=True, height=5, aspect=2,
+                    cut=0, bw_adjust=1)
+        plt.axvline(x=hist_ave, color='r', linestyle='-')
+        plt.title(tik)
+        pdf.savefig(bbox_inches='tight')  # saves the current figure into a pdf page
+        plt.close()
+        # plt.show()
+        # We can also set the file's metadata via the PdfPages object:
+
+results_final.groupby(['Ticker', 'btype']).median()[['total_ret']].plot.bar()
+
+
+# Expected Best investment
+# ======================================================================================================================
+
+def greate_score(df_stats_data):
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+    d = scaler.fit_transform(df_stats_data)
+    scaled_df = pd.DataFrame(d, columns=df_stats_data.columns, index=df_stats_data.index)
+
+    # see which is a good investment relative to others
+    df_score = pd.Series(scaled_df.sum(axis=1), name='score')
+    df_score = pd.DataFrame(df_score)
+    scaler2 = MinMaxScaler(feature_range=(0, 1))
+    d2 = scaler2.fit_transform(df_score)
+    scaled_df2 = pd.DataFrame(d2, columns=df_score.columns, index=df_score.index)
+    return scaled_df2.sort_values(by=['score'], ascending=False)
+
+
+df_expected_scores = []
+expected_stats = results_final.groupby(['Ticker', 'btype']).median().reset_index()
+
+for tp in bootstrap_types:
+    sats = expected_stats[expected_stats['btype'] == tp]
+    sats = sats.drop('btype', axis=1)
+    sats = sats.set_index('Ticker')
+    df_temp = greate_score(sats)
+    df_temp['btype'] = tp
+    df_expected_scores.append(df_temp)
+
+df_expected_best_inv = pd.concat(df_expected_scores)
+
+df_expected_best_inv.pivot(values='score', columns='btype').plot.bar()
+
+temp = df_stats[['cagr', 'Ticker']].reset_index().copy()
+temp = temp.drop(['index'], axis=1)
+temp = temp.set_index('Ticker')
+
+scaler = MinMaxScaler(feature_range=(0, 1))
+d = scaler.fit_transform(temp)
+scaled_df = pd.DataFrame(d, columns=temp.columns, index=temp.index)
+
+sns.displot(data=scaled_df.reset_index(), hue='Ticker', x='cagr',
+            kind="kde", fill=False, legend=True, height=5, aspect=0.5,
+            cut=0, bw_adjust=1)
+
+# see exposures
+# ======================================================================================================================
+
+scaled_df2 = greate_score(df_main_stats_big7)
+#
+# # see all information for stocks
+# df_stock_info = get_stock_info(yahoo_tickers=tickers, data_type='all')
+# string_columns = df_stock_info.select_dtypes(include='object').columns
+# df_inf_new = df_stock_info.drop(string_columns, axis=1)
+# df_inf_new = df_inf_new.join(scaled_df2)
+#
+# s = df_inf_new.corr().loc['score'].sort_values()
+# s = s.drop(s.index[-1])
+# s.plot.barh(title='Most Correlated Features with Overall Performance Metrics')
+#
+# sns.regplot(x=df_inf_new['score'], y=df_inf_new['Fwd P/E'], lowess=True,
+#             line_kws={'color': 'red'})
+#
+# # compare Margins
+# df_stock_info[['Profit M']].sort_values('Profit M').plot.barh()
+# df_inf_new[['score']].sort_values('score').plot.bar()
+
+
+amount = list(range(100, 3001, 500))
+df_opt_amount = pd.DataFrame(pd.Series(amount, name='amount'))
+df_opt_amount['gains'] = df_opt_amount['amount'] * exp_ret
+df_opt_amount['Extra Gains (%)'] = df_opt_amount['gains'].pct_change() * 100
+
+df_opt_amount.dropna().plot(kind='scatter', x='amount', y='Extra Gains (%)',
+                            title='Optimal Amount for Given returns')
+
+
+def optimal_amount(exp_ret=0.66, plot=False):
+    amount = list(range(100, 3001, 10))
+
+    df_opt_amount = pd.DataFrame(pd.Series(amount, name='amount'))
+    df_opt_amount['gains'] = df_opt_amount['amount'] * exp_ret
+    df_opt_amount['Extra Gains (%)'] = df_opt_amount['gains'].pct_change() * 100
+    df_opt_amount['ret_scenario'] = exp_ret
+    if plot:
+        df_opt_amount.dropna().plot(kind='scatter', x='amount', y='Extra Gains (%)',
+                                    title='Optimal Amount for Given returns')
+    else:
+        return df_opt_amount.dropna()
+
+
+df_scenarios = []
+for r in [0.10, 0.30, 0.60, 1]:
+    df_temp = optimal_amount(r)
+    df_scenarios.append(df_temp)
+
+df_opt_amount = pd.concat(df_scenarios)
+
+optimal_amount(0.10, plot=True)
+
+sns.scatterplot(data=df_opt_amount, x='amount', y='Extra Gains (%)', hue='ret_scenario')
+
+CAGRs = np.linspace(0.05, 0.30)
+ini_values = np.linspace(5000, 50000)
+Target_value = 200000
+Initial_Inve = 2000
+
+
+def num_of_years(target_wealth: float = None, initial_inv: float = None, cagr: float = None):
+    yrs = np.log(target_wealth / initial_inv) / np.log(1 + cagr)
+    return round(yrs)
+
+
+num_of_years(Target_value, 5000, 0.05)
+num_of_years(Target_value, 50000, 0.05)
+
+
+df_years = pd.DataFrame()
+df_years['cagr'] = CAGRs
+df_years['num_years'] = [num_of_years(Target_value, Initial_Inve, x) for x in CAGRs]
+df_years['ini_values'] = ini_values
+df_years['num_years_spiti_0.05'] = [num_of_years(Target_value, x, 0.05) for x in ini_values]
+df_years['num_years_spiti_0.10'] = [num_of_years(Target_value, x, 0.10) for x in ini_values]
+df_years['num_years_spiti_0.25'] = [num_of_years(Target_value, x, 0.25) for x in ini_values]
+
+
+for var in ['num_years_spiti_0.05', 'num_years_spiti_0.10', 'num_years_spiti_0.25']:
+    sns.scatterplot(data=df_years, x='ini_values', y=var)
