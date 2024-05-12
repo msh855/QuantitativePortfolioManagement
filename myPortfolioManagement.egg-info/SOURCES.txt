@@ -1,0 +1,9 @@
+LICENSE
+README.md
+setup.py
+myPortfolioManagement.egg-info/PKG-INFO
+myPortfolioManagement.egg-info/SOURCES.txt
+myPortfolioManagement.egg-info/dependency_links.txt
+myPortfolioManagement.egg-info/not-zip-safe
+myPortfolioManagement.egg-info/requires.txt
+myPortfolioManagement.egg-info/top_level.txt

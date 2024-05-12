@@ -6,7 +6,7 @@ import setuptools
 
 setuptools.setup(name='myPortfolioManagement',
                  version='1.0',
-                 description='A package dedicated for Quantiative Portfolio Management for Retail-Investors',
+                 description='A package dedicated for Quantitative Portfolio Management for Retail-Investors',
                  url='#',
                  author='Safis Hajjouz',
                  install_requires=['timebudget', 'quandl',

@@ -127,21 +127,6 @@ def get_nasdaq_tickers() -> pd.DataFrame:
 
     return df
 
-
-#
-# @timebudget
-# def get_stock_info(yahoo_tickers: list = None, data_type: str = 'overview'):
-#     if len(yahoo_tickers) > 800:
-#         chunk_size = 200
-#         chunks_list = list(chunk_the_list(yahoo_tickers, n=chunk_size))
-#         df_temp_list = [_helper_get_stock_info(yahoo_tickers=ticks, data_type=data_type) for ticks in chunks_list]
-#         df = pd.concat(df_temp_list)
-#     else:
-#         df = _helper_get_stock_info(yahoo_tickers=yahoo_tickers, data_type=data_type)
-#
-#     return df
-
-
 def get_stock_info(yahoo_tickers: list = None):
     ncpus = max(mp.cpu_count() - 1, 1)
     results = Parallel(n_jobs=ncpus, prefer="threads")(
