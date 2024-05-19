@@ -2,7 +2,7 @@ from scipy import stats as scipy_stats
 from empyrical.stats import alpha_beta_aligned, up_alpha_beta, down_alpha_beta
 import pandas as pd
 import numpy as np
-from myPortfolioManagement.myDataCleaning import data_overview
+from myPortfolioManagement.myUtils import data_overview
 from myPortfolioManagement.myUtils import balance_dates
 from myPortfolioManagement.myUtils import check_date_index
 from sklearn.preprocessing import minmax_scale

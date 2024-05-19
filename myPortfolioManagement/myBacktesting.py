@@ -9,12 +9,10 @@ from typing import Tuple
 import empyrical as ep
 import pandas as pd
 import pyfolio as pf
-from IPython.core.display import display as iDisplay
 from numpy import ndarray
 from timebudget import timebudget
 
 from myPortfolioManagement.myPlots import *
-# from myPortfolioManagement.MeteoraGlobalEquityFund.Archive.myReports import metrics
 from myPortfolioManagement.myUtils import balance_dates
 
 

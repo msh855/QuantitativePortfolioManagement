@@ -7,7 +7,7 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 
 from finvizfinance.screener.overview import Overview
-from myPortfolioManagement.base import _load_stock, _load_fx, _add_stock_info
+from myPortfolioManagement.myUtils import _load_stock, _load_fx, _add_stock_info
 import yfinance as yf
 
 
