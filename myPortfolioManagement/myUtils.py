@@ -1,7 +1,7 @@
 import pandas as pd
 from feature_engine.outliers import OutlierTrimmer
 import ffn
-import quantstats as qs
+import quantstats_lumi as qs
 
 import yfinance as yf
 from operator import itemgetter

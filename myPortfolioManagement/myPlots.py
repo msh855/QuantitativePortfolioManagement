@@ -10,7 +10,7 @@ Created on Thu Jan  6 18:08:04 2022
 import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
-import quantstats as qs
+import quantstats_lumi as qs
 import numpy as np
 
 
