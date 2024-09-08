@@ -13,7 +13,7 @@ from pypfopt.expected_returns import returns_from_prices, mean_historical_return
 from empyrical.stats import aggregate_returns
 import ffn
 
-import quantstats as qs
+import quantstats_lumi as qs
 
 
 # TODO

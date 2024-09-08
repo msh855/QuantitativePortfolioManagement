@@ -11,7 +11,7 @@ import ffn
 from pypfopt.expected_returns import returns_from_prices
 
 from scipy.stats import skew
-import quantstats as qs
+import quantstats_lumi as qs
 import multiprocessing
 from joblib import Parallel, delayed
 from tqdm import tqdm
