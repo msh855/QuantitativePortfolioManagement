@@ -240,8 +240,3 @@ def test_risk_adjusted_metrics():
     print("Calmar Ratio =", calmar_ratio(e, r, f))
     print("Sterling Ratio =", sterling_ration(e, r, f, 5))
     print("Burke Ratio =", burke_ratio(e, r, f, 5))
-
-
-if __name__ == "__main__":
-    test_risk_metrics()
-    test_risk_adjusted_metrics()
