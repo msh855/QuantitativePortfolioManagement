@@ -1013,7 +1013,7 @@ If you use this library in your research or projects, please cite:
 
 ```bibtex
 @software{QuantitativePortfolioManagement2024,
-  author = {Ferhat},
+  author = {Moustafa C and Ferhat C},
   title = {MyPortfolioManagement: A Python Library for Quantitative Portfolio Management},
   year = {2024},
   url = {https://github.com/ferhat00/QuantitativePortfolioManagement}
