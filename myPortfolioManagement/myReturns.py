@@ -287,13 +287,19 @@ def get_benchmark_returns(choose_bench: str = 'S&P500') -> pd.DataFrame:
     tickers = ['^IXIC', '^GSPC', 'VT', 'BIL', 'EEM', 'VNQ',
                'MDY', 'SLY', 'EFA', 'TIP', 'AGG', 'DJP']
 
-    names = ['Nasdaq', 'S&P500', 'World_Index', 'Cash', 'Emerging_Markets',
-             'US_Real_Estate', 'US_mid_Cap', 'US_small_Cap', 'World_Non_US',
-             'US_TIPS', 'US_Bonds', 'Bloomberg_Commodity_Index']
+    names_list = ['Nasdaq', 'S&P500', 'World_Index', 'Cash', 'Emerging_Markets',
+                  'US_Real_Estate', 'US_mid_Cap', 'US_small_Cap', 'World_Non_US',
+                  'US_TIPS', 'US_Bonds', 'Bloomberg_Commodity_Index']
 
     ret_bench = list()
-    for tick, names in zip(tickers, names):
-        ret = pd.Series(qs.utils.download_returns(tick), name=names)
+    for tick, name in zip(tickers, names_list):
+        ret_data = qs.utils.download_returns(tick)
+        # Handle both Series and DataFrame returns from quantstats
+        if isinstance(ret_data, pd.DataFrame):
+            ret = ret_data.squeeze()
+        else:
+            ret = ret_data
+        ret.name = name
         ret_bench.append(ret)
 
     ret_bench = pd.concat(ret_bench, axis=1)
@@ -306,6 +312,7 @@ def get_benchmark_returns(choose_bench: str = 'S&P500') -> pd.DataFrame:
         ret_bench = ret_bench[[choose_bench]]
 
     return ret_bench
+
 
 #
 # def get_multi_asset_returns() -> pd.DataFrame:

@@ -19,3 +19,4 @@ myPortfolioManagement.egg-info/requires.txt
 myPortfolioManagement.egg-info/SOURCES.txt
 myPortfolioManagement.egg-info/top_level.txt
 myPortfolioManagement/.DS_Store
+/venv
