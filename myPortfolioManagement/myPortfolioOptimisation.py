@@ -187,7 +187,6 @@ def HRP(model: str = 'HRP',
     # HRP Default
     weights = port.optimization(model=model,
                                 codependence=codependence,
-                                covariance=covariance,
                                 rm=rm,
                                 linkage=linkage,
                                 leaf_order=leaf_order,
