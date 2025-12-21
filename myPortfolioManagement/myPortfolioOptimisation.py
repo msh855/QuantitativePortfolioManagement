@@ -19,7 +19,11 @@ from pypfopt import EfficientFrontier
 from pypfopt import objective_functions
 from pypfopt import EfficientCVaR
 
-import ray  # to parallelise
+try:
+    import ray
+    RAY_AVAILABLE = True
+except ImportError:
+    RAY_AVAILABLE = False
 from timebudget import timebudget  # to time functions
 import itertools
 from myPortfolioManagement.myReturns import average_returns
