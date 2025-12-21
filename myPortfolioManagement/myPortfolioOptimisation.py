@@ -10,7 +10,7 @@ import riskfolio as rp
 import pandas as pd
 import numpy as np
 import ffn
-import quantstats as qs
+import quantstats_lumi as qs
 
 # for portfolio optimisation
 from pypfopt import risk_models
