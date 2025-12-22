@@ -52,7 +52,7 @@ WEIGHTS = {
 }
 
 # Date range for historical data
-START_DATE = '2018-01-01'
+START_DATE = '2016-01-01'
 END_DATE = None  # None = today's date
 
 # Fanchart simulation parameters
