@@ -298,13 +298,11 @@ def sim_paths(returns: pd.Series, out_of_sample_date: str = None,
         index=range(n_sample)
     )
 
-    # Vectorized historical replication using NumPy broadcast
+    # Vectorized historical replication using NumPy repeat
     # Create matrix where each column is a copy of historical returns
     # Shape: (len(ret_in_sample), n_sample)
-    ret_hist_array = np.broadcast_to(
-        ret_in_sample.values[:, np.newaxis],
-        (len(ret_in_sample), n_sample)
-    ).copy()  # Need copy since broadcast_to returns read-only view
+    ret_hist_values = np.asarray(ret_in_sample.values).flatten()  # Ensure 1D
+    ret_hist_array = np.repeat(ret_hist_values[:, np.newaxis], n_sample, axis=1)
     ret_hist = pd.DataFrame(
         ret_hist_array,
         index=ret_in_sample.index,
