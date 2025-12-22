@@ -7,6 +7,7 @@ from collections import OrderedDict
 from typing import Tuple
 
 import empyrical as ep
+import numpy as np
 import pandas as pd
 import pyfolio as pf
 from numpy import ndarray
@@ -242,20 +243,20 @@ def sim_paths(returns: pd.Series, out_of_sample_date: str = None,
               weight_period: list = None,
               n_sample: int = 1000, starting_value: float = 1) -> pd.DataFrame:
     """
-    
+    Optimized vectorized version for faster simulation of possible return paths.
 
     Args:
-        returns (pd.Series): DESCRIPTION.
-        out_of_sample_start_date (str, optional): DESCRIPTION. Defaults to None.
-        weight_period (list, optional): DESCRIPTION. Defaults to None.
-        n_sample (int, optional): DESCRIPTION. Defaults to 1000.
-        starting_value (int, optional): DESCRIPTION. Defaults to 1.
+        returns (pd.Series): Historical returns series.
+        out_of_sample_date (str, optional): Date to split in-sample and out-of-sample. Required.
+        weight_period (list, optional): [start_date, end_date] to weight sampling period. Defaults to None.
+        n_sample (int, optional): Number of simulation paths. Defaults to 1000.
+        starting_value (int, optional): Starting value for cumulative returns. Defaults to 1.
 
     Raises:
-        ValueError: DESCRIPTION.
+        ValueError: If out_of_sample_date is not provided.
 
     Returns:
-        ret_possible_path_cum (TYPE): DESCRIPTION.
+        pd.DataFrame: Cumulative returns for all simulated paths.
 
     """
 
@@ -263,19 +264,49 @@ def sim_paths(returns: pd.Series, out_of_sample_date: str = None,
         raise ValueError('Out of Sample Starting Date Missing')
 
     ret_in_sample = returns[returns.index < out_of_sample_date]
-
     out_of_sample_dates = returns[returns.index >= out_of_sample_date].index
+    n_forecast_periods = len(out_of_sample_dates)
 
-    # dataframe where for each date has the possinle
-    df_scenarios = pd.DataFrame(columns=out_of_sample_dates,
-                                index=range(n_sample))
+    # Prepare weights once (if needed)
+    if weight_period:
+        period_length = len(ret_in_sample[(ret_in_sample.index >= weight_period[0]) &
+                                         (ret_in_sample.index <= weight_period[1])])
+        period_weight = (1 / period_length) * 100
+        weights = pd.Series(np.repeat(0, len(ret_in_sample.index)),
+                           index=ret_in_sample.index)
+        weights[(weights.index >= weight_period[0]) &
+               (weights.index <= weight_period[1])] = period_weight
+        # Normalize weights to sum to 1
+        weights = weights / weights.sum()
+    else:
+        weights = None
 
-    for col in df_scenarios.columns:
-        df_scenarios[col] = sim_series(ret_in_sample,
-                                       weight_period=weight_period,
-                                       n_sample=n_sample)
+    # Vectorized sampling - sample all scenarios at once instead of looping
+    # Total samples needed: n_sample paths * n_forecast_periods
+    total_samples_needed = n_sample * n_forecast_periods
+    all_samples = ret_in_sample.sample(
+        n=total_samples_needed,
+        replace=True,
+        weights=weights
+    ).values
 
-    ret_hist = pd.concat([ret_in_sample] * (n_sample), axis=1, ignore_index=True)
+    # Reshape to (n_sample rows, n_forecast_periods columns)
+    # Each row is one simulation path, each column is one future date
+    df_scenarios = pd.DataFrame(
+        all_samples.reshape(n_sample, n_forecast_periods),
+        columns=out_of_sample_dates,
+        index=range(n_sample)
+    )
+
+    # Vectorized historical replication using NumPy tile
+    # Create matrix where each column is a copy of historical returns
+    ret_hist = pd.DataFrame(
+        np.tile(ret_in_sample.values[:, np.newaxis], (1, n_sample)),
+        index=ret_in_sample.index,
+        columns=range(n_sample)
+    )
+
+    # Combine historical and forecasted returns
     ret_possible_path = pd.concat([ret_hist, df_scenarios.T])
     ret_possible_path_cum = ep.cum_returns(ret_possible_path,
                                            starting_value=starting_value)
@@ -285,24 +316,33 @@ def sim_paths(returns: pd.Series, out_of_sample_date: str = None,
 
 def prep_dist(df: pd.DataFrame, name_perc: list = None) -> pd.DataFrame:
     """
+    Optimized vectorized calculation of percentile distributions across scenarios.
+
+    Computes percentiles across columns (scenarios) for each row (time period).
+    Used to create fan chart bands from simulation results.
+
     Args:
-        x (TYPE): DESCRIPTION.
-        name_perc (TYPE, optional): DESCRIPTION. Defaults to ['0.05', '0.20','0.35','0.65','0.80', '0.95'].
+        df (pd.DataFrame): DataFrame with simulated paths (rows=time, columns=scenarios).
+        name_perc (list, optional): List of percentile strings (e.g., ['0.05', '0.95']).
+                                   Defaults to ['0.05', '0.20', '0.35', '0.65', '0.80', '0.95'].
 
     Returns:
-        x (TYPE): DESCRIPTION.
+        pd.DataFrame: DataFrame with percentile columns, indexed by original df.index.
 
     """
-    x = df.copy()
-
     if name_perc is None:
         name_perc = ['0.05', '0.20', '0.35', '0.65', '0.80', '0.95']
 
-    for perc in name_perc:
-        x[perc] = np.percentile(x, float(perc) * 100, axis=1)
+    # Convert string percentiles to numeric values (0-100 scale)
+    percentiles = [float(perc) * 100 for perc in name_perc]
 
-    x = x[name_perc]
-    return x
+    # Vectorized percentile calculation using NumPy
+    # Single call instead of looping - computes all percentiles at once
+    # axis=1 calculates percentiles across columns (scenarios) for each row (time)
+    result = np.percentile(df.values, percentiles, axis=1).T
+
+    # Return as DataFrame with original index and percentile column names
+    return pd.DataFrame(result, index=df.index, columns=name_perc)
 
 
 def plot_fan_chart(returns: pd.DataFrame, fcast: pd.DataFrame,
