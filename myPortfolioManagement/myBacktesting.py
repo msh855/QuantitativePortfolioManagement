@@ -300,8 +300,9 @@ def sim_paths(returns: pd.Series, out_of_sample_date: str = None,
 
     # Vectorized historical replication using NumPy tile
     # Create matrix where each column is a copy of historical returns
+    ret_hist_array = np.tile(ret_in_sample.values, (n_sample, 1)).T
     ret_hist = pd.DataFrame(
-        np.tile(ret_in_sample.values[:, np.newaxis], (1, n_sample)),
+        ret_hist_array,
         index=ret_in_sample.index,
         columns=range(n_sample)
     )
