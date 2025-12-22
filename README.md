@@ -352,6 +352,35 @@ print("Equal Weight:", weights_equal)
 print("Inverse Vol:", weights_inv_vol)
 ```
 
+### Realistic Portfolio Returns (5 minutes)
+```python
+from myPortfolioManagement.myReturns import (
+    calculate_rebalanced_returns, calculate_buy_and_hold_returns
+)
+
+# Define portfolio weights
+weights = pd.Series({'SPY': 0.6, 'AGG': 0.3, 'GLD': 0.1})
+
+# Buy-and-hold strategy (most realistic for individual investors)
+bh_returns = calculate_buy_and_hold_returns(
+    returns, 
+    weights,
+    transaction_cost_bps=10
+)
+
+# Monthly rebalancing (realistic for institutions)
+monthly_returns = calculate_rebalanced_returns(
+    returns,
+    weights,
+    rebalance_freq='monthly',
+    transaction_cost_bps=10
+)
+
+# Compare cumulative returns
+print(f"Buy-and-Hold:  {(1 + bh_returns).prod().values[0]:.4f}")
+print(f"Monthly Rebal: {(1 + monthly_returns).prod().values[0]:.4f}")
+```
+
 ---
 
 ## Module Overview
@@ -394,6 +423,94 @@ log_returns = calculate_returns(prices, log_returns=True)
 # Monthly returns
 monthly_returns = calculate_returns(prices, convert_to='monthly')
 ```
+
+#### Portfolio Returns: Buy-and-Hold vs Rebalancing
+
+**IMPORTANT**: The traditional `returns.dot(weights)` calculation implicitly assumes 
+**daily rebalancing**, which is rarely realistic in practice. This library now provides 
+explicit control over rebalancing strategies and transaction costs.
+
+#### `calculate_buy_and_hold_returns(returns, initial_weights, transaction_cost_bps=0)`
+Buy-and-hold strategy where weights drift naturally with market performance (no rebalancing)
+
+**Example**:
+```python
+from myPortfolioManagement.myReturns import calculate_buy_and_hold_returns
+
+# Buy and hold with 10 bps transaction cost at initial purchase
+weights = pd.Series({'AAPL': 0.6, 'MSFT': 0.4})
+port_returns = calculate_buy_and_hold_returns(
+    returns, 
+    weights, 
+    transaction_cost_bps=10
+)
+```
+
+#### `calculate_rebalanced_returns(returns, target_weights, rebalance_freq='monthly', transaction_cost_bps=0)`
+Portfolio returns with periodic rebalancing to target weights
+
+**Example**:
+```python
+from myPortfolioManagement.myReturns import calculate_rebalanced_returns
+
+# Monthly rebalancing with 10 bps transaction cost per rebalance
+weights = pd.Series({'AAPL': 0.6, 'MSFT': 0.4})
+port_returns = calculate_rebalanced_returns(
+    returns,
+    weights,
+    rebalance_freq='monthly',  # 'daily', 'weekly', 'monthly', 'quarterly', 'yearly'
+    transaction_cost_bps=10
+)
+```
+
+#### `calculate_portfolio_returns(returns, myweights, rebalance_strategy='daily', transaction_cost_bps=0)`
+Calculate portfolio returns with specified rebalancing strategy (now with explicit rebalancing control)
+
+**Example**:
+```python
+# Traditional daily rebalancing (default, unrealistic for most portfolios)
+port_ret = calculate_portfolio_returns(returns, weights)
+
+# More realistic: monthly rebalancing with transaction costs
+port_ret = calculate_portfolio_returns(
+    returns, weights,
+    rebalance_strategy='monthly',
+    transaction_cost_bps=10
+)
+
+# Buy and hold strategy
+port_ret = calculate_portfolio_returns(
+    returns, weights,
+    rebalance_strategy='buy_and_hold'
+)
+```
+
+**Rebalancing Strategy Comparison**:
+
+| Strategy | Use Case | Transaction Costs | Weights Behavior |
+|----------|----------|-------------------|------------------|
+| `'daily'` | Theoretical analysis only | Very high (unrealistic) | Reset to target daily |
+| `'weekly'` | Active institutional | High | Reset to target weekly |
+| `'monthly'` | **Typical institutional** | Moderate | Reset to target monthly |
+| `'quarterly'` | **Typical individual** | Low | Reset to target quarterly |
+| `'yearly'` | Tax-advantaged accounts | Very low | Reset to target yearly |
+| `'buy_and_hold'` | **Long-term individual** | Minimal (one-time) | Drift naturally |
+
+**Recommended Practice**:
+```python
+# For realistic portfolio analysis, always specify:
+# 1. Explicit rebalancing frequency (typically monthly or quarterly)
+# 2. Realistic transaction costs (typically 5-20 bps)
+
+portfolio_returns = calculate_portfolio_returns(
+    returns, 
+    weights,
+    rebalance_strategy='monthly',  # Be explicit!
+    transaction_cost_bps=10        # Include costs!
+)
+```
+
+See `examples_rebalancing_strategies.py` for detailed comparisons and analysis.
 
 ### Performance Metrics (myPerformanceMetrics.py)
 
@@ -770,6 +887,17 @@ For questions, issues, or suggestions:
 
 ## Changelog
 
+### Version 1.1.0 (December 2024)
+- **NEW**: Buy-and-hold vs rebalancing strategies
+  - Added `calculate_buy_and_hold_returns()` for realistic buy-and-hold portfolios
+  - Added `calculate_rebalanced_returns()` for periodic rebalancing (daily/weekly/monthly/quarterly/yearly)
+  - Updated `calculate_portfolio_returns()` to support explicit rebalancing strategies
+  - Added transaction cost modeling in basis points
+  - Addresses issue #XX: Clarifies implicit daily rebalancing assumption in traditional r*w calculation
+- Comprehensive test suite for rebalancing strategies
+- New examples: `examples_rebalancing_strategies.py` with detailed comparisons
+- Enhanced README with rebalancing strategy documentation
+
 ### Version 1.0.0 (December 2024)
 - Initial release
 - Added Kaggle/Colab compatibility
@@ -780,6 +908,6 @@ For questions, issues, or suggestions:
 ---
 
 **Last Updated**: December 22, 2024  
-**Current Version**: 1.0.0  
+**Current Version**: 1.1.0  
 **Python Compatibility**: 3.10+  
 **Maintainers**: Moustafa C, Ferhat C
