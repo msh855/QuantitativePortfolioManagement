@@ -399,8 +399,16 @@ def fan_chart(returns: pd.DataFrame,
     # Normalize the out-of-sample forecast to start from the last in-sample value
     dist_clone = dist.copy()
     
+    # Get the in-sample data
+    dist_clone_insample = dist_clone[dist_clone.index < out_of_sample_date]
+    
+    # Ensure there is at least one in-sample observation
+    if len(dist_clone_insample) == 0:
+        raise ValueError(f"No in-sample data found before {out_of_sample_date}. "
+                        "Please check that the out_of_sample_date is not before the start of the returns data.")
+    
     # Get the last in-sample value for each percentile band
-    last_insample_values = dist_clone[dist_clone.index < out_of_sample_date].iloc[-1]
+    last_insample_values = dist_clone_insample.iloc[-1]
     
     # Get the forecast part
     dist_clone_fcast = dist_clone[dist_clone.index >= out_of_sample_date].copy()
@@ -419,8 +427,6 @@ def fan_chart(returns: pd.DataFrame,
             else:
                 # If first forecast value is zero, set to last in-sample value
                 dist_clone_fcast[col] = last_insample_values[col]
-
-    dist_clone_insample = dist_clone[dist_clone.index < out_of_sample_date]
 
     dist_clone_new = pd.concat([dist_clone_insample, dist_clone_fcast])
 
