@@ -252,64 +252,108 @@ def get_benchmark_porfolios(rebalance=None):
     tickers = {'VTI': 0.30,
                'VGLT': 0.40,
                'VGIT': 0.15,
-               'GLD': 0.08,
-               'DJP': 0.07}
+               'GLD': 0.075,
+               'DBC': 0.075}  # DBC replaces DJP (which is delisted)
 
-    ret_all_weather_dalio = qs.utils.make_index(ticker_weights=tickers,
-                                                rebalance=rebalance,
-                                                period='max',
-                                                returns=None,
-                                                match_dates=False)
+    try:
+        ret_all_weather_dalio = qs.utils.make_index(ticker_weights=tickers,
+                                                    rebalance=rebalance,
+                                                    period='max',
+                                                    returns=None,
+                                                    match_dates=False)
 
-    ret_all_weather_dalio = pd.Series(ret_all_weather_dalio,
-                                      name='All_Weather_Dalio')
+        ret_all_weather_dalio = pd.Series(ret_all_weather_dalio,
+                                          name='All_Weather_Dalio')
+    except (ValueError, Exception) as e:
+        print(f"Warning: Could not create All-Weather portfolio: {e}")
+        ret_all_weather_dalio = pd.Series(dtype=float, name='All_Weather_Dalio')
 
     # 60/40 based on BlackRock
-    ret_60_40 = pd.Series(qs.utils.download_returns('BAGPX'),
-                          name='Port_60/40_BlackRock')
+    try:
+        ret_60_40 = pd.Series(qs.utils.download_returns('BAGPX'),
+                              name='Port_60/40_BlackRock')
+    except Exception as e:
+        print(f"Warning: Could not download 60/40 portfolio: {e}")
+        ret_60_40 = pd.Series(dtype=float, name='Port_60/40_BlackRock')
 
     retun_bench_port = pd.concat([ret_all_weather_dalio, ret_60_40], axis=1)
 
     return retun_bench_port
 
 
-def get_benchmark_returns(choose_bench: str = 'S&P500') -> pd.DataFrame:
+def get_benchmark_returns(choose_bench: str or list = None) -> pd.DataFrame:
     '''
-    Options for benchmarking: 'Nasdaq', 'S&P500', 'World_Index', 'Cash', 
-                               'Emerging_Markets','All_Weather_US'
-              'US_Real_Estate', 'US_mid_Cap', 'US_small_Cap', 'World_Non_US',
-              'US_TIPS', 'US_Bonds', 'Bloomberg_Commodity_Index', 
-              'Port_60/40_BlackRock'
-        
+    Download benchmark returns. Only downloads the benchmarks you request.
     
+    Args:
+        choose_bench: str, list of str, or None
+            - str: download a single benchmark (e.g., 'S&P500')
+            - list: download multiple benchmarks (e.g., ['S&P500', 'Nasdaq'])
+            - None: download all available benchmarks
+    
+    Options for benchmarking: 'Nasdaq', 'S&P500', 'World_Index', 'Cash', 
+                               'Emerging_Markets', 'US_Real_Estate',
+                               'US_mid_Cap', 'US_small_Cap', 'World_Non_US',
+                               'US_TIPS', 'US_Bonds', 'Bloomberg_Commodity_Index'
+    
+    Returns:
+        pd.DataFrame: DataFrame with benchmark returns
     '''
-    # options 
-    tickers = ['^IXIC', '^GSPC', 'VT', 'BIL', 'EEM', 'VNQ',
-               'MDY', 'SLY', 'EFA', 'TIP', 'AGG', 'DJP']
-
-    names_list = ['Nasdaq', 'S&P500', 'World_Index', 'Cash', 'Emerging_Markets',
-                  'US_Real_Estate', 'US_mid_Cap', 'US_small_Cap', 'World_Non_US',
-                  'US_TIPS', 'US_Bonds', 'Bloomberg_Commodity_Index']
-
-    ret_bench = list()
-    for tick, name in zip(tickers, names_list):
-        ret_data = qs.utils.download_returns(tick)
-        # Handle both Series and DataFrame returns from quantstats
-        if isinstance(ret_data, pd.DataFrame):
-            ret = ret_data.squeeze()
-        else:
-            ret = ret_data
-        ret.name = name
-        ret_bench.append(ret)
-
+    # Mapping of benchmark names to Yahoo tickers
+    benchmark_map = {
+        'Nasdaq': '^IXIC',
+        'S&P500': '^GSPC',
+        'World_Index': 'VT',
+        'Cash': 'BIL',
+        'Emerging_Markets': 'EEM',
+        'US_Real_Estate': 'VNQ',
+        'US_mid_Cap': 'MDY',
+        'US_small_Cap': 'SLY',
+        'World_Non_US': 'EFA',
+        'US_TIPS': 'TIP',
+        'US_Bonds': 'AGG',
+        'Bloomberg_Commodity_Index': 'DBC'  # DBC replaces DJP (delisted)
+    }
+    
+    # Determine which benchmarks to download
+    if choose_bench is None:
+        # Download all benchmarks
+        benchmarks_to_download = list(benchmark_map.keys())
+    elif isinstance(choose_bench, str):
+        # Single benchmark
+        benchmarks_to_download = [choose_bench]
+    elif isinstance(choose_bench, list):
+        # List of benchmarks
+        benchmarks_to_download = choose_bench
+    else:
+        raise ValueError("choose_bench must be a string, list of strings, or None")
+    
+    # Validate benchmark names
+    invalid = [b for b in benchmarks_to_download if b not in benchmark_map]
+    if invalid:
+        raise ValueError(f"Invalid benchmark(s): {invalid}. "
+                        f"Available options: {list(benchmark_map.keys())}")
+    
+    # Download only requested benchmarks
+    ret_bench = []
+    for name in benchmarks_to_download:
+        ticker = benchmark_map[name]
+        try:
+            ret_data = qs.utils.download_returns(ticker)
+            # Handle both Series and DataFrame returns from quantstats
+            if isinstance(ret_data, pd.DataFrame):
+                ret = ret_data.squeeze()
+            else:
+                ret = ret_data
+            ret.name = name
+            ret_bench.append(ret)
+        except Exception as e:
+            print(f"Warning: Could not download {name} ({ticker}): {e}")
+    
+    if not ret_bench:
+        raise ValueError("No benchmark data could be downloaded")
+    
     ret_bench = pd.concat(ret_bench, axis=1)
-
-    retun_bench_port = get_benchmark_porfolios()
-
-    ret_bench = pd.concat([ret_bench, retun_bench_port], axis=1)
-
-    if choose_bench:
-        ret_bench = ret_bench[[choose_bench]]
 
     return ret_bench
 
