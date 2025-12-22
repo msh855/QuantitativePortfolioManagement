@@ -680,18 +680,19 @@ def get_main_stats(returns: pd.DataFrame = None, rf: float = 0.05, smart: bool =
     metrics = pd.DataFrame()
 
     for func in functions:
-        if func.__name__ == 'cagr_from_returns':
-            metric = func(returns)
-            if isinstance(metric, (int, float)):
-                metric = pd.Series(metric, index=returns.columns if isinstance(returns, pd.DataFrame) else [returns.name])
-            elif isinstance(metric, pd.Series):
-                pass  # Already a Series
-            else:
-                metric = pd.Series(metric)
-        elif func.__name__ in ['adjusted_sortino', 'sharpe']:
+        # Handle function-specific parameters
+        if func.__name__ in ['adjusted_sortino', 'sharpe']:
             metric = func(returns, rf=rf, smart=smart)
         else:
             metric = func(returns)
+        
+        # Ensure metric is a Series for consistent concat
+        if not isinstance(metric, pd.Series):
+            if isinstance(returns, pd.DataFrame):
+                metric = pd.Series(metric, index=returns.columns)
+            else:
+                metric = pd.Series([metric], index=[returns.name if returns.name else 0])
+        
         metrics = pd.concat([metrics, metric], axis=1)
 
     metrics.columns = [func.__name__ if func.__name__ != 'cagr_from_returns' else 'cagr' for func in functions]
