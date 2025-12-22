@@ -15,6 +15,7 @@ from timebudget import timebudget
 
 from myPortfolioManagement.myPlots import *
 from myPortfolioManagement.myUtils import balance_dates
+from myPortfolioManagement.myPerformanceMetrics import cagr_from_returns
 
 # Constants
 NUMERICAL_PRECISION_THRESHOLD = 1e-10  # Threshold for near-zero value detection
@@ -27,17 +28,20 @@ def bootstrap_stats(returns: pd.Series,
                     periods: int = 252,
                     n_sim: int = 1000) -> pd.DataFrame:
     """
+    Bootstrap performance statistics from returns data.
     
+    Uses standardized CAGR calculation (cagr_from_returns) for consistency
+    with other library functions.
 
     Args:
-        returns (pd.Series): DESCRIPTION.
-        returns_benchmark (pd.Series, optional): DESCRIPTION. Defaults to None.
-        rf (float, optional): DESCRIPTION. Defaults to 0.02.
-        periods (int, optional): DESCRIPTION. Defaults to 252.
-        n_sim (int, optional): DESCRIPTION. Defaults to 10000.
+        returns (pd.Series): Return series
+        returns_benchmark (pd.Series, optional): Benchmark returns. Defaults to None.
+        rf (float, optional): Risk-free rate. Defaults to 0.02.
+        periods (int, optional): Periods per year. Defaults to 252.
+        n_sim (int, optional): Number of simulations. Defaults to 1000.
 
     Returns:
-        TYPE: DESCRIPTION.
+        DataFrame: Bootstrapped statistics
 
     """
 
@@ -45,8 +49,8 @@ def bootstrap_stats(returns: pd.Series,
         if returns_benchmark is None:
             returns_benchmark = pd.Series(dtype='int64')
 
-    # metrics to calculate 
-    metrics_functions = [qs.stats.cagr,
+    # metrics to calculate - using standardized CAGR
+    metrics_functions = [cagr_from_returns,
                          qs.stats.volatility,
                          qs.stats.sharpe,
                          qs.stats.adjusted_sortino]
@@ -63,6 +67,9 @@ def bootstrap_stats(returns: pd.Series,
 
     for func in metrics_functions:
         stat_name = func.__name__
+        # Use 'cagr' as stat name for cagr_from_returns
+        if stat_name == 'cagr_from_returns':
+            stat_name = 'cagr'
         sim = int(n_sim + 0.10 * n_sim)
         out: ndarray = np.zeros(sim)
 
@@ -91,6 +98,7 @@ def bootstrap_stats(returns: pd.Series,
                                   factor_returns=returns_bench_i,
                                   risk_free=rf)
 
+            # Handle standardized CAGR and other metrics
             if func not in (qs.stats.volatility,
                             ep.beta, ep.alpha, qs.stats.sharpe,
                             qs.stats.adjusted_sortino):

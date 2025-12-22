@@ -25,10 +25,23 @@ ParallelPandas.initialize(n_cpu=n_cpu, disable_pr_bar=True)
 
 
 def age(series):
+    """
+    Calculate the age (time span) of a time series in years.
+    
+    Uses FFN's year_frac method for accurate calendar-time calculation,
+    which accounts for leap years and exact date differences.
+    
+    Args:
+        series: Time series with DatetimeIndex
+    
+    Returns:
+        Float: Age in years (e.g., 2.5 for 2 years and 6 months)
+        
+    Note:
+        This is the standardized method for calculating time periods
+        across the library, ensuring consistency with CAGR calculations.
+    """
     check_date_index(series)
-    # start_date = series.first_valid_index()
-    # series = series[series.index >= start_date]
-    # sample_age = series.index[-1].year - series.index[0].year
     sample_age = ffn.year_frac(series.index[0], series.index[-1])
     return sample_age
 
@@ -43,6 +56,25 @@ def get_rolling_greek_stats(ret, ret_bench, rolling_period=30):
 
 
 def cagr(df_prices: pd.DataFrame or pd.Series):
+    """
+    Calculate Compound Annual Growth Rate (CAGR) using FFN's year_frac method.
+    
+    This function provides standardized CAGR calculations across the library,
+    using actual calendar time (year_frac) rather than period counting.
+    This ensures consistency with financial industry standards.
+    
+    Args:
+        df_prices: Price series (Series) or DataFrame with price columns.
+                   Index must be DatetimeIndex.
+    
+    Returns:
+        Float (for Series input) or Series (for DataFrame input) with CAGR values.
+        
+    Note:
+        Uses ffn.core.calc_cagr internally, which calculates:
+        CAGR = (End Value / Start Value)^(1/years) - 1
+        where years = ffn.year_frac(start_date, end_date)
+    """
     if isinstance(df_prices, pd.Series):
         return ffn.core.calc_cagr(df_prices.dropna())
     else:
@@ -55,6 +87,45 @@ def cagr(df_prices: pd.DataFrame or pd.Series):
         cagrs = pd.concat(cagr_list)
         cagrs.index = list(df_prices.columns)
         return cagrs
+
+
+def cagr_from_returns(returns: pd.DataFrame or pd.Series):
+    """
+    Calculate CAGR from returns using standardized methodology (FFN's year_frac).
+    
+    This function converts returns to a price index, then calculates CAGR
+    using the same standardized approach as the cagr() function.
+    
+    Args:
+        returns: Return series (Series) or DataFrame with return columns.
+                 Index must be DatetimeIndex.
+    
+    Returns:
+        Float (for Series input) or Series (for DataFrame input) with CAGR values.
+        
+    Note:
+        Internally converts returns to prices starting at 100, then uses
+        ffn.core.calc_cagr for consistent results across the library.
+    """
+    check_date_index(returns)
+    
+    if isinstance(returns, pd.Series):
+        returns_clean = returns.dropna()
+        if len(returns_clean) == 0:
+            return np.nan
+        prices = (1 + returns_clean).cumprod() * 100
+        return ffn.core.calc_cagr(prices)
+    else:
+        # DataFrame case
+        cagr_results = {}
+        for col in returns.columns:
+            returns_clean = returns[col].dropna()
+            if len(returns_clean) == 0:
+                cagr_results[col] = np.nan
+            else:
+                prices = (1 + returns_clean).cumprod() * 100
+                cagr_results[col] = ffn.core.calc_cagr(prices)
+        return pd.Series(cagr_results)
 
 
 def drawdown_details(prices: pd.Series, top_drawdowns: int = 5):
@@ -242,9 +313,31 @@ def alpha_beta_bear(returns, returns_benchmark, my_date_col_name=None,
 
 
 def performance_overview(df, prices=False, short=True):
-    '''
-    df: a wide dataframe of either returns or prices
-    '''
+    """
+    Generate comprehensive performance overview statistics using FFN library.
+    
+    This function provides standardized performance metrics including CAGR,
+    which is calculated using FFN's year_frac method for consistency.
+    
+    Args:
+        df: Wide DataFrame of either returns or prices
+        prices: If True, df contains prices; if False, df contains returns
+        short: If True, return only key metrics; if False, return all metrics
+    
+    Returns:
+        DataFrame with performance statistics. Key metrics include:
+        - start, end: Start and end dates
+        - total_return: Total return over the period
+        - cagr: Compound Annual Growth Rate (using FFN's year_frac)
+        - max_drawdown: Maximum drawdown
+        - yearly_sharpe: Annualized Sharpe ratio
+        - yearly_sortino: Annualized Sortino ratio
+        - calmar: Calmar ratio
+        
+    Note:
+        Uses FFN library internally, which provides consistent CAGR calculations
+        based on actual calendar time (year_frac method).
+    """
 
     if prices:
         df = returns_from_prices(df)
@@ -550,25 +643,52 @@ def reward_metric(df, rolling_window=3,
 
 @timebudget
 def get_main_stats(returns: pd.DataFrame = None, rf: float = 0.05, smart: bool = True, add_age=False):
+    """
+    Calculate main performance statistics for returns data.
+    
+    This function uses standardized metrics calculations to ensure consistency.
+    CAGR is calculated using FFN's year_frac method for accurate calendar-time
+    annualized returns, rather than period-counting methods.
+    
+    Args:
+        returns: DataFrame or Series of returns (not prices). Index must be DatetimeIndex.
+        rf: Risk-free rate (annualized)
+        smart: Use smart Sharpe/Sortino calculation
+        add_age: Include sample age in results
+    
+    Returns:
+        DataFrame with performance metrics (total_ret, cagr, adjusted_sortino, 
+        sharpe, calmar, max_drawdown, and optionally age_sample)
+        
+    Note:
+        Uses cagr_from_returns() for standardized CAGR calculation instead of
+        qs.stats.cagr to ensure consistency with other library functions.
+    """
     check_date_index(returns)
 
     functions = [qs.stats.comp,
-                 qs.stats.cagr,
+                 cagr_from_returns,  # Use standardized CAGR
                  qs.stats.adjusted_sortino,
                  qs.stats.sharpe, qs.stats.calmar, qs.stats.max_drawdown]
 
     metrics = pd.DataFrame()
 
     for func in functions:
-        if func.__name__ == 'cagr':
-            metric = func(returns, periods=365)
+        if func.__name__ == 'cagr_from_returns':
+            metric = func(returns)
+            if isinstance(metric, (int, float)):
+                metric = pd.Series(metric, index=returns.columns if isinstance(returns, pd.DataFrame) else [returns.name])
+            elif isinstance(metric, pd.Series):
+                pass  # Already a Series
+            else:
+                metric = pd.Series(metric)
         elif func.__name__ in ['adjusted_sortino', 'sharpe']:
             metric = func(returns, rf=rf, smart=smart)
         else:
             metric = func(returns)
         metrics = pd.concat([metrics, metric], axis=1)
 
-    metrics.columns = [func.__name__ for func in functions]
+    metrics.columns = [func.__name__ if func.__name__ != 'cagr_from_returns' else 'cagr' for func in functions]
     metrics = metrics.rename(columns={'comp': 'total_ret'})
 
     if add_age:
