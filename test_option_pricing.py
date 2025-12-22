@@ -9,6 +9,7 @@ Date: December 2024
 
 import numpy as np
 import pandas as pd
+from scipy.integrate import simpson
 from myPortfolioManagement.myOptionPricing import (
     black_scholes_call,
     black_scholes_put,
@@ -285,7 +286,6 @@ class TestBreedenLitzenberger:
         assert (density >= 0).all()
         
         # Density should integrate to approximately 1
-        from scipy.integrate import simpson
         total_prob = simpson(density, x=strikes_dense)
         assert 0.8 < total_prob < 1.2  # Allow some numerical error
     

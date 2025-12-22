@@ -174,6 +174,7 @@ def implied_volatility(option_price: float, S: float, K: float, T: float, r: flo
     # Try Newton-Raphson first
     try:
         sigma = 0.5  # Initial guess
+        price_diff = float('inf')  # Initialize to ensure it's defined
         for i in range(max_iter):
             price = pricing_func(S, K, T, r, sigma)
             vega = option_vega(S, K, T, r, sigma)
