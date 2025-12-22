@@ -61,7 +61,7 @@ END_DATE = None  # None = today's date
 
 # Fanchart simulation parameters
 OUT_OF_SAMPLE_DATE = '2022-11-30'  # Date from which simulation begins (ChatGPT launch)
-N_SIMULATIONS = 5000  # Number of bootstrap simulations
+N_SIMULATIONS = 10000  # Number of bootstrap simulations
 STARTING_VALUE = 1.0  # Starting portfolio value
 
 # Portfolio name
