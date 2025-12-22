@@ -76,8 +76,9 @@ def bootstrap_stats(returns: pd.Series,
         for i in range(sim):
             # draw random returns 
             idx = np.random.randint(len(returns), size=len(returns))
-            returns_i = returns.iloc[idx].reset_index(drop=False)
-            returns_i = returns_i.set_index('Date')
+            returns_i = returns.iloc[idx]
+            # Preserve the original index (don't reset and rename)
+            returns_i.index = returns.index[idx]
 
             if func in (qs.stats.sharpe, qs.stats.adjusted_sortino):
                 out[i] = func(returns_i, rf=rf, periods=periods)
@@ -87,8 +88,8 @@ def bootstrap_stats(returns: pd.Series,
 
             if not returns_benchmark.empty:
                 if func in (ep.beta, ep.alpha):
-                    returns_bench_i = returns_benchmark.iloc[idx].reset_index(drop=False)
-                    returns_bench_i = returns_bench_i.set_index('Date')
+                    returns_bench_i = returns_benchmark.iloc[idx]
+                    returns_bench_i.index = returns_benchmark.index[idx]
 
                 if func == ep.alpha:
                     out[i] = func(returns=returns_i, factor_returns=returns_bench_i, risk_free=rf,

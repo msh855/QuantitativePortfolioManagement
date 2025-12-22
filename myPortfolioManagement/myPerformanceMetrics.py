@@ -106,6 +106,8 @@ def cagr_from_returns(returns: pd.DataFrame or pd.Series):
     Note:
         Internally converts returns to prices starting at 100, then uses
         ffn.core.calc_cagr for consistent results across the library.
+        The function ensures the index is sorted chronologically before
+        calculating CAGR.
     """
     check_date_index(returns)
     
@@ -113,6 +115,8 @@ def cagr_from_returns(returns: pd.DataFrame or pd.Series):
         returns_clean = returns.dropna()
         if len(returns_clean) == 0:
             return np.nan
+        # Sort by index to ensure chronological order
+        returns_clean = returns_clean.sort_index()
         prices = (1 + returns_clean).cumprod() * 100
         return ffn.core.calc_cagr(prices)
     else:
@@ -123,6 +127,8 @@ def cagr_from_returns(returns: pd.DataFrame or pd.Series):
             if len(returns_clean) == 0:
                 cagr_results[col] = np.nan
             else:
+                # Sort by index to ensure chronological order
+                returns_clean = returns_clean.sort_index()
                 prices = (1 + returns_clean).cumprod() * 100
                 cagr_results[col] = ffn.core.calc_cagr(prices)
         return pd.Series(cagr_results)
