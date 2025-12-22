@@ -15,6 +15,9 @@ from timebudget import timebudget
 from myPortfolioManagement.myPlots import *
 from myPortfolioManagement.myUtils import balance_dates
 
+# Constants
+NUMERICAL_PRECISION_THRESHOLD = 1e-10  # Threshold for near-zero value detection
+
 
 @timebudget
 def bootstrap_stats(returns: pd.Series,
@@ -418,15 +421,16 @@ def fan_chart(returns: pd.DataFrame,
     if len(dist_clone_fcast) > 0:
         first_forecast_values = dist_clone_fcast.iloc[0]
         for col in dist_clone_fcast.columns:
-            # Calculate the ratio to normalize
             # Handle edge case where first_forecast_values could be zero or very close to zero
-            if abs(first_forecast_values[col]) > 1e-10:
+            # to avoid division by zero or extreme scaling ratios
+            if abs(first_forecast_values[col]) > NUMERICAL_PRECISION_THRESHOLD:
+                # Calculate the ratio to normalize and scale the entire forecast series
                 ratio = last_insample_values[col] / first_forecast_values[col]
-                # Apply the normalization
                 dist_clone_fcast[col] = dist_clone_fcast[col] * ratio
             else:
-                # If first forecast value is zero or very close to zero, 
-                # shift the entire series by the last in-sample value
+                # If first forecast value is near zero, use additive shift instead of scaling
+                # This preserves the forecast's relative changes and dynamics while ensuring
+                # the first value matches the last in-sample value
                 dist_clone_fcast[col] = dist_clone_fcast[col] + last_insample_values[col]
 
     dist_clone_new = pd.concat([dist_clone_insample, dist_clone_fcast])
