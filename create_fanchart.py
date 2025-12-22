@@ -36,21 +36,25 @@ from myPortfolioManagement.myBacktesting import fan_chart
 # CONFIGURATION - MODIFY THESE PARAMETERS
 # ============================================================================
 
-# List of stock tickers to download (Yahoo Finance format)
-TICKERS = ["IGLN.L", 'MSFT', 'ABBV', 'NVDA', 'CRWD', 'V', 'JPM']
+# List of stock and crypto tickers to download (Yahoo Finance USD format)
+TICKERS = ["IGLN.L", "MSFT", "ABBV", "NVDA", "CRWD", "V", "JPM", "SOL-USD", "BTC-USD", "ETH-USD"]
 
-# Portfolio weights for each stock (must sum to 1.0)
-# Create a dictionary mapping ticker to weight
+# Portfolio weights calculated from total combined value (~$8,100 USD)
+# Weights are based on the GBP values from your provided images
 WEIGHTS = {
-    'IGLN.L': 0.2187,
-    'MSFT': 0.1822,
-    'ABBV': 0.1664,
-    'NVDA': 0.1494,
-    'CRWD': 0.1197,
-    'V': 0.0823,
-    'JPM': 0.0813
+    'IGLN.L': 0.1419,   # iShares Physical Gold
+    'MSFT': 0.1172,     # Microsoft
+    'ABBV': 0.1070,     # AbbVie
+    'NVDA': 0.0967,     # Nvidia
+    'CRWD': 0.0762,     # Crowdstrike
+    'V': 0.0527,        # Visa
+    'JPM': 0.0522,      # JPMorgan Chase & Co
+    'SOL-USD': 0.1719,  # Solana
+    'BTC-USD': 0.1365,  # Bitcoin
+    'ETH-USD': 0.0477   # Ethereum
 }
 
+# Verification: sum(WEIGHTS.values()) should be approx 1.0
 # Date range for historical data
 START_DATE = '2016-01-01'
 END_DATE = None  # None = today's date
@@ -178,6 +182,15 @@ if __name__ == '__main__':
         n_sample=N_SIMULATIONS,
         starting_value=STARTING_VALUE,
         chart_title=f'{PORTFOLIO_NAME} - Bootstrap Fan Chart'
+    )
+
+    fan_chart(
+        returns=portfolio_returns,
+        weight_period=['2021-01-01', '2022-11-29'],
+        out_of_sample_date=OUT_OF_SAMPLE_DATE,
+        n_sample=N_SIMULATIONS,
+        starting_value=STARTING_VALUE,
+        chart_title=f'{PORTFOLIO_NAME} - Bootstrap Fan Chart [Rregime Weight]'
     )
 
     print("\n" + "=" * 70)
