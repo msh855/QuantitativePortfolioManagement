@@ -15,6 +15,9 @@ from timebudget import timebudget
 from myPortfolioManagement.myPlots import *
 from myPortfolioManagement.myUtils import balance_dates
 
+# Constants
+NUMERICAL_PRECISION_THRESHOLD = 1e-10  # Threshold for near-zero value detection
+
 
 @timebudget
 def bootstrap_stats(returns: pd.Series,
@@ -396,18 +399,39 @@ def fan_chart(returns: pd.DataFrame,
 
     dist = prep_dist(ret_possible_path_cum)
 
-    # replaces the dist
+    # Normalize the out-of-sample forecast to start from the last in-sample value
     dist_clone = dist.copy()
-
-    dist_clone_fcast = dist_clone[dist_clone.index >= out_of_sample_date]
-
-    for col in dist_clone_fcast.columns[0:3]:
-        dist_clone_fcast[col] = min(dist_clone_fcast[col])
-
-    for col in dist_clone_fcast.columns[3:6]:
-        dist_clone_fcast[col] = max(dist_clone_fcast[col])
-
+    
+    # Get the in-sample data
     dist_clone_insample = dist_clone[dist_clone.index < out_of_sample_date]
+    
+    # Ensure there is at least one in-sample observation
+    if len(dist_clone_insample) == 0:
+        raise ValueError(f"No in-sample data found before {out_of_sample_date}. "
+                        "Please check that the out_of_sample_date is not before the start of the returns data.")
+    
+    # Get the last in-sample value for each percentile band
+    last_insample_values = dist_clone_insample.iloc[-1]
+    
+    # Get the forecast part
+    dist_clone_fcast = dist_clone[dist_clone.index >= out_of_sample_date].copy()
+    
+    # Normalize each percentile band so it starts from the last in-sample value
+    # by scaling the forecast to continue from the last in-sample point
+    if len(dist_clone_fcast) > 0:
+        first_forecast_values = dist_clone_fcast.iloc[0]
+        for col in dist_clone_fcast.columns:
+            # Handle edge case where first_forecast_values could be zero or very close to zero
+            # to avoid division by zero or extreme scaling ratios
+            if abs(first_forecast_values[col]) > NUMERICAL_PRECISION_THRESHOLD:
+                # Calculate the ratio to normalize and scale the entire forecast series
+                ratio = last_insample_values[col] / first_forecast_values[col]
+                dist_clone_fcast[col] = dist_clone_fcast[col] * ratio
+            else:
+                # If first forecast value is near zero, use additive shift instead of scaling
+                # This preserves the forecast's relative changes and dynamics while ensuring
+                # the first value matches the last in-sample value
+                dist_clone_fcast[col] = dist_clone_fcast[col] + last_insample_values[col]
 
     dist_clone_new = pd.concat([dist_clone_insample, dist_clone_fcast])
 
