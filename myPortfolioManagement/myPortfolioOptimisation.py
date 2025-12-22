@@ -193,6 +193,7 @@ def HRP(model: str = 'HRP',
                                 **kwargs)
 
     weights = weights.rename(columns={'weights': 'port_weight'})
+    weights.index.name = 'asset'
 
     if model != 'HRP' and weight_max is not None:
         temp = clean_limit_weights(weights[['port_weight']],
@@ -313,9 +314,9 @@ def equal_weight_portfolio(returns_training, my_assets_col_name=[]):
         df_naive = pd.DataFrame(d).set_index(my_assets_col_name)
 
     else:
-        d = {'assets': returns_training.columns.to_list(),
+        d = {'asset': returns_training.columns.to_list(),
              'port_naive': naive_weights}
-        df_naive = pd.DataFrame(d).set_index('assets')
+        df_naive = pd.DataFrame(d).set_index('asset')
 
     return df_naive
 
@@ -374,9 +375,9 @@ def port_GMV(returns_training=None, S=None, periods=252, weight_min=0.02,
     weights = ef.clean_weights()
     weights = pd.DataFrame(weights, index=[0])
 
-    weights = pd.melt(weights, var_name='assets',
+    weights = pd.melt(weights, var_name='asset',
                       value_name='port_min_vol')
-    weights = weights.set_index('assets')
+    weights = weights.set_index('asset')
     return weights
 
 
@@ -548,6 +549,7 @@ def port_max_sharpe(returns_training, market_returns=None,
     weights = pd.DataFrame(weights, index=[0])
     weights = pd.melt(weights, var_name='asset',
                       value_name='port_max_Sharpe')
+    weights = weights.set_index('asset')
     return weights
 
 
@@ -608,6 +610,7 @@ def port_CVAR(returns_training, market_returns=None,
     weights = pd.DataFrame(weights, index=[0])
     weights = pd.melt(weights, var_name='asset',
                       value_name='port_target_CVAR')
+    weights = weights.set_index('asset')
     return weights
 
 

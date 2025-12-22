@@ -6,6 +6,8 @@ import quantstats_lumi as qs
 import yfinance as yf
 from operator import itemgetter
 from openbb import obb
+import time
+import json
 
 
 def data_overview(df: pd.DataFrame,
@@ -201,49 +203,80 @@ def clean_stock_prices(prices: pd.DataFrame, **kwargs) -> pd.DataFrame:
 
 
 def _add_stock_sectors(yahoo_ticker: str = None) -> pd.DataFrame:
-    stock_info = yf.Ticker(yahoo_ticker)
-    d = stock_info.info
+    try:
+        stock_info = yf.Ticker(yahoo_ticker)
+        # Add a small delay to avoid rate limiting
+        time.sleep(0.1)
+        d = stock_info.info
+        
+        # Check if info is empty
+        if not d:
+            print(f"Warning: Empty info for {yahoo_ticker}")
+            return pd.DataFrame()
 
-    mykeys_exp = ['industry', 'sector', 'country']
+        mykeys_exp = ['industry', 'sector', 'country']
 
-    if not d.keys() & {'industry', 'sector', 'country'}:
-        str_other = 'Other'
-        data = {'industry': [str_other],
-                'sector': [str_other],
-                'country': [str_other]}
-        df_dv = pd.DataFrame(data)
+        if not d.keys() & {'industry', 'sector', 'country'}:
+            str_other = 'Other'
+            data = {'industry': [str_other],
+                    'sector': [str_other],
+                    'country': [str_other]}
+            df_dv = pd.DataFrame(data)
 
-    else:
-        dv = itemgetter('industry', 'sector', 'country')(
-            d)
-        df_dv = pd.DataFrame([dv], columns=mykeys_exp)
+        else:
+            dv = itemgetter('industry', 'sector', 'country')(
+                d)
+            df_dv = pd.DataFrame([dv], columns=mykeys_exp)
 
-    df_dv['yahooTicker'] = yahoo_ticker
-    order = ['yahooTicker'] + mykeys_exp
-    return df_dv[order]
+        df_dv['yahooTicker'] = yahoo_ticker
+        order = ['yahooTicker'] + mykeys_exp
+        return df_dv[order]
+    except (json.JSONDecodeError, KeyError, Exception) as e:
+        print(f"Warning: Could not fetch sector info for {yahoo_ticker}: {type(e).__name__}")
+        return pd.DataFrame()
 
 
 def _add_stock_types(yahoo_ticker: str = None) -> pd.DataFrame:
-    stock_info = yf.Ticker(yahoo_ticker)
-    d = stock_info.info
-    mykeys_l = ['type', 'longName', 'exchange', 'currency']
-    dv = itemgetter('quoteType', 'longName', 'exchange', 'currency')(
-        d)
-    df_dv = pd.DataFrame([dv], columns=mykeys_l)
-   #df_dv.rename(columns={'longName': "name"})
+    try:
+        stock_info = yf.Ticker(yahoo_ticker)
+        # Add a small delay to avoid rate limiting
+        time.sleep(0.1)
+        d = stock_info.info
+        
+        # Check if info is empty
+        if not d:
+            print(f"Warning: Empty info for {yahoo_ticker}")
+            return pd.DataFrame()
+            
+        mykeys_l = ['type', 'longName', 'exchange', 'currency']
+        dv = itemgetter('quoteType', 'longName', 'exchange', 'currency')(
+            d)
+        df_dv = pd.DataFrame([dv], columns=mykeys_l)
+       #df_dv.rename(columns={'longName': "name"})
 
-    df_dv['currency'] = [x.upper() for x in df_dv['currency']]
-    df_dv['yahooTicker'] = yahoo_ticker
-    order = ['yahooTicker'] + mykeys_l
-    return df_dv[order]
+        df_dv['currency'] = [x.upper() for x in df_dv['currency']]
+        df_dv['yahooTicker'] = yahoo_ticker
+        order = ['yahooTicker'] + mykeys_l
+        return df_dv[order]
+    except (json.JSONDecodeError, KeyError, Exception) as e:
+        print(f"Warning: Could not fetch type info for {yahoo_ticker}: {type(e).__name__}")
+        return pd.DataFrame()
 
 
 def _add_stock_info(yahoo_ticker: str = None) -> pd.DataFrame:
-    df1 = _add_stock_sectors(yahoo_ticker)
-    df2 = _add_stock_types(yahoo_ticker)
-    df_info = df2.merge(df1, on='yahooTicker')
-
-    return df_info
+    try:
+        df1 = _add_stock_sectors(yahoo_ticker)
+        df2 = _add_stock_types(yahoo_ticker)
+        
+        # Check if either dataframe is empty
+        if df1.empty or df2.empty:
+            return pd.DataFrame()
+            
+        df_info = df2.merge(df1, on='yahooTicker')
+        return df_info
+    except Exception as e:
+        print(f"Warning: Could not process {yahoo_ticker}: {type(e).__name__}")
+        return pd.DataFrame()
 
 
 def _load_stock(yahoo_ticker: str, period: str = 'max', start_date: str = None,

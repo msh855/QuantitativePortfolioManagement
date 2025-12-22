@@ -127,9 +127,15 @@ def get_nasdaq_tickers() -> pd.DataFrame:
     return df
 
 def get_stock_info(yahoo_tickers: list = None):
-    ncpus = max(mp.cpu_count() - 1, 1)
+    # Reduce parallel jobs to avoid rate limiting
+    ncpus = min(2, max(mp.cpu_count() - 1, 1))
     results = Parallel(n_jobs=ncpus, prefer="threads")(
         delayed(_add_stock_info)(yahoo_ticker=tic) for tic in tqdm(yahoo_tickers))
+    # Filter out empty DataFrames
+    results = [df for df in results if not df.empty]
+    if not results:
+        print("Warning: No stock info could be retrieved")
+        return pd.DataFrame()
     return pd.concat(results, ignore_index=True)
 
 
