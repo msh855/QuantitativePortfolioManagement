@@ -32,3 +32,4 @@ returns = calculate_returns(prices)
 print(f"✓ Calculated returns: {returns.shape}")
 
 print("\n✅ All tests passed!")
+
