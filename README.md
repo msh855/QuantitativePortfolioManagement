@@ -51,6 +51,15 @@ A comprehensive Python library for quantitative portfolio management, backtestin
 - Time series clustering (K-means)
 - Correlation and tail dependence analysis
 
+💰 **Option Pricing & Implied Distributions** *(NEW)*
+- Black-Scholes option pricing model
+- Implied volatility calculation
+- Synthetic option chain creation for assets without traded options
+- Breeden-Litzenberger probability density extraction
+- Comparison of implied vs bootstrapped distributions
+- Mispricing opportunity detection
+- Distribution visualization and analysis
+
 📈 **Backtesting**
 - Portfolio performance tracking
 - Benchmark comparison
@@ -456,6 +465,178 @@ Time series clustering with DTW or Euclidean distance
 clusters, centers = ts_clustering(returns, number_of_clusters=3)
 ```
 
+### Option Pricing & Implied Distributions (myOptionPricing.py, myImpliedDistribution.py)
+
+**Purpose**: Price options, extract implied probability distributions, and compare with historical bootstrapped distributions to identify mispricing opportunities
+
+#### Key Functions:
+
+##### `black_scholes_call(S, K, T, r, sigma)` & `black_scholes_put(S, K, T, r, sigma)`
+Price European call and put options using Black-Scholes model
+
+**Example**:
+```python
+from myPortfolioManagement.myOptionPricing import black_scholes_call, black_scholes_put
+
+S = 100  # Current stock price
+K = 100  # Strike price
+T = 1.0  # Time to expiration (years)
+r = 0.05  # Risk-free rate
+sigma = 0.25  # Volatility
+
+call_price = black_scholes_call(S, K, T, r, sigma)
+put_price = black_scholes_put(S, K, T, r, sigma)
+```
+
+##### `implied_volatility(option_price, S, K, T, r, option_type='call')`
+Calculate implied volatility from option market price
+
+**Example**:
+```python
+from myPortfolioManagement.myOptionPricing import implied_volatility
+
+iv = implied_volatility(option_price=10.45, S=100, K=100, T=1.0, r=0.05)
+print(f"Implied Volatility: {iv:.2%}")
+```
+
+##### `create_option_chain(S, T, r, sigma, strike_range=(0.7, 1.3), num_strikes=20)`
+Create synthetic option chain for assets without traded options
+
+**Example**:
+```python
+from myPortfolioManagement.myOptionPricing import create_option_chain
+
+# Create synthetic options for any asset
+option_chain = create_option_chain(
+    S=100,
+    T=5.0,  # 5-year horizon
+    r=0.05,
+    sigma=0.25,
+    strike_range=(0.6, 1.4),
+    num_strikes=30
+)
+```
+
+##### `extract_implied_distribution(option_chain, S, r, T)`
+Extract implied probability distribution using Breeden-Litzenberger formula
+
+**Example**:
+```python
+from myPortfolioManagement.myImpliedDistribution import extract_implied_distribution
+
+implied_dist = extract_implied_distribution(
+    option_chain=option_chain,
+    S=100,
+    r=0.05,
+    T=5.0,
+    option_type='call'
+)
+# Returns DataFrame with 'price_level' and 'probability_density'
+```
+
+##### `bootstrap_future_distribution(returns, S0, T, n_sim=10000)`
+Bootstrap future price distribution from historical returns
+
+**Example**:
+```python
+from myPortfolioManagement.myImpliedDistribution import bootstrap_future_distribution
+
+bootstrap_dist = bootstrap_future_distribution(
+    returns=historical_returns,
+    S0=100,
+    T=5.0,
+    n_sim=10000,
+    bootstrap_method='iid'
+)
+```
+
+##### `compare_distributions(implied_dist, bootstrap_dist, S0)`
+Compare implied and bootstrapped distributions to find insights
+
+**Example**:
+```python
+from myPortfolioManagement.myImpliedDistribution import compare_distributions
+
+comparison = compare_distributions(
+    implied_dist=implied_dist,
+    bootstrap_dist=bootstrap_dist,
+    S0=100
+)
+# Shows quantile differences and percentage deviations
+```
+
+##### `find_mispricing_opportunities(comparison, threshold_pct=10.0)`
+Identify potential mispricing opportunities
+
+**Example**:
+```python
+from myPortfolioManagement.myImpliedDistribution import find_mispricing_opportunities
+
+mispricings = find_mispricing_opportunities(comparison, threshold_pct=5.0)
+# Returns opportunities where implied differs significantly from bootstrap
+```
+
+##### `plot_distribution_comparison(implied_dist, bootstrap_dist, S0)`
+Visualize comparison between distributions
+
+**Example**:
+```python
+from myPortfolioManagement.myImpliedDistribution import plot_distribution_comparison
+
+fig = plot_distribution_comparison(
+    implied_dist=implied_dist,
+    bootstrap_dist=bootstrap_dist,
+    S0=100,
+    title="5-Year Price Distribution Comparison",
+    save_path='distribution_comparison.png'
+)
+```
+
+**Complete Workflow Example**:
+```python
+# 1. Get historical data
+from myPortfolioManagement.myData import get_stock_prices
+from myPortfolioManagement.myReturns import calculate_returns
+
+prices = get_stock_prices(['AAPL'], start_date='2019-01-01', wide_format=True)
+returns = calculate_returns(prices).squeeze()
+S0 = prices.iloc[-1, 0]
+
+# 2. Create option chain (for assets without traded options)
+from myPortfolioManagement.myOptionPricing import create_option_chain
+
+historical_vol = returns.std() * np.sqrt(252)
+option_chain = create_option_chain(S0, T=5.0, r=0.05, sigma=historical_vol)
+
+# 3. Extract implied distribution
+from myPortfolioManagement.myImpliedDistribution import (
+    extract_implied_distribution,
+    bootstrap_future_distribution,
+    compare_distributions,
+    find_mispricing_opportunities,
+    plot_distribution_comparison
+)
+
+implied_dist = extract_implied_distribution(option_chain, S0, 0.05, 5.0)
+
+# 4. Create bootstrap distribution
+bootstrap_dist = bootstrap_future_distribution(returns, S0, 5.0, n_sim=10000)
+
+# 5. Compare and find opportunities
+comparison = compare_distributions(implied_dist, bootstrap_dist, S0)
+mispricings = find_mispricing_opportunities(comparison, threshold_pct=5.0)
+
+# 6. Visualize
+plot_distribution_comparison(implied_dist, bootstrap_dist, S0)
+```
+
+**Use Cases**:
+- **Asset Allocation**: Compare forward-looking (implied) vs historical expectations
+- **Options Trading**: Identify over/underpriced options relative to historical patterns
+- **Risk Management**: Assess tail risk differences between distributions
+- **Market Sentiment Analysis**: Gauge market expectations vs historical norms
+- **Mispricing Detection**: Find assets where options imply significantly different futures
+
 ---
 
 ## Troubleshooting
@@ -684,6 +865,51 @@ print("Asset Clusters:")
 print(clusters)
 ```
 
+### Example 4: Implied vs Bootstrapped Distribution Analysis
+```python
+from myPortfolioManagement.myOptionPricing import create_option_chain
+from myPortfolioManagement.myImpliedDistribution import (
+    extract_implied_distribution,
+    bootstrap_future_distribution,
+    compare_distributions,
+    find_mispricing_opportunities,
+    plot_distribution_comparison
+)
+import numpy as np
+
+# Setup
+S0 = prices.iloc[-1, 0]  # Current price
+historical_vol = returns.std() * np.sqrt(252)
+
+# Create synthetic option chain (for assets without traded options)
+option_chain = create_option_chain(
+    S=S0,
+    T=5.0,  # 5-year horizon
+    r=0.05,
+    sigma=historical_vol,
+    num_strikes=30
+)
+
+# Extract implied distribution
+implied_dist = extract_implied_distribution(option_chain, S0, 0.05, 5.0)
+
+# Create bootstrap distribution
+bootstrap_dist = bootstrap_future_distribution(returns, S0, 5.0, n_sim=10000)
+
+# Compare distributions
+comparison = compare_distributions(implied_dist, bootstrap_dist, S0)
+print("\nDistribution Comparison:")
+print(comparison)
+
+# Find mispricing opportunities
+mispricings = find_mispricing_opportunities(comparison, threshold_pct=5.0)
+print("\nMispricing Opportunities:")
+print(mispricings)
+
+# Visualize
+plot_distribution_comparison(implied_dist, bootstrap_dist, S0)
+```
+
 ---
 
 ## Advanced Features
@@ -751,12 +977,15 @@ If you use this library in your research or projects, please cite:
 - Lopéz de Prado, M. (2016). Building Diversified Portfolios that Outperform. Journal of Portfolio Management
 - Meucci, A. (2005). Risk and Asset Allocation. Springer
 - Markowitz, H. (1952). Portfolio Selection. Journal of Finance
+- Black, F., & Scholes, M. (1973). The Pricing of Options and Corporate Liabilities. Journal of Political Economy, 81(3), 637-654.
+- Breeden, D. T., & Litzenberger, R. H. (1978). Prices of state-contingent claims implicit in option prices. Journal of Business, 621-651.
 
 ### Libraries Used
 - [riskfolio-lib](https://riskfolio-lib.readthedocs.io/) - Portfolio optimization
 - [pyportfolioopt](https://pyportfolioopt.readthedocs.io/) - Efficient frontier
 - [empyrical](https://github.com/quantopian/empyrical) - Performance metrics
 - [yfinance](https://github.com/ranaroussi/yfinance) - Yahoo Finance data
+- [scipy](https://scipy.org/) - Scientific computing and optimization
 
 ---
 
