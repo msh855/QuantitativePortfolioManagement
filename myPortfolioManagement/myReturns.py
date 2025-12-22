@@ -8,6 +8,7 @@ Created on Wed Mar 16 07:09:13 2022
 
 import pandas as pd
 import numpy as np
+from typing import Union
 
 from pypfopt.expected_returns import returns_from_prices, mean_historical_return, capm_return, ema_historical_return
 from empyrical.stats import aggregate_returns
@@ -22,7 +23,7 @@ import quantstats_lumi as qs
 
 
 def calculate_buy_and_hold_returns(returns: pd.DataFrame,
-                                   initial_weights: pd.Series or dict,
+                                   initial_weights: Union[pd.Series, dict],
                                    portfolio_name: str = None,
                                    transaction_cost_bps: float = 0.0) -> pd.DataFrame:
     """
@@ -102,7 +103,7 @@ def calculate_buy_and_hold_returns(returns: pd.DataFrame,
 
 
 def calculate_rebalanced_returns(returns: pd.DataFrame,
-                                 target_weights: pd.Series or dict,
+                                 target_weights: Union[pd.Series, dict],
                                  rebalance_freq: str = 'monthly',
                                  portfolio_name: str = None,
                                  transaction_cost_bps: float = 0.0) -> pd.DataFrame:
