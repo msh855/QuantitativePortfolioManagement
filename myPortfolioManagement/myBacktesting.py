@@ -411,9 +411,14 @@ def fan_chart(returns: pd.DataFrame,
         first_forecast_values = dist_clone_fcast.iloc[0]
         for col in dist_clone_fcast.columns:
             # Calculate the ratio to normalize
-            ratio = last_insample_values[col] / first_forecast_values[col]
-            # Apply the normalization
-            dist_clone_fcast[col] = dist_clone_fcast[col] * ratio
+            # Handle edge case where first_forecast_values could be zero
+            if first_forecast_values[col] != 0:
+                ratio = last_insample_values[col] / first_forecast_values[col]
+                # Apply the normalization
+                dist_clone_fcast[col] = dist_clone_fcast[col] * ratio
+            else:
+                # If first forecast value is zero, set to last in-sample value
+                dist_clone_fcast[col] = last_insample_values[col]
 
     dist_clone_insample = dist_clone[dist_clone.index < out_of_sample_date]
 
