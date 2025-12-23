@@ -142,7 +142,39 @@ def balance_dates(returns, returns_benchmark):
 
     return ret_balanced_dates, ret_bench
 
-
+def balance_dates_robust(returns, returns_benchmark):
+    """
+    Robust date balancing with proper NaN handling
+    
+    Args:
+        returns: Return series or DataFrame
+        returns_benchmark: Benchmark return series
+    
+    Returns:
+        Tuple of (returns_balanced, benchmark_balanced)
+    """
+    # Convert to Series if needed
+    if isinstance(returns_benchmark, pd.DataFrame):
+        returns_benchmark = returns_benchmark.squeeze()
+    
+    if isinstance(returns, pd.DataFrame):
+        if returns.shape[1] == 1:
+            returns = returns.squeeze()
+    
+    # Remove NaNs first
+    returns = returns.dropna()
+    returns_benchmark = returns_benchmark.dropna()
+    
+    # Find common dates using inner join
+    df_combined = pd.DataFrame({
+        'returns': returns,
+        'benchmark': returns_benchmark
+    }).dropna()  # Remove any remaining NaNs
+    
+    returns_balanced = df_combined['returns']
+    benchmark_balanced = df_combined['benchmark']
+    
+    return returns_balanced, benchmark_balanced
 # cleaning
 def _helper(df: pd.DataFrame = None, series: pd.Series = None, n_samples: int = None) -> pd.DataFrame:
     #string_name = series.name
