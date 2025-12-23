@@ -90,8 +90,8 @@ option_chain = create_option_chain(
     T=T_years,
     r=r,
     sigma=historical_vol,
-    strike_range=(0.6, 1.4),  # Strikes from 60% to 140% of current price
-    num_strikes=30
+    strike_range=(0.2, 3.0),  # Wider range for a 5-year horizon
+    num_strikes=80
 )
 
 print(f"\n✓ Created option chain with {len(option_chain)} strikes")
@@ -114,12 +114,24 @@ implied_dist = extract_implied_distribution(
     S=S0,
     r=r,
     T=T_years,
-    option_type='call'
+    option_type='call',
+    return_range_mass=True
 )
+
+# Plot the density curve (histogram of density values is misleading)
+plt.figure(figsize=(10, 4))
+plt.plot(implied_dist['price_level'], implied_dist['probability_density'], linewidth=2)
+plt.title('Implied Risk-Neutral Density (from option prices)')
+plt.xlabel('Future price level (strike)')
+plt.ylabel('Probability density')
+plt.grid(True, alpha=0.3)
 
 print(f"\n✓ Extracted implied distribution")
 print(f"  Price range: ${implied_dist['price_level'].min():.2f} to ${implied_dist['price_level'].max():.2f}")
 print(f"  Number of points: {len(implied_dist)}")
+if 'probability_mass_in_range' in implied_dist.columns:
+    mass_in_range = implied_dist['probability_mass_in_range'].iloc[0]
+    print(f"  Probability mass in strike range: {mass_in_range:.2%}")
 
 # Calculate implied statistics
 from scipy.integrate import simpson

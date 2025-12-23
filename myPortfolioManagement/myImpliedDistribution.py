@@ -21,13 +21,16 @@ from scipy.stats import norm
 from myPortfolioManagement.myOptionPricing import (
     black_scholes_call,
     black_scholes_put,
-    create_option_chain
+    create_option_chain,
+    implied_volatility
 )
 
 
 def breeden_litzenberger_density(strikes: np.ndarray, call_prices: np.ndarray,
                                  r: float, T: float,
-                                 smoothing_factor: float = 0.1) -> Tuple[np.ndarray, np.ndarray]:
+                                 smoothing_factor: float = 0.1,
+                                 S: float = None,
+                                 normalize: bool = True) -> Tuple[np.ndarray, np.ndarray]:
     """
     Extract risk-neutral probability density from call option prices using the
     Breeden-Litzenberger formula.
@@ -49,7 +52,10 @@ def breeden_litzenberger_density(strikes: np.ndarray, call_prices: np.ndarray,
         Time to expiration (in years)
     smoothing_factor : float, optional
         Smoothing parameter for spline interpolation (0-1), default 0.1
-        Higher values = more smoothing
+        Higher values = more smoothing. If S is provided, this controls IV smoothing.
+    S : float, optional
+        Current stock price. If provided, uses implied volatility interpolation
+        which is more robust.
     
     Returns
     -------
@@ -72,12 +78,67 @@ def breeden_litzenberger_density(strikes: np.ndarray, call_prices: np.ndarray,
     # Use isotonic regression or simple smoothing
     call_prices = np.maximum.accumulate(call_prices[::-1])[::-1]
     
+    # Generate dense grid of strikes for smooth density
+    strikes_dense = np.linspace(strikes[0], strikes[-1], 200)
+    
+    if S is not None:
+        # Method 1: Interpolate Implied Volatility (More Robust)
+        ivs = []
+        valid_indices = []
+        
+        for i, (K, price) in enumerate(zip(strikes, call_prices)):
+            try:
+                iv = implied_volatility(price, S, K, T, r, option_type='call')
+                ivs.append(iv)
+                valid_indices.append(i)
+            except ValueError:
+                # Skip invalid prices (e.g. below intrinsic)
+                continue
+        
+        if len(ivs) >= 3:
+            strikes_valid = strikes[valid_indices]
+            ivs = np.array(ivs)
+            
+            # Smooth IVs
+            # IV is usually convex or "smile" shaped, but can be linear.
+            # Use a smaller smoothing factor for IV as it's less volatile than prices
+            # s=0 means interpolation
+            # We scale smoothing by variance of IVs to make it scale-invariant
+            iv_var = np.var(ivs) if len(ivs) > 0 else 1.0
+            s_val = smoothing_factor * len(ivs) * iv_var
+            
+            try:
+                iv_spline = UnivariateSpline(strikes_valid, ivs, k=3, s=s_val)
+                iv_dense = iv_spline(strikes_dense)
+                
+                # Calculate call prices from smoothed IV
+                # Note: black_scholes_call is vectorized for K and sigma
+                calls_dense = black_scholes_call(S, strikes_dense, T, r, iv_dense)
+                
+                # Calculate 2nd derivative numerically
+                dk = strikes_dense[1] - strikes_dense[0]
+                second_derivative = np.gradient(np.gradient(calls_dense, dk), dk)
+                
+                # Apply Breeden-Litzenberger formula
+                density = np.exp(r * T) * second_derivative
+                
+                # Ensure non-negative density
+                density = np.maximum(density, 0)
+
+                if normalize:
+                    area = simpson(density, x=strikes_dense)
+                    if area > 0:
+                        density = density / area
+                
+                return strikes_dense, density
+            except Exception:
+                # Fallback if spline fails
+                pass
+
+    # Method 2: Direct Price Smoothing (Fallback)
     # Create smooth interpolation of call prices
     # Use cubic spline with smoothing to estimate second derivative
     spline = UnivariateSpline(strikes, call_prices, s=smoothing_factor * len(strikes), k=3)
-    
-    # Generate dense grid of strikes for smooth density
-    strikes_dense = np.linspace(strikes[0], strikes[-1], 200)
     
     # Calculate second derivative analytically from spline
     second_derivative = spline.derivative(n=2)(strikes_dense)
@@ -88,17 +149,19 @@ def breeden_litzenberger_density(strikes: np.ndarray, call_prices: np.ndarray,
     # Ensure non-negative density (can be slightly negative due to numerical issues)
     density = np.maximum(density, 0)
     
-    # Normalize to ensure it's a proper probability density
-    area = simpson(density, x=strikes_dense)
-    if area > 0:
-        density = density / area
+    if normalize:
+        area = simpson(density, x=strikes_dense)
+        if area > 0:
+            density = density / area
     
     return strikes_dense, density
 
 
 def extract_implied_distribution(option_chain: pd.DataFrame, S: float, r: float, T: float,
                                  option_type: str = 'call',
-                                 method: str = 'breeden_litzenberger') -> pd.DataFrame:
+                                 method: str = 'breeden_litzenberger',
+                                 normalize: bool = True,
+                                 return_range_mass: bool = False) -> pd.DataFrame:
     """
     Extract implied probability distribution from an option chain.
     
@@ -138,12 +201,29 @@ def extract_implied_distribution(option_chain: pd.DataFrame, S: float, r: float,
     prices = option_chain[price_col].values
     
     # Extract density using Breeden-Litzenberger
-    strikes_dense, density = breeden_litzenberger_density(strikes, prices, r, T)
+    # Note: if strike range is truncated, the normalized density is conditional on that range.
+    strikes_dense, density_raw = breeden_litzenberger_density(
+        strikes,
+        prices,
+        r,
+        T,
+        S=S,
+        normalize=False,
+    )
+
+    range_mass = simpson(density_raw, x=strikes_dense) if len(strikes_dense) > 1 else 0.0
+    if normalize and range_mass > 0:
+        density = density_raw / range_mass
+    else:
+        density = density_raw
     
     result = pd.DataFrame({
         'price_level': strikes_dense,
         'probability_density': density
     })
+
+    if return_range_mass:
+        result['probability_mass_in_range'] = float(range_mass)
     
     return result
 
@@ -287,7 +367,9 @@ def plot_distribution_comparison(implied_dist: pd.DataFrame,
                                 bootstrap_dist: pd.DataFrame,
                                 S0: float,
                                 title: str = "Implied vs Bootstrapped Distribution",
-                                save_path: Optional[str] = None) -> plt.Figure:
+                                save_path: Optional[str] = None,
+                                apples_to_apples: bool = True,
+                                bins: int = 50) -> plt.Figure:
     """
     Plot comparison of implied and bootstrapped distributions.
     
@@ -320,8 +402,23 @@ def plot_distribution_comparison(implied_dist: pd.DataFrame,
     
     # Bootstrap distribution (as histogram)
     bootstrap_prices = bootstrap_dist['future_price'].values
-    ax1.hist(bootstrap_prices, bins=50, density=True, alpha=0.5,
-             label='Bootstrapped (historical)', color='green', edgecolor='black')
+
+    implied_prices = implied_dist['price_level'].values
+    implied_probs = implied_dist['probability_density'].values
+    x_min = float(np.min(implied_prices))
+    x_max = float(np.max(implied_prices))
+
+    if apples_to_apples:
+        in_range = (bootstrap_prices >= x_min) & (bootstrap_prices <= x_max)
+        bootstrap_prices_plot = bootstrap_prices[in_range]
+        frac_in_range = float(np.mean(in_range)) if len(bootstrap_prices) else 0.0
+        label = f'Bootstrapped (historical)\nclipped to implied range ({frac_in_range:.1%} of sims)'
+    else:
+        bootstrap_prices_plot = bootstrap_prices
+        label = 'Bootstrapped (historical)'
+
+    ax1.hist(bootstrap_prices_plot, bins=bins, density=True, alpha=0.5,
+             label=label, color='green', edgecolor='black')
     
     # Mark current price
     ax1.axvline(S0, color='red', linestyle='--', linewidth=2, label=f'Current Price: ${S0:.2f}')
@@ -331,23 +428,33 @@ def plot_distribution_comparison(implied_dist: pd.DataFrame,
     ax1.set_title(f'{title} - Probability Densities', fontsize=14, fontweight='bold')
     ax1.legend(fontsize=10)
     ax1.grid(True, alpha=0.3)
+
+    if apples_to_apples:
+        ax1.set_xlim(x_min, x_max)
     
     # Plot 2: Cumulative distributions
     ax2 = axes[1]
     
     # Implied cumulative distribution
-    implied_prices = implied_dist['price_level'].values
-    implied_probs = implied_dist['probability_density'].values
     dx = implied_prices[1] - implied_prices[0]
     implied_cdf = np.cumsum(implied_probs) * dx
-    implied_cdf = implied_cdf / implied_cdf[-1]  # Normalize
+    implied_cdf = implied_cdf / implied_cdf[-1]  # Normalize on the implied range
     
     ax2.plot(implied_prices, implied_cdf, label='Implied CDF', linewidth=2, color='blue')
     
     # Bootstrap cumulative distribution
-    sorted_bootstrap = np.sort(bootstrap_prices)
-    bootstrap_cdf = np.arange(1, len(sorted_bootstrap) + 1) / len(sorted_bootstrap)
-    ax2.plot(sorted_bootstrap, bootstrap_cdf, label='Bootstrap CDF', linewidth=2, color='green')
+    if apples_to_apples:
+        in_range = (bootstrap_prices >= x_min) & (bootstrap_prices <= x_max)
+        bootstrap_prices_cdf = bootstrap_prices[in_range]
+        cdf_label = 'Bootstrap CDF (clipped + renormalized)'
+    else:
+        bootstrap_prices_cdf = bootstrap_prices
+        cdf_label = 'Bootstrap CDF'
+
+    if len(bootstrap_prices_cdf) > 0:
+        sorted_bootstrap = np.sort(bootstrap_prices_cdf)
+        bootstrap_cdf = np.arange(1, len(sorted_bootstrap) + 1) / len(sorted_bootstrap)
+        ax2.plot(sorted_bootstrap, bootstrap_cdf, label=cdf_label, linewidth=2, color='green')
     
     # Mark current price
     ax2.axvline(S0, color='red', linestyle='--', linewidth=2, label=f'Current Price: ${S0:.2f}')
@@ -361,6 +468,9 @@ def plot_distribution_comparison(implied_dist: pd.DataFrame,
     ax2.set_title(f'{title} - Cumulative Distributions', fontsize=14, fontweight='bold')
     ax2.legend(fontsize=10)
     ax2.grid(True, alpha=0.3)
+
+    if apples_to_apples:
+        ax2.set_xlim(x_min, x_max)
     
     plt.tight_layout()
     
