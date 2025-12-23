@@ -20,7 +20,7 @@ except ImportError:
     cp = np
     GPU_AVAILABLE = False
 
-from myPortfolioManagement.myUtils import balance_dates
+from myPortfolioManagement.myUtils import balance_dates_robust
 
 
 @timebudget
@@ -43,7 +43,7 @@ def bootstrap_stats_vectorized(returns: pd.Series,
     
     # Prepare data
     if not returns_benchmark.empty:
-        returns, returns_benchmark = balance_dates(returns, returns_benchmark)
+        returns, returns_benchmark = balance_dates_robust(returns, returns_benchmark)
     
     returns_values = returns.values
     n_obs = len(returns_values)
