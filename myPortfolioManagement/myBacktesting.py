@@ -362,10 +362,14 @@ pd.DataFrame]:
         return results_means, results_dist, results_dist_stats
 
     # Fall back to original CPU version
+    # Clean and align data using the same helper function
+    returns = ensure_series(returns)
+    returns_benchmark = ensure_series(returns_benchmark)
+
     if not isinstance(returns_benchmark, type(None)):
         returns, returns_benchmark = balance_dates_robust(pd.DataFrame(returns), pd.DataFrame(returns_benchmark))
-        returns = pd.Series(returns.iloc[:, 0])
-        returns_benchmark = pd.Series(returns_benchmark.iloc[:, 0])
+        returns = ensure_series(returns)
+        returns_benchmark = ensure_series(returns_benchmark)
 
     if out_of_sample_date:
         ret_insample = returns[returns.index < out_of_sample_date]
