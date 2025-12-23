@@ -61,6 +61,15 @@ A comprehensive Python library for quantitative portfolio management, backtestin
 - Time series clustering (K-means)
 - Correlation and tail dependence analysis
 
+💰 **Option Pricing & Implied Distributions** *(NEW)*
+- Black-Scholes option pricing model
+- Implied volatility calculation
+- Synthetic option chain creation for assets without traded options
+- Breeden-Litzenberger probability density extraction
+- Comparison of implied vs bootstrapped distributions
+- Mispricing opportunity detection
+- Distribution visualization and analysis
+
 📈 **Backtesting**
 - GPU-accelerated portfolio performance tracking
 - Benchmark comparison
@@ -1368,6 +1377,178 @@ print(f"Mean Sharpe: {sharpe_means[-1]:.4f}")
 print(f"Std Dev: {sharpe_stds[-1]:.4f}")
 ```
 
+### Option Pricing & Implied Distributions (myOptionPricing.py, myImpliedDistribution.py)
+
+**Purpose**: Price options, extract implied probability distributions, and compare with historical bootstrapped distributions to identify mispricing opportunities
+
+#### Key Functions:
+
+##### `black_scholes_call(S, K, T, r, sigma)` & `black_scholes_put(S, K, T, r, sigma)`
+Price European call and put options using Black-Scholes model
+
+**Example**:
+```python
+from myPortfolioManagement.myOptionPricing import black_scholes_call, black_scholes_put
+
+S = 100  # Current stock price
+K = 100  # Strike price
+T = 1.0  # Time to expiration (years)
+r = 0.05  # Risk-free rate
+sigma = 0.25  # Volatility
+
+call_price = black_scholes_call(S, K, T, r, sigma)
+put_price = black_scholes_put(S, K, T, r, sigma)
+```
+
+##### `implied_volatility(option_price, S, K, T, r, option_type='call')`
+Calculate implied volatility from option market price
+
+**Example**:
+```python
+from myPortfolioManagement.myOptionPricing import implied_volatility
+
+iv = implied_volatility(option_price=10.45, S=100, K=100, T=1.0, r=0.05)
+print(f"Implied Volatility: {iv:.2%}")
+```
+
+##### `create_option_chain(S, T, r, sigma, strike_range=(0.7, 1.3), num_strikes=20)`
+Create synthetic option chain for assets without traded options
+
+**Example**:
+```python
+from myPortfolioManagement.myOptionPricing import create_option_chain
+
+# Create synthetic options for any asset
+option_chain = create_option_chain(
+    S=100,
+    T=5.0,  # 5-year horizon
+    r=0.05,
+    sigma=0.25,
+    strike_range=(0.6, 1.4),
+    num_strikes=30
+)
+```
+
+##### `extract_implied_distribution(option_chain, S, r, T)`
+Extract implied probability distribution using Breeden-Litzenberger formula
+
+**Example**:
+```python
+from myPortfolioManagement.myImpliedDistribution import extract_implied_distribution
+
+implied_dist = extract_implied_distribution(
+    option_chain=option_chain,
+    S=100,
+    r=0.05,
+    T=5.0,
+    option_type='call'
+)
+# Returns DataFrame with 'price_level' and 'probability_density'
+```
+
+##### `bootstrap_future_distribution(returns, S0, T, n_sim=10000)`
+Bootstrap future price distribution from historical returns
+
+**Example**:
+```python
+from myPortfolioManagement.myImpliedDistribution import bootstrap_future_distribution
+
+bootstrap_dist = bootstrap_future_distribution(
+    returns=historical_returns,
+    S0=100,
+    T=5.0,
+    n_sim=10000,
+    bootstrap_method='iid'
+)
+```
+
+##### `compare_distributions(implied_dist, bootstrap_dist, S0)`
+Compare implied and bootstrapped distributions to find insights
+
+**Example**:
+```python
+from myPortfolioManagement.myImpliedDistribution import compare_distributions
+
+comparison = compare_distributions(
+    implied_dist=implied_dist,
+    bootstrap_dist=bootstrap_dist,
+    S0=100
+)
+# Shows quantile differences and percentage deviations
+```
+
+##### `find_mispricing_opportunities(comparison, threshold_pct=10.0)`
+Identify potential mispricing opportunities
+
+**Example**:
+```python
+from myPortfolioManagement.myImpliedDistribution import find_mispricing_opportunities
+
+mispricings = find_mispricing_opportunities(comparison, threshold_pct=5.0)
+# Returns opportunities where implied differs significantly from bootstrap
+```
+
+##### `plot_distribution_comparison(implied_dist, bootstrap_dist, S0)`
+Visualize comparison between distributions
+
+**Example**:
+```python
+from myPortfolioManagement.myImpliedDistribution import plot_distribution_comparison
+
+fig = plot_distribution_comparison(
+    implied_dist=implied_dist,
+    bootstrap_dist=bootstrap_dist,
+    S0=100,
+    title="5-Year Price Distribution Comparison",
+    save_path='distribution_comparison.png'
+)
+```
+
+**Complete Workflow Example**:
+```python
+# 1. Get historical data
+from myPortfolioManagement.myData import get_stock_prices
+from myPortfolioManagement.myReturns import calculate_returns
+
+prices = get_stock_prices(['AAPL'], start_date='2019-01-01', wide_format=True)
+returns = calculate_returns(prices).squeeze()
+S0 = prices.iloc[-1, 0]
+
+# 2. Create option chain (for assets without traded options)
+from myPortfolioManagement.myOptionPricing import create_option_chain
+
+historical_vol = returns.std() * np.sqrt(252)
+option_chain = create_option_chain(S0, T=5.0, r=0.05, sigma=historical_vol)
+
+# 3. Extract implied distribution
+from myPortfolioManagement.myImpliedDistribution import (
+    extract_implied_distribution,
+    bootstrap_future_distribution,
+    compare_distributions,
+    find_mispricing_opportunities,
+    plot_distribution_comparison
+)
+
+implied_dist = extract_implied_distribution(option_chain, S0, 0.05, 5.0)
+
+# 4. Create bootstrap distribution
+bootstrap_dist = bootstrap_future_distribution(returns, S0, 5.0, n_sim=10000)
+
+# 5. Compare and find opportunities
+comparison = compare_distributions(implied_dist, bootstrap_dist, S0)
+mispricings = find_mispricing_opportunities(comparison, threshold_pct=5.0)
+
+# 6. Visualize
+plot_distribution_comparison(implied_dist, bootstrap_dist, S0)
+```
+
+**Use Cases**:
+- **Asset Allocation**: Compare forward-looking (implied) vs historical expectations
+- **Options Trading**: Identify over/underpriced options relative to historical patterns
+- **Risk Management**: Assess tail risk differences between distributions
+- **Market Sentiment Analysis**: Gauge market expectations vs historical norms
+- **Mispricing Detection**: Find assets where options imply significantly different futures
+
 ---
 
 ## Troubleshooting
@@ -1808,92 +1989,113 @@ plotly >= 5.15.0
 
 ### Utilities (Required)
 ```
-timebudget  # Performance monitoring
-tqdm  # Progress bars
-parallel-pandas  # Parallel DataFrame operations
+
+See `requirements.txt` for complete list with exact versions.
+
+---
+
+## Usage Examples
+
+See the `examples_portfolio_management.py` file for comprehensive examples covering all major functions.
+
+Quick examples:
+
+### Example 1: Complete Portfolio Analysis
+```python
+import warnings
+warnings.filterwarnings('ignore')
+import pandas as pd
+import numpy as np
+
+from myPortfolioManagement.myData import get_stock_prices
+from myPortfolioManagement.myReturns import calculate_returns
+from myPortfolioManagement.myPerformanceMetrics import performance_overview
+from myPortfolioManagement.myPortfolioOptimisation import HRP, inverse_vol_portfolio
+
+# 1. Fetch data
+tickers = ['SPY', 'AGG', 'GLD', 'EEM', 'VNQ']
+prices = get_stock_prices(tickers, start_date='2020-01-01', end_date='2024-12-01', wide_format=True)
+
+# 2. Calculate returns
+returns = calculate_returns(prices)
+
+# 3. Performance overview
+perf = performance_overview(returns)
+print(perf)
+
+# 4. Optimize portfolio
+weights_hrp = HRP(returns_training=returns, covariance='ledoit')
+weights_inv_vol = inverse_vol_portfolio(returns)
+
+print("\nHRP Weights:")
+print(weights_hrp)
 ```
 
-### Optional: GPU Acceleration
-```
-# For CUDA 12.x (Kaggle, Colab, Modern GPUs)
-cupy-cuda12x >= 13.0.0
+### Example 2: Monte Carlo Simulation
+```python
+from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance, fan_chart
 
-# For CUDA 11.x (Older Systems)
-cupy-cuda11x >= 13.0.0
+# Run simulation
+results_means, results_dist, results_stats = bootstrap_portfolio_performance(
+    returns=portfolio_returns,
+    returns_benchmark=benchmark_returns,
+    n_sim=10000
+)
 
-# Specific CUDA versions
-cupy-cuda112  # CUDA 11.2
-cupy-cuda118  # CUDA 11.8
-cupy-cuda120  # CUDA 12.0
-```
+print("Simulation Results:")
+print(results_means)
 
-### Optional: Additional Features
-```
-# FX Currency Conversion (only if needed)
-openbb >= 4.5.0
-
-# Distributed Computing
-ray >= 2.53.0
+# Create fan chart
+fan_chart(portfolio_returns, n_sample=5000)
 ```
 
-### Complete requirements.txt
+### Example 3: Asset Clustering
+```python
+from myPortfolioManagement.myClustering import ts_clustering
 
-See the `requirements.txt` file in the repository for the complete list with specific versions.
+clusters, centers = ts_clustering(returns, number_of_clusters=3)
+print("Asset Clusters:")
+print(clusters)
+```
+
+---
+
+## Advanced Features
+
+### Walk-Forward Backtesting
+```python
+def walk_forward_optimization(returns, train_period=252, rebalance_freq=63):
+    results = []
+    weights_history = []
+    
+    for i in range(train_period, len(returns), rebalance_freq):
+        train_data = returns.iloc[i-train_period:i]
+        weights = HRP(returns_training=train_data)
+        
+        future_period = slice(i, i+rebalance_freq)
+        future_ret = returns.iloc[future_period]
+        port_ret = (future_ret * weights['port_weight'].values).sum(axis=1)
+        
+        results.append(port_ret)
+        weights_history.append(weights)
+    
+    return pd.concat(results), weights_history
+
+wf_returns, wf_weights = walk_forward_optimization(returns, train_period=252)
+print(f"Out-of-sample Sharpe: {(wf_returns.mean() / wf_returns.std()) * np.sqrt(252):.2f}")
+```
 
 ---
 
 ## Contributing
 
-We welcome contributions! Here's how to get started:
-
-### Development Setup
-```bash
-# 1. Fork the repository on GitHub
-
-# 2. Clone your fork
-git clone https://github.com/YOUR_USERNAME/QuantitativePortfolioManagement.git
-cd QuantitativePortfolioManagement
-
-# 3. Create a development branch
-git checkout -b feature/your-feature-name
-
-# 4. Install in development mode
-pip install -e ".[dev]"
-
-# 5. Make your changes
-# ... edit files ...
-
-# 6. Run tests
-pytest tests/
-
-# 7. Format code
-black myPortfolioManagement/
-isort myPortfolioManagement/
-
-# 8. Commit and push
-git add .
-git commit -m "Add your feature"
-git push origin feature/your-feature-name
-
-# 9. Create Pull Request on GitHub
-```
-
-### Contribution Guidelines
-
-- **Code Style**: Follow PEP 8, use Black formatter
-- **Documentation**: Add docstrings for all functions
-- **Tests**: Add tests for new features
-- **Performance**: Benchmark performance improvements
-- **Backward Compatibility**: Don't break existing functionality
-
-### Areas for Contribution
-
-- 🚀 **Performance**: Further GPU optimizations
-- 📊 **Features**: New portfolio optimization methods
-- 🧪 **Testing**: Improve test coverage
-- 📚 **Documentation**: Examples and tutorials
-- 🐛 **Bug Fixes**: Fix reported issues
-- 🌐 **Localization**: Translate documentation
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/YourFeature`
+3. Make your changes
+4. Commit: `git commit -m 'Add YourFeature'`
+5. Push: `git push origin feature/YourFeature`
+6. Submit a Pull Request
 
 ---
 
@@ -1956,33 +2158,23 @@ Thanks to all contributors and users who have helped improve this library!
 ## References & Resources
 
 ### Key Papers
+- Lopéz de Prado, M. (2016). Building Diversified Portfolios that Outperform. Journal of Portfolio Management
+- Meucci, A. (2005). Risk and Asset Allocation. Springer
+- Markowitz, H. (1952). Portfolio Selection. Journal of Finance
 
-1. **Hierarchical Risk Parity:**
-   - Lopéz de Prado, M. (2016). "Building Diversified Portfolios that Outperform Out of Sample." Journal of Portfolio Management, 42(4), 59-69.
+### Libraries Used
+- [riskfolio-lib](https://riskfolio-lib.readthedocs.io/) - Portfolio optimization
+- [pyportfolioopt](https://pyportfolioopt.readthedocs.io/) - Efficient frontier
+- [empyrical](https://github.com/quantopian/empyrical) - Performance metrics
+- [yfinance](https://github.com/ranaroussi/yfinance) - Yahoo Finance data
 
-2. **Bootstrap Methods:**
-   - Politis, D. N., & Romano, J. P. (1994). "The Stationary Bootstrap." Journal of the American Statistical Association, 89(428), 1303-1313.
+---
 
-3. **Portfolio Optimization:**
-   - Markowitz, H. (1952). "Portfolio Selection." Journal of Finance, 7(1), 77-91.
-   - Meucci, A. (2005). "Risk and Asset Allocation." Springer Finance.
+## Contact & Support
 
-4. **Performance Metrics:**
-   - Sharpe, W. F. (1994). "The Sharpe Ratio." Journal of Portfolio Management, 21(1), 49-58.
-   - Sortino, F. A., & Price, L. N. (1994). "Performance Measurement in a Downside Risk Framework." Journal of Investing, 3(3), 59-64.
-
-### Books
-
-- **"Advances in Financial Machine Learning"** by Marcos López de Prado
-- **"Machine Learning for Asset Managers"** by Marcos López de Prado
-- **"Quantitative Portfolio Management"** by Michael Isichenko
-- **"Active Portfolio Management"** by Grinold & Kahn
-
-### Online Resources
-
-- **GPU Computing:** [NVIDIA CUDA Documentation](https://docs.nvidia.com/cuda/)
-- **CuPy Tutorials:** [CuPy User Guide](https://docs.cupy.dev/en/stable/user_guide/)
-- **Portfolio Theory:** [Investopedia - Modern Portfolio Theory](https://www.investopedia.com/terms/m/modernportfoliotheory.asp)
+For questions, issues, or suggestions:
+- **GitHub Issues**: [Open an issue](https://github.com/msh855/QuantitativePortfolioManagement/issues)
+- **Email**: Contact repository owner
 
 ---
 
