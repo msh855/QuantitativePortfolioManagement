@@ -125,21 +125,53 @@ def bootstrap_portfolio_performance_fast(
     """
     Fast GPU-accelerated portfolio performance bootstrapping
     
-    This is a drop-in replacement for bootstrap_portfolio_performance
-    with ~10-50x speedup depending on GPU availability.
+    Args:
+        returns: Portfolio returns (Series or DataFrame)
+        returns_benchmark: Benchmark returns (Series or DataFrame)
+        periods: Trading periods per year
+        rf: Risk-free rate
+        out_of_sample_date: Date to split samples
+        n_sim: Number of simulations
+        use_gpu: Whether to use GPU acceleration
+    
+    Returns:
+        Tuple of (means, distributions, distribution_stats)
     """
     
-    if not isinstance(returns_benchmark, type(None)):
-        returns, returns_benchmark = balance_dates_robust(
-            pd.DataFrame(returns), pd.DataFrame(returns_benchmark)
-        )
-        returns = pd.Series(returns.iloc[:, 0])
-        returns_benchmark = pd.Series(returns_benchmark.iloc[:, 0])
+    # Helper function to ensure Series
+    def ensure_series(data):
+        """Convert to Series if needed"""
+        if data is None or (isinstance(data, pd.Series) and data.empty):
+            return None
+        if isinstance(data, pd.DataFrame):
+            if data.shape[1] == 1:
+                return data.iloc[:, 0]
+            else:
+                return data.squeeze()
+        return data
     
+    # Clean and align data
+    returns = ensure_series(returns)
+    returns_benchmark = ensure_series(returns_benchmark)
+    
+    # Balance dates if benchmark exists
+    if returns_benchmark is not None and not returns_benchmark.empty:
+        # Convert to DataFrame temporarily for balance_dates
+        ret_df = pd.DataFrame({'returns': returns})
+        bench_df = pd.DataFrame({'benchmark': returns_benchmark})
+        
+        # Align
+        df_combined = ret_df.join(bench_df, how='inner').dropna()
+        
+        returns = df_combined['returns']
+        returns_benchmark = df_combined['benchmark']
+    
+    # Split into in-sample and out-of-sample
     if out_of_sample_date:
         # In-sample
         ret_insample = returns[returns.index < out_of_sample_date]
-        ret_bench_insample = returns_benchmark[returns_benchmark.index < out_of_sample_date] if not isinstance(returns_benchmark, type(None)) else None
+        ret_bench_insample = (returns_benchmark[returns_benchmark.index < out_of_sample_date] 
+                             if returns_benchmark is not None else None)
         
         print("Computing in-sample bootstrap...")
         bootstrap_metrics_insample = bootstrap_stats_vectorized(
@@ -157,7 +189,8 @@ def bootstrap_portfolio_performance_fast(
         
         # Out-of-sample
         ret_outsample = returns[returns.index >= out_of_sample_date]
-        ret_bench_outsample = returns_benchmark[returns_benchmark.index >= out_of_sample_date] if not isinstance(returns_benchmark, type(None)) else None
+        ret_bench_outsample = (returns_benchmark[returns_benchmark.index >= out_of_sample_date] 
+                              if returns_benchmark is not None else None)
         
         print("Computing out-of-sample bootstrap...")
         bootstrap_metrics_outsample = bootstrap_stats_vectorized(
