@@ -103,11 +103,11 @@ Major performance improvements for Monte Carlo simulations and bootstrap analysi
 | GPU (Tesla T4) | ~45-60 seconds | **15-20x faster** 🚀 |
 
 **New Modules:**
-- `myBacktesting_gpu.py` - GPU-accelerated backtesting functions
+- `myBacktesting.py` - GPU-accelerated backtesting functions
 - `myBootstrapping_gpu.py` - GPU bootstrap classes and utilities
 
 **New Functions:**
-- `bootstrap_portfolio_performance_fast()` - Main GPU/CPU accelerated function
+- `bootstrap_portfolio_performance()` - Main GPU/CPU accelerated function
 - `bootstrap_stats_vectorized()` - Vectorized metric computation
 - `balance_dates_robust()` - Robust date alignment with NaN handling
 - `GPUBootstrap` class - Flexible GPU bootstrap operations
@@ -313,7 +313,7 @@ except Exception as e:
 # Test the installation
 from myPortfolioManagement.myData import get_stock_prices
 from myPortfolioManagement.myReturns import calculate_returns
-from myPortfolioManagement.myBacktesting_gpu import bootstrap_portfolio_performance_fast
+from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance
 
 # Fetch sample data
 print("Testing data fetching...")
@@ -412,7 +412,7 @@ warnings.filterwarnings('ignore')
 
 from myPortfolioManagement.myData import get_stock_prices
 from myPortfolioManagement.myReturns import calculate_returns
-from myPortfolioManagement.myBacktesting_gpu import bootstrap_portfolio_performance_fast
+from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance
 
 print("✅ All imports successful!")
 print("🚀 GPU-accelerated portfolio analysis ready!")
@@ -509,7 +509,7 @@ print("\n✅ Analysis complete!")
 
 ### Your First GPU-Accelerated Bootstrap (3 minutes)
 ```python
-from myPortfolioManagement.myBacktesting_gpu import bootstrap_portfolio_performance_fast
+from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance
 import time
 
 # Create equal-weighted portfolio
@@ -521,7 +521,7 @@ print("   (5000 simulations - this would take 15 min on old implementation)")
 
 start = time.time()
 
-means, distributions, stats = bootstrap_portfolio_performance_fast(
+means, distributions, stats = bootstrap_portfolio_performance(
     returns=portfolio_returns,
     periods=252,
     rf=0.04,
@@ -672,17 +672,17 @@ weights_inv_vol = inverse_vol_portfolio(returns)
 
 ---
 
-#### 5. **myBacktesting_gpu.py** 🚀 NEW - GPU-Accelerated Backtesting
+#### 5. **myBacktesting.py** 🚀 NEW - GPU-Accelerated Backtesting
 
 Fast bootstrap analysis with GPU/CPU acceleration.
 ```python
-from myPortfolioManagement.myBacktesting_gpu import (
-    bootstrap_portfolio_performance_fast,
+from myPortfolioManagement.myBacktesting import (
+    bootstrap_portfolio_performance,
     bootstrap_stats_vectorized
 )
 
 # Full portfolio bootstrap analysis
-means, distributions, stats = bootstrap_portfolio_performance_fast(
+means, distributions, stats = bootstrap_portfolio_performance(
     returns=portfolio_returns,
     returns_benchmark=benchmark_sp500,
     periods=252,
@@ -801,7 +801,7 @@ from myPortfolioManagement.myData import get_stock_prices
 from myPortfolioManagement.myReturns import calculate_returns
 from myPortfolioManagement.myPerformanceMetrics import performance_overview
 from myPortfolioManagement.myPortfolioOptimisation import HRP
-from myPortfolioManagement.myBacktesting_gpu import bootstrap_portfolio_performance_fast
+from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance
 
 print("="*70)
 print("Complete Portfolio Analysis with GPU Acceleration")
@@ -850,7 +850,7 @@ print("\n5. 🚀 GPU-Accelerated Bootstrap Analysis")
 print("   Running 5,000 simulations...")
 
 start = time.time()
-means, distributions, stats = bootstrap_portfolio_performance_fast(
+means, distributions, stats = bootstrap_portfolio_performance(
     returns=portfolio_returns,
     periods=252,
     rf=0.04,
@@ -881,7 +881,7 @@ print("="*70)
 ### Example 2: GPU vs CPU Performance Comparison
 ```python
 from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance
-from myPortfolioManagement.myBacktesting_gpu import bootstrap_portfolio_performance_fast
+from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance
 import time
 import pandas as pd
 
@@ -913,7 +913,7 @@ except Exception as e:
 print("\n2. GPU-Accelerated Implementation")
 print(f"   Running {n_sim} simulations...")
 start = time.time()
-means_gpu, dist_gpu, stats_gpu = bootstrap_portfolio_performance_fast(
+means_gpu, dist_gpu, stats_gpu = bootstrap_portfolio_performance(
     returns=portfolio_returns,
     n_sim=n_sim,
     use_gpu=True
@@ -926,7 +926,7 @@ print(f"   Throughput: {n_sim/time_gpu:.1f} sims/sec")
 print("\n3. CPU-Optimized Implementation (no GPU)")
 print(f"   Running {n_sim} simulations...")
 start = time.time()
-means_cpu, dist_cpu, stats_cpu = bootstrap_portfolio_performance_fast(
+means_cpu, dist_cpu, stats_cpu = bootstrap_portfolio_performance(
     returns=portfolio_returns,
     n_sim=n_sim,
     use_gpu=False
@@ -958,7 +958,7 @@ print("\n" + "="*70)
 import pandas as pd
 import numpy as np
 from myPortfolioManagement.myPortfolioOptimisation import HRP
-from myPortfolioManagement.myBacktesting_gpu import bootstrap_portfolio_performance_fast
+from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance
 
 def walk_forward_optimization(returns, train_period=252, rebalance_freq=63, n_sim=1000):
     """
@@ -996,7 +996,7 @@ def walk_forward_optimization(returns, train_period=252, rebalance_freq=63, n_si
         
         # Bootstrap validation
         if len(port_returns) > 30:  # Need enough data
-            means, _, _ = bootstrap_portfolio_performance_fast(
+            means, _, _ = bootstrap_portfolio_performance(
                 returns=port_returns,
                 n_sim=n_sim,
                 use_gpu=True
@@ -1124,7 +1124,7 @@ except ImportError:
 # 4. Check myPortfolioManagement
 print("\n4. MyPortfolioManagement:")
 try:
-    from myPortfolioManagement.myBacktesting_gpu import bootstrap_portfolio_performance_fast
+    from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance
     print(f"   ✓ GPU module loaded successfully")
 except ImportError as e:
     print(f"   ✗ Module import failed: {e}")
@@ -1149,14 +1149,14 @@ print("\n" + "="*70)
 For very large simulations, manage GPU memory:
 ```python
 import cupy as cp
-from myPortfolioManagement.myBacktesting_gpu import bootstrap_portfolio_performance_fast
+from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance
 
 # Check initial memory
 mempool = cp.get_default_memory_pool()
 print(f"GPU Memory used: {mempool.used_bytes() / 1024**2:.0f} MB")
 
 # Run large simulation
-means, dist, stats = bootstrap_portfolio_performance_fast(
+means, dist, stats = bootstrap_portfolio_performance(
     returns=returns,
     n_sim=20000,  # Very large
     use_gpu=True
@@ -1231,7 +1231,7 @@ print(f"GPU Memory after cleanup: {mempool.used_bytes() / 1024**2:.0f} MB")
 
 ### Custom Bootstrap with Specific Metrics
 ```python
-from myPortfolioManagement.myBacktesting_gpu import bootstrap_stats_vectorized
+from myPortfolioManagement.myBacktesting import bootstrap_stats_vectorized
 
 # Run bootstrap with custom parameters
 bootstrap_results = bootstrap_stats_vectorized(
@@ -1306,7 +1306,7 @@ print(f"  95th percentile: {bootstrap_returns.quantile(0.95):.2%}")
 ### Parallel Processing Optimization
 ```python
 import multiprocessing
-from myPortfolioManagement.myBacktesting_gpu import bootstrap_portfolio_performance_fast
+from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance
 
 # Get available cores
 n_cores = multiprocessing.cpu_count()
@@ -1317,7 +1317,7 @@ for n_jobs in [1, 2, 4, n_cores]:
     print(f"\nTesting with {n_jobs} cores:")
     
     start = time.time()
-    means, _, _ = bootstrap_portfolio_performance_fast(
+    means, _, _ = bootstrap_portfolio_performance(
         returns=returns.mean(axis=1),
         n_sim=1000,
         use_gpu=False,  # Force CPU to test parallelization
@@ -1331,7 +1331,7 @@ for n_jobs in [1, 2, 4, n_cores]:
 
 ### Monte Carlo Simulation Convergence Analysis
 ```python
-from myPortfolioManagement.myBacktesting_gpu import bootstrap_stats_vectorized
+from myPortfolioManagement.myBacktesting import bootstrap_stats_vectorized
 import matplotlib.pyplot as plt
 
 # Test convergence with increasing simulations
@@ -1701,7 +1701,7 @@ print(f"Portfolio NaN count: {df_aligned['portfolio'].isna().sum()}")
 print(f"Benchmark NaN count: {df_aligned['benchmark'].isna().sum()}")
 
 # Use cleaned data
-means, dist, stats = bootstrap_portfolio_performance_fast(
+means, dist, stats = bootstrap_portfolio_performance(
     returns=df_aligned['portfolio'],
     returns_benchmark=df_aligned['benchmark'],
     n_sim=5000,
@@ -1730,7 +1730,7 @@ if isinstance(returns, pd.DataFrame):
         returns = returns.mean(axis=1)  # Or select specific column
 
 # Now it will work
-means, dist, stats = bootstrap_portfolio_performance_fast(
+means, dist, stats = bootstrap_portfolio_performance(
     returns=returns,  # Now a Series
     n_sim=5000
 )
@@ -1748,7 +1748,7 @@ GPU seems slow or not faster than CPU
 1. **Check if GPU is actually being used:**
 ```python
 import cupy as cp
-from myPortfolioManagement.myBacktesting_gpu import GPU_AVAILABLE
+from myPortfolioManagement.myBacktesting import GPU_AVAILABLE
 
 print(f"GPU Available: {GPU_AVAILABLE}")
 
@@ -1807,14 +1807,14 @@ print(f"GPU Total: {cp.cuda.Device().mem_info[1] / 1024**3:.2f} GB")
 
 # 4. Fall back to CPU for very large simulations
 try:
-    means, dist, stats = bootstrap_portfolio_performance_fast(
+    means, dist, stats = bootstrap_portfolio_performance(
         returns=returns,
         n_sim=20000,
         use_gpu=True
     )
 except cp.cuda.memory.OutOfMemoryError:
     print("GPU out of memory, falling back to CPU...")
-    means, dist, stats = bootstrap_portfolio_performance_fast(
+    means, dist, stats = bootstrap_portfolio_performance(
         returns=returns,
         n_sim=20000,
         use_gpu=False
@@ -1838,7 +1838,7 @@ import warnings
 warnings.filterwarnings('ignore', category=UserWarning)
 
 # Or set n_jobs explicitly
-means, dist, stats = bootstrap_portfolio_performance_fast(
+means, dist, stats = bootstrap_portfolio_performance(
     returns=returns,
     n_sim=5000,
     n_jobs=4  # Explicit core count (Kaggle has 4 vCPUs)
@@ -1854,7 +1854,7 @@ means, dist, stats = bootstrap_portfolio_performance_fast(
 import time
 import pandas as pd
 import numpy as np
-from myPortfolioManagement.myBacktesting_gpu import bootstrap_portfolio_performance_fast
+from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance
 
 # Create test data
 np.random.seed(42)
@@ -1870,7 +1870,7 @@ print("="*70)
 # Test 1: Small simulation (CPU should be fine)
 print("\nTest 1: 500 simulations")
 start = time.time()
-means, _, _ = bootstrap_portfolio_performance_fast(
+means, _, _ = bootstrap_portfolio_performance(
     returns=test_returns,
     n_sim=500,
     use_gpu=True
@@ -1881,7 +1881,7 @@ print(f"  Time: {elapsed:.2f}s ({500/elapsed:.0f} sims/sec)")
 # Test 2: Medium simulation
 print("\nTest 2: 2,000 simulations")
 start = time.time()
-means, _, _ = bootstrap_portfolio_performance_fast(
+means, _, _ = bootstrap_portfolio_performance(
     returns=test_returns,
     n_sim=2000,
     use_gpu=True
@@ -1892,7 +1892,7 @@ print(f"  Time: {elapsed:.2f}s ({2000/elapsed:.0f} sims/sec)")
 # Test 3: Large simulation (GPU should shine here)
 print("\nTest 3: 5,000 simulations")
 start = time.time()
-means, _, _ = bootstrap_portfolio_performance_fast(
+means, _, _ = bootstrap_portfolio_performance(
     returns=test_returns,
     n_sim=5000,
     use_gpu=True
@@ -1917,7 +1917,7 @@ If you encounter issues not covered here:
 
 1. **Check GPU availability:**
 ```python
-from myPortfolioManagement.myBacktesting_gpu import GPU_AVAILABLE
+from myPortfolioManagement.myBacktesting import GPU_AVAILABLE
 print(f"GPU Available: {GPU_AVAILABLE}")
 ```
 
@@ -2185,9 +2185,9 @@ For questions, issues, or suggestions:
 #### 🚀 New Features
 - **GPU Acceleration**: 15-20x speedup with CuPy on NVIDIA GPUs
 - **CPU Optimization**: 6-8x speedup with vectorization and parallel processing
-- **New Module**: `myBacktesting_gpu.py` with GPU-accelerated functions
+- **New Module**: `myBacktesting.py` with GPU-accelerated functions
 - **New Module**: `myBootstrapping_gpu.py` with GPU bootstrap classes
-- **New Function**: `bootstrap_portfolio_performance_fast()` - main accelerated function
+- **New Function**: `bootstrap_portfolio_performance()` - main accelerated function
 - **New Function**: `bootstrap_stats_vectorized()` - vectorized metric computation
 - **New Function**: `balance_dates_robust()` - improved date alignment
 
