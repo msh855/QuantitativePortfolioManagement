@@ -130,7 +130,7 @@ def bootstrap_portfolio_performance_fast(
     """
     
     if not isinstance(returns_benchmark, type(None)):
-        returns, returns_benchmark = balance_dates(
+        returns, returns_benchmark = balance_dates_robust(
             pd.DataFrame(returns), pd.DataFrame(returns_benchmark)
         )
         returns = pd.Series(returns.iloc[:, 0])
