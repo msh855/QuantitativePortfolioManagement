@@ -17,8 +17,16 @@ from myPortfolioManagement.myUtils import _helper
 # Try to import CuPy for GPU acceleration
 try:
     import cupy as cp
-    GPU_AVAILABLE = True
-    print("✓ GPU acceleration available via CuPy")
+    # Test if GPU is actually available and functional
+    try:
+        _ = cp.array([1, 2, 3])  # Try a simple operation
+        GPU_AVAILABLE = True
+        print("✓ GPU acceleration available via CuPy")
+    except Exception as e:
+        # CuPy imported but GPU not functional
+        cp = np
+        GPU_AVAILABLE = False
+        warnings.warn(f"CuPy installed but GPU not functional ({type(e).__name__}). Using CPU-only mode")
 except ImportError:
     cp = np
     GPU_AVAILABLE = False
