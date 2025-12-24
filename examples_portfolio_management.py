@@ -557,6 +557,55 @@ try:
 except Exception as e:
     print(f"Bootstrap performance analysis: {e}")
 
+print("\n7.2a Visualizing Bootstrap Results...")
+# Import the new plotting functions
+from myPortfolioManagement.myPlots import (
+    plot_bootstrap_distribution,
+    plot_bootstrap_distributions,
+    plot_bootstrap_comparison
+)
+
+# Single metric distribution
+print("  - Plotting CAGR distribution...")
+try:
+    plot_bootstrap_distribution(
+        bootstrap_results=bootstrap_results,
+        metric='cagr',
+        confidence_level=0.95,
+        savefig='example_bootstrap_cagr.png',
+        show=False
+    )
+    print("    ✓ Saved: example_bootstrap_cagr.png")
+except Exception as e:
+    print(f"    Could not create CAGR plot: {e}")
+
+# Multiple metrics violin plot
+print("  - Creating violin plot for all metrics...")
+try:
+    plot_bootstrap_distributions(
+        bootstrap_results=bootstrap_results,
+        plot_type='violin',
+        savefig='example_bootstrap_violin.png',
+        show=False
+    )
+    print("    ✓ Saved: example_bootstrap_violin.png")
+except Exception as e:
+    print(f"    Could not create violin plot: {e}")
+
+# In-sample vs out-of-sample comparison
+if 'distributions' in locals():
+    print("  - Creating in-sample vs out-of-sample comparison...")
+    try:
+        plot_bootstrap_comparison(
+            bootstrap_results=distributions,
+            comparison_col='sample',
+            savefig='example_bootstrap_comparison.png',
+            show=False
+        )
+        print("    ✓ Saved: example_bootstrap_comparison.png")
+    except Exception as e:
+        print(f"    Could not create comparison plot: {e}")
+
 print("\n7.3 Simulating Return Series...")
 sim_returns = sim_series(
     returns=portfolio_returns,
@@ -907,6 +956,14 @@ Files Generated:
 - correlation_matrix.png
 - monthly_heatmap.png  
 - risk_return_scatter.png
+- example_bootstrap_cagr.png (Bootstrap CAGR distribution)
+- example_bootstrap_violin.png (Bootstrap metrics comparison)
+- example_bootstrap_comparison.png (In-sample vs Out-of-sample)
+
+New Bootstrap Visualization Features:
+- plot_bootstrap_distribution(): Single metric with confidence intervals
+- plot_bootstrap_distributions(): Multiple metrics (violin/box/histogram)
+- plot_bootstrap_comparison(): In-sample vs out-of-sample comparison
 
 Next Steps:
 1. Review portfolio weights and adjust constraints

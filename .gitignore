@@ -20,3 +20,19 @@ myPortfolioManagement.egg-info/SOURCES.txt
 myPortfolioManagement.egg-info/top_level.txt
 myPortfolioManagement/.DS_Store
 /venv
+
+# Test files
+test_bootstrap_plots.py
+test_bootstrap_plots_synthetic.py
+
+# Test plot outputs (exclude test plots but keep example plots)
+bootstrap_cagr_distribution.png
+bootstrap_cagr_from_series.png
+bootstrap_comparison_in_out_sample.png
+bootstrap_distributions_box.png
+bootstrap_distributions_hist.png
+bootstrap_distributions_selected.png
+bootstrap_distributions_violin.png
+bootstrap_sharpe_99ci.png
+bootstrap_sharpe_distribution.png
+bootstrap_volatility_distribution.png
