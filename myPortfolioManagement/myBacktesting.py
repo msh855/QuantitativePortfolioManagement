@@ -1,10 +1,14 @@
 """
-Created on Sat Jan 22 19:23:54 2022
+Backtesting Module with Automatic GPU Detection
+Optimized for both CPU and GPU environments
 
+Created on Sat Jan 22 19:23:54 2022
 @author: safishajjouz
 """
 from collections import OrderedDict
 from typing import Tuple
+import warnings
+import multiprocessing
 
 import empyrical as ep
 import numpy as np
@@ -12,12 +16,121 @@ import pandas as pd
 import pyfolio as pf
 from numpy import ndarray
 from timebudget import timebudget
+from joblib import Parallel, delayed
+import quantstats_lumi as qs
 
 from myPortfolioManagement.myPlots import *
-from myPortfolioManagement.myUtils import balance_dates
+from myPortfolioManagement.myUtils import balance_dates_robust
+
+# Try to import CuPy for GPU acceleration
+try:
+    import cupy as cp
+    # Test if GPU is actually available and functional
+    try:
+        _ = cp.array([1, 2, 3])  # Try a simple operation
+        GPU_AVAILABLE = True
+        print("✓ GPU acceleration available via CuPy")
+    except Exception as e:
+        # CuPy imported but GPU not functional
+        cp = np
+        GPU_AVAILABLE = False
+        warnings.warn(f"CuPy installed but GPU not functional ({type(e).__name__}). Using CPU-only mode")
+except ImportError:
+    cp = np
+    GPU_AVAILABLE = False
+    warnings.warn("CuPy not available. Using CPU-only mode")
 
 # Constants
 NUMERICAL_PRECISION_THRESHOLD = 1e-10  # Threshold for near-zero value detection
+
+
+@timebudget
+def bootstrap_stats_vectorized(returns: pd.Series,
+                               returns_benchmark: pd.Series = None,
+                               rf: float = 0.02,
+                               periods: int = 252,
+                               n_sim: int = 1000,
+                               use_gpu: bool = True) -> pd.DataFrame:
+    """
+    Vectorized bootstrap statistics calculation with GPU support
+
+    This version pre-generates all random samples and computes metrics
+    in parallel batches for massive speedup.
+    """
+
+    if not isinstance(returns_benchmark, pd.Series):
+        if returns_benchmark is None:
+            returns_benchmark = pd.Series(dtype='int64')
+
+    # Prepare data
+    if not returns_benchmark.empty:
+        returns, returns_benchmark = balance_dates_robust(returns, returns_benchmark)
+
+    returns_values = returns.values
+    n_obs = len(returns_values)
+
+    # Use GPU if available
+    xp = cp if (use_gpu and GPU_AVAILABLE) else np
+
+    # Pre-generate ALL random indices at once (HUGE speedup)
+    print(f"  Generating {n_sim} random samples...")
+    if use_gpu and GPU_AVAILABLE:
+        all_indices = cp.random.randint(0, n_obs, size=(n_sim, n_obs))
+        all_indices = cp.asnumpy(all_indices)  # Transfer back to CPU once
+    else:
+        all_indices = np.random.randint(0, n_obs, size=(n_sim, n_obs))
+
+    # Define metrics to calculate
+    metrics_functions = [
+        ('cagr', lambda r: qs.stats.cagr(pd.Series(r))),
+        ('volatility', lambda r: qs.stats.volatility(pd.Series(r), periods=periods)),
+        ('sharpe', lambda r: qs.stats.sharpe(pd.Series(r), rf=rf, periods=periods)),
+        ('sortino', lambda r: qs.stats.adjusted_sortino(pd.Series(r), rf=rf, periods=periods)),
+    ]
+
+    if not returns_benchmark.empty:
+        bench_values = returns_benchmark.values
+        metrics_functions.extend([
+            ('alpha', lambda r, b: ep.alpha(pd.Series(r), pd.Series(b), risk_free=rf, annualization=periods)),
+            ('beta', lambda r, b: ep.beta(pd.Series(r), pd.Series(b), risk_free=rf)),
+        ])
+
+    # Parallel computation of metrics
+    def compute_sample_metrics(i):
+        """Compute all metrics for sample i"""
+        idx = all_indices[i]
+        returns_i = returns_values[idx]
+
+        sample_metrics = {}
+        for metric_name, metric_func in metrics_functions:
+            try:
+                if metric_name in ['alpha', 'beta'] and not returns_benchmark.empty:
+                    bench_i = bench_values[idx]
+                    sample_metrics[metric_name] = metric_func(returns_i, bench_i)
+                else:
+                    sample_metrics[metric_name] = metric_func(returns_i)
+            except:
+                sample_metrics[metric_name] = np.nan
+
+        return sample_metrics
+
+    # Parallel execution
+    print(f"  Computing metrics in parallel...")
+    n_jobs = min(multiprocessing.cpu_count(), 8)  # Limit to avoid overhead
+
+    results = Parallel(n_jobs=n_jobs, backend='loky', verbose=0)(
+        delayed(compute_sample_metrics)(i) for i in range(n_sim)
+    )
+
+    # Convert to DataFrame
+    bootstrap_values = pd.DataFrame(results)
+
+    # Remove outliers (top and bottom 10%)
+    g = int(0.1 * len(bootstrap_values))
+    if g > 0:
+        bootstrap_values = bootstrap_values.apply(lambda x: x.sort_values().iloc[g:-g])
+
+    return bootstrap_values
 
 
 @timebudget
@@ -25,27 +138,36 @@ def bootstrap_stats(returns: pd.Series,
                     returns_benchmark: pd.Series = None,
                     rf: float = 0.02,
                     periods: int = 252,
-                    n_sim: int = 1000) -> pd.DataFrame:
+                    n_sim: int = 1000,
+                    use_gpu: bool = None) -> pd.DataFrame:
     """
-    
+    Bootstrap statistics with automatic GPU detection
 
     Args:
-        returns (pd.Series): DESCRIPTION.
-        returns_benchmark (pd.Series, optional): DESCRIPTION. Defaults to None.
-        rf (float, optional): DESCRIPTION. Defaults to 0.02.
-        periods (int, optional): DESCRIPTION. Defaults to 252.
-        n_sim (int, optional): DESCRIPTION. Defaults to 10000.
+        returns: Portfolio returns
+        returns_benchmark: Benchmark returns (optional)
+        rf: Risk-free rate
+        periods: Trading periods per year
+        n_sim: Number of simulations
+        use_gpu: Force GPU (True), CPU (False), or auto-detect (None)
 
     Returns:
-        TYPE: DESCRIPTION.
-
+        DataFrame with bootstrap statistics
     """
+    # Auto-detect GPU usage
+    if use_gpu is None:
+        use_gpu = GPU_AVAILABLE
 
+    # Use vectorized GPU version if available and requested
+    if use_gpu and GPU_AVAILABLE:
+        return bootstrap_stats_vectorized(returns, returns_benchmark, rf, periods, n_sim, use_gpu=True)
+
+    # Fall back to original CPU version
     if not isinstance(returns_benchmark, pd.Series):
         if returns_benchmark is None:
             returns_benchmark = pd.Series(dtype='int64')
 
-    # metrics to calculate 
+    # metrics to calculate
     metrics_functions = [qs.stats.cagr,
                          qs.stats.volatility,
                          qs.stats.sharpe,
@@ -56,9 +178,9 @@ def bootstrap_stats(returns: pd.Series,
 
     bootstrap_values = OrderedDict()
 
-    # prepare returns 
+    # prepare returns
     if not returns_benchmark.empty:
-        returns, returns_benchmark = balance_dates(returns,
+        returns, returns_benchmark = balance_dates_robust(returns,
                                                    returns_benchmark)
 
     for func in metrics_functions:
@@ -67,7 +189,7 @@ def bootstrap_stats(returns: pd.Series,
         out: ndarray = np.zeros(sim)
 
         for i in range(sim):
-            # draw random returns 
+            # draw random returns
             idx = np.random.randint(len(returns), size=len(returns))
             returns_i = returns.iloc[idx].reset_index(drop=False)
             returns_i = returns_i.set_index('Date')
@@ -112,31 +234,142 @@ def bootstrap_portfolio_performance(returns: pd.Series,
                                     periods: int = 252,
                                     rf: float = 0.02,
                                     out_of_sample_date: str = None,
-                                    n_sim: int = 10000) -> Tuple[pd.DataFrame,
+                                    n_sim: int = 10000,
+                                    use_gpu: bool = None) -> Tuple[pd.DataFrame,
 pd.DataFrame,
 pd.DataFrame]:
     """
-    
+    Portfolio performance bootstrap with automatic GPU detection
 
     Args:
-        returns (pd.Series): DESCRIPTION.
-        returns_benchmark (pd.Series, optional): DESCRIPTION. Defaults to None.
-        periods (int, optional): DESCRIPTION. Defaults to 252.
-        rf (float, optional): DESCRIPTION. Defaults to 0.02.
-        out_of_sample_date (str, optional): DESCRIPTION. Defaults to None.
-        n_sim (int, optional): DESCRIPTION. Defaults to 10000.
+        returns: Portfolio returns
+        returns_benchmark: Benchmark returns (optional)
+        periods: Trading periods per year
+        rf: Risk-free rate
+        out_of_sample_date: Date to split samples (optional)
+        n_sim: Number of simulations
+        use_gpu: Force GPU (True), CPU (False), or auto-detect (None)
 
     Returns:
-        results_means (TYPE): DESCRIPTION.
-        results_dist (TYPE): DESCRIPTION.
-        results_dist_stats (TYPE): DESCRIPTION.
-
+        Tuple of (means, distributions, distribution_stats)
     """
+    # Auto-detect GPU usage
+    if use_gpu is None:
+        use_gpu = GPU_AVAILABLE
+
+    # Helper function to ensure Series
+    def ensure_series(data):
+        """Convert to Series if needed"""
+        if data is None or (isinstance(data, pd.Series) and data.empty):
+            return None
+        if isinstance(data, pd.DataFrame):
+            if data.shape[1] == 1:
+                return data.iloc[:, 0]
+            else:
+                return data.squeeze()
+        return data
+
+    # Use GPU-accelerated vectorized version if available
+    if use_gpu and GPU_AVAILABLE:
+        # Clean and align data
+        returns = ensure_series(returns)
+        returns_benchmark = ensure_series(returns_benchmark)
+
+        # Balance dates if benchmark exists
+        if returns_benchmark is not None and not returns_benchmark.empty:
+            ret_df = pd.DataFrame({'returns': returns})
+            bench_df = pd.DataFrame({'benchmark': returns_benchmark})
+            df_combined = ret_df.join(bench_df, how='inner').dropna()
+            returns = df_combined['returns']
+            returns_benchmark = df_combined['benchmark']
+
+        # Split into in-sample and out-of-sample
+        if out_of_sample_date:
+            # In-sample
+            ret_insample = returns[returns.index < out_of_sample_date]
+            ret_bench_insample = (returns_benchmark[returns_benchmark.index < out_of_sample_date]
+                                 if returns_benchmark is not None else None)
+
+            print("Computing in-sample bootstrap...")
+            bootstrap_metrics_insample = bootstrap_stats_vectorized(
+                returns=ret_insample,
+                returns_benchmark=ret_bench_insample,
+                rf=rf,
+                periods=periods,
+                n_sim=n_sim,
+                use_gpu=True
+            )
+
+            metrics_in_sample = pd.DataFrame(
+                pd.Series(bootstrap_metrics_insample.mean(), name='in_sample')
+            )
+
+            # Out-of-sample
+            ret_outsample = returns[returns.index >= out_of_sample_date]
+            ret_bench_outsample = (returns_benchmark[returns_benchmark.index >= out_of_sample_date]
+                                  if returns_benchmark is not None else None)
+
+            print("Computing out-of-sample bootstrap...")
+            bootstrap_metrics_outsample = bootstrap_stats_vectorized(
+                returns=ret_outsample,
+                returns_benchmark=ret_bench_outsample,
+                rf=rf,
+                periods=periods,
+                n_sim=n_sim,
+                use_gpu=True
+            )
+
+            metrics_out_of_sample = pd.DataFrame(
+                pd.Series(bootstrap_metrics_outsample.mean(), name='out_of_sample')
+            )
+
+            bootstrap_metrics_insample.columns = bootstrap_metrics_insample.columns + '_in_sample'
+            bootstrap_metrics_outsample.columns = bootstrap_metrics_outsample.columns + '_out_sample'
+
+            # Full sample
+            print("Computing full sample bootstrap...")
+            bootstrap_metrics = bootstrap_stats_vectorized(
+                returns=returns,
+                returns_benchmark=returns_benchmark,
+                periods=periods,
+                rf=rf,
+                n_sim=n_sim,
+                use_gpu=True
+            )
+
+            metrics_all = pd.DataFrame(pd.Series(bootstrap_metrics.mean(), name='all_sample'))
+
+            results_means = pd.concat([metrics_in_sample, metrics_out_of_sample, metrics_all], axis=1)
+            results_dist = pd.concat([bootstrap_metrics_insample, bootstrap_metrics_outsample, bootstrap_metrics], axis=1)
+        else:
+            # No out-of-sample split
+            print("Computing bootstrap...")
+            bootstrap_metrics = bootstrap_stats_vectorized(
+                returns=returns,
+                returns_benchmark=returns_benchmark,
+                periods=periods,
+                rf=rf,
+                n_sim=n_sim,
+                use_gpu=True
+            )
+
+            results_means = pd.DataFrame(pd.Series(bootstrap_metrics.mean(), name='all_sample'))
+            results_dist = bootstrap_metrics
+
+        # Calculate distribution statistics
+        results_dist_stats = results_dist.describe().T
+
+        return results_means, results_dist, results_dist_stats
+
+    # Fall back to original CPU version
+    # Clean and align data using the same helper function
+    returns = ensure_series(returns)
+    returns_benchmark = ensure_series(returns_benchmark)
 
     if not isinstance(returns_benchmark, type(None)):
-        returns, returns_benchmark = balance_dates(pd.DataFrame(returns), pd.DataFrame(returns_benchmark))
-        returns = pd.Series(returns.iloc[:, 0])
-        returns_benchmark = pd.Series(returns_benchmark.iloc[:, 0])
+        returns, returns_benchmark = balance_dates_robust(pd.DataFrame(returns), pd.DataFrame(returns_benchmark))
+        returns = ensure_series(returns)
+        returns_benchmark = ensure_series(returns_benchmark)
 
     if out_of_sample_date:
         ret_insample = returns[returns.index < out_of_sample_date]
@@ -151,22 +384,24 @@ pd.DataFrame]:
         else:
             ret_bench_outsample = None
 
-            # in-sample 
+            # in-sample
         bootstrap_metrics_insample = bootstrap_stats(returns=ret_insample,
                                                      returns_benchmark=ret_bench_insample,
                                                      rf=rf,
                                                      periods=periods,
-                                                     n_sim=n_sim)
+                                                     n_sim=n_sim,
+                                                     use_gpu=False)
 
         metrics_in_sample = pd.DataFrame(pd.Series(bootstrap_metrics_insample.mean(),
                                                    name='in_sample'))
 
-        # out-of-sample 
+        # out-of-sample
         bootstrap_metrics_outsample = bootstrap_stats(returns=ret_outsample,
                                                       returns_benchmark=ret_bench_outsample,
                                                       rf=rf,
                                                       periods=periods,
-                                                      n_sim=n_sim)
+                                                      n_sim=n_sim,
+                                                      use_gpu=False)
 
         metrics_out_of_sample = pd.DataFrame(pd.Series(bootstrap_metrics_outsample.mean(),
                                                        name='out_of_sample'))
@@ -178,7 +413,8 @@ pd.DataFrame]:
                                         returns_benchmark=returns_benchmark,
                                         periods=periods,
                                         rf=rf,
-                                        n_sim=n_sim)
+                                        n_sim=n_sim,
+                                        use_gpu=False)
 
     metrics_all = pd.DataFrame(pd.Series(bootstrap_metrics.mean(),
                                          name='all_sample'))
