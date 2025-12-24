@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import quantstats_lumi as qs
 import numpy as np
+from typing import Union
 
 
 def scatter_plot_simple(df, x: str, y: str):
@@ -207,7 +208,7 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
 # fig.show()
 
 
-def plot_bootstrap_distribution(bootstrap_results: pd.DataFrame or pd.Series,
+def plot_bootstrap_distribution(bootstrap_results: Union[pd.DataFrame, pd.Series],
                                  metric: str = None,
                                  confidence_level: float = 0.95,
                                  figsize: tuple = (10, 6),
@@ -358,10 +359,11 @@ def plot_bootstrap_distributions(bootstrap_results: pd.DataFrame,
         rows = int(np.ceil(n_metrics / cols))
         fig, axes = plt.subplots(rows, cols, figsize=figsize)
         
+        # Ensure axes is always a list
         if n_metrics == 1:
             axes = [axes]
         else:
-            axes = axes.flatten() if n_metrics > 1 else [axes]
+            axes = axes.flatten()
         
         for idx, metric in enumerate(metrics):
             ax = axes[idx]
@@ -369,8 +371,9 @@ def plot_bootstrap_distributions(bootstrap_results: pd.DataFrame,
             
             # Calculate statistics
             mean_val = metric_data.mean()
-            ci_lower = np.percentile(metric_data, (1 - confidence_level) / 2 * 100)
-            ci_upper = np.percentile(metric_data, (1 + confidence_level) / 2 * 100)
+            alpha = 1 - confidence_level
+            ci_lower = np.percentile(metric_data, (alpha / 2) * 100)
+            ci_upper = np.percentile(metric_data, (1 - alpha / 2) * 100)
             
             # Plot histogram
             ax.hist(metric_data, bins=30, density=True, alpha=0.7, 
@@ -545,10 +548,11 @@ def plot_bootstrap_comparison(bootstrap_results: pd.DataFrame,
     rows = int(np.ceil(n_metrics / cols))
     fig, axes = plt.subplots(rows, cols, figsize=figsize)
     
+    # Ensure axes is always a list
     if n_metrics == 1:
         axes = [axes]
     else:
-        axes = axes.flatten() if n_metrics > 1 else [axes]
+        axes = axes.flatten()
     
     colors = ['steelblue', 'coral', 'mediumseagreen', 'mediumpurple']
     
@@ -560,8 +564,9 @@ def plot_bootstrap_comparison(bootstrap_results: pd.DataFrame,
             
             # Calculate statistics
             mean_val = metric_data.mean()
-            ci_lower = np.percentile(metric_data, (1 - confidence_level) / 2 * 100)
-            ci_upper = np.percentile(metric_data, (1 + confidence_level) / 2 * 100)
+            alpha = 1 - confidence_level
+            ci_lower = np.percentile(metric_data, (alpha / 2) * 100)
+            ci_upper = np.percentile(metric_data, (1 - alpha / 2) * 100)
             
             # Plot histogram with transparency
             color = colors[color_idx % len(colors)]
