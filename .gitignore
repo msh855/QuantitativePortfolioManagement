@@ -36,3 +36,9 @@ bootstrap_distributions_violin.png
 bootstrap_sharpe_99ci.png
 bootstrap_sharpe_distribution.png
 bootstrap_volatility_distribution.png
+
+# Example output files (user-generated)
+example_*.png
+correlation_matrix.png
+monthly_heatmap.png
+risk_return_scatter.png
