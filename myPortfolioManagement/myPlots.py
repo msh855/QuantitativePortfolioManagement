@@ -205,3 +205,399 @@ def monthly_heatmap(returns, annot_size=10, figsize=(10, 5),
 #     )
 # )
 # fig.show()
+
+
+def plot_bootstrap_distribution(bootstrap_results: pd.DataFrame or pd.Series,
+                                 metric: str = None,
+                                 confidence_level: float = 0.95,
+                                 figsize: tuple = (10, 6),
+                                 color: str = 'steelblue',
+                                 title: str = None,
+                                 savefig: str = None,
+                                 show: bool = True):
+    """
+    Plot the bootstrap distribution for a single metric with confidence intervals.
+    
+    Args:
+        bootstrap_results: DataFrame with bootstrap samples (columns are metrics) or Series for single metric
+        metric: Name of the metric column to plot (required if bootstrap_results is DataFrame)
+        confidence_level: Confidence level for intervals (default: 0.95 for 95% CI)
+        figsize: Figure size as (width, height)
+        color: Color for the histogram
+        title: Custom title for the plot
+        savefig: Path to save the figure (if None, figure is not saved)
+        show: Whether to display the plot
+    
+    Returns:
+        matplotlib figure object if show=False, otherwise None
+    """
+    # Handle input
+    if isinstance(bootstrap_results, pd.DataFrame):
+        if metric is None:
+            raise ValueError("metric parameter is required when bootstrap_results is a DataFrame")
+        if metric not in bootstrap_results.columns:
+            raise ValueError(f"Metric '{metric}' not found in bootstrap_results columns")
+        data = bootstrap_results[metric].dropna()
+    elif isinstance(bootstrap_results, pd.Series):
+        data = bootstrap_results.dropna()
+        metric = bootstrap_results.name if bootstrap_results.name else 'metric'
+    else:
+        raise ValueError("bootstrap_results must be a pandas DataFrame or Series")
+    
+    # Calculate statistics
+    mean_val = data.mean()
+    median_val = data.median()
+    alpha = 1 - confidence_level
+    lower_percentile = (alpha / 2) * 100
+    upper_percentile = (1 - alpha / 2) * 100
+    ci_lower = np.percentile(data, lower_percentile)
+    ci_upper = np.percentile(data, upper_percentile)
+    
+    # Create figure
+    fig, ax = plt.subplots(figsize=figsize)
+    
+    # Plot histogram
+    n, bins, patches = ax.hist(data, bins=50, density=True, alpha=0.7, 
+                                color=color, edgecolor='black', linewidth=0.5)
+    
+    # Add KDE
+    from scipy import stats as scipy_stats
+    kde = scipy_stats.gaussian_kde(data)
+    x_range = np.linspace(data.min(), data.max(), 200)
+    ax.plot(x_range, kde(x_range), 'r-', linewidth=2, label='KDE')
+    
+    # Add vertical lines for statistics
+    ax.axvline(mean_val, color='darkgreen', linestyle='--', linewidth=2, label=f'Mean: {mean_val:.4f}')
+    ax.axvline(median_val, color='orange', linestyle='--', linewidth=2, label=f'Median: {median_val:.4f}')
+    ax.axvline(ci_lower, color='red', linestyle=':', linewidth=2, 
+               label=f'{int(confidence_level*100)}% CI Lower: {ci_lower:.4f}')
+    ax.axvline(ci_upper, color='red', linestyle=':', linewidth=2, 
+               label=f'{int(confidence_level*100)}% CI Upper: {ci_upper:.4f}')
+    
+    # Labels and title
+    ax.set_xlabel(metric.replace('_', ' ').title(), fontsize=12, fontweight='bold')
+    ax.set_ylabel('Density', fontsize=12, fontweight='bold')
+    
+    if title is None:
+        title = f'Bootstrap Distribution: {metric.replace("_", " ").title()}'
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+    
+    # Legend
+    ax.legend(loc='best', frameon=True, shadow=True, fontsize=10)
+    ax.grid(True, alpha=0.3, linestyle='--')
+    
+    # Adjust layout
+    plt.tight_layout()
+    
+    # Save if requested
+    if savefig:
+        if isinstance(savefig, dict):
+            plt.savefig(**savefig)
+        else:
+            plt.savefig(savefig, dpi=300, bbox_inches='tight')
+    
+    # Show or return
+    if show:
+        plt.show()
+        plt.close()
+        return None
+    else:
+        return fig
+
+
+def plot_bootstrap_distributions(bootstrap_results: pd.DataFrame,
+                                  metrics: list = None,
+                                  confidence_level: float = 0.95,
+                                  plot_type: str = 'violin',
+                                  figsize: tuple = None,
+                                  title: str = None,
+                                  savefig: str = None,
+                                  show: bool = True):
+    """
+    Plot multiple bootstrap distributions for comparison.
+    
+    Args:
+        bootstrap_results: DataFrame with bootstrap samples (columns are metrics)
+        metrics: List of metric names to plot (if None, plots all columns)
+        confidence_level: Confidence level for intervals (default: 0.95)
+        plot_type: Type of plot - 'violin', 'box', or 'hist' (default: 'violin')
+        figsize: Figure size as (width, height). If None, auto-calculated
+        title: Custom title for the plot
+        savefig: Path to save the figure (if None, figure is not saved)
+        show: Whether to display the plot
+    
+    Returns:
+        matplotlib figure object if show=False, otherwise None
+    """
+    if not isinstance(bootstrap_results, pd.DataFrame):
+        raise ValueError("bootstrap_results must be a pandas DataFrame")
+    
+    # Select metrics
+    if metrics is None:
+        metrics = bootstrap_results.columns.tolist()
+    else:
+        missing = [m for m in metrics if m not in bootstrap_results.columns]
+        if missing:
+            raise ValueError(f"Metrics not found in bootstrap_results: {missing}")
+    
+    data = bootstrap_results[metrics].copy()
+    n_metrics = len(metrics)
+    
+    # Auto-calculate figsize if not provided
+    if figsize is None:
+        if plot_type == 'hist':
+            cols = min(3, n_metrics)
+            rows = int(np.ceil(n_metrics / cols))
+            figsize = (6 * cols, 5 * rows)
+        else:
+            figsize = (max(10, n_metrics * 1.5), 6)
+    
+    if plot_type == 'hist':
+        # Create subplots for histograms
+        cols = min(3, n_metrics)
+        rows = int(np.ceil(n_metrics / cols))
+        fig, axes = plt.subplots(rows, cols, figsize=figsize)
+        
+        if n_metrics == 1:
+            axes = [axes]
+        else:
+            axes = axes.flatten() if n_metrics > 1 else [axes]
+        
+        for idx, metric in enumerate(metrics):
+            ax = axes[idx]
+            metric_data = data[metric].dropna()
+            
+            # Calculate statistics
+            mean_val = metric_data.mean()
+            ci_lower = np.percentile(metric_data, (1 - confidence_level) / 2 * 100)
+            ci_upper = np.percentile(metric_data, (1 + confidence_level) / 2 * 100)
+            
+            # Plot histogram
+            ax.hist(metric_data, bins=30, density=True, alpha=0.7, 
+                   color='steelblue', edgecolor='black', linewidth=0.5)
+            
+            # Add mean and CI
+            ax.axvline(mean_val, color='darkgreen', linestyle='--', linewidth=2, label='Mean')
+            ax.axvline(ci_lower, color='red', linestyle=':', linewidth=1.5, label=f'{int(confidence_level*100)}% CI')
+            ax.axvline(ci_upper, color='red', linestyle=':', linewidth=1.5)
+            
+            ax.set_xlabel(metric.replace('_', ' ').title(), fontsize=10, fontweight='bold')
+            ax.set_ylabel('Density', fontsize=10)
+            ax.legend(loc='best', fontsize=8)
+            ax.grid(True, alpha=0.3)
+        
+        # Hide extra subplots
+        for idx in range(n_metrics, len(axes)):
+            axes[idx].axis('off')
+        
+        if title is None:
+            title = 'Bootstrap Distributions for All Metrics'
+        fig.suptitle(title, fontsize=14, fontweight='bold', y=1.00)
+        
+    elif plot_type == 'violin':
+        # Create violin plot
+        fig, ax = plt.subplots(figsize=figsize)
+        
+        # Prepare data for violin plot
+        data_melted = data.melt(var_name='Metric', value_name='Value')
+        
+        # Create violin plot
+        sns.violinplot(data=data_melted, x='Metric', y='Value', ax=ax, 
+                      palette='Set2', inner='box')
+        
+        # Add mean points
+        means = data.mean()
+        ax.scatter(range(len(means)), means, color='red', s=100, zorder=3, 
+                  marker='D', label='Mean', edgecolor='black', linewidth=1.5)
+        
+        ax.set_xlabel('Metrics', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Values', fontsize=12, fontweight='bold')
+        ax.set_xticklabels([m.replace('_', ' ').title() for m in metrics], 
+                          rotation=45, ha='right')
+        ax.legend(loc='best')
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        if title is None:
+            title = 'Bootstrap Distributions Comparison (Violin Plot)'
+        ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+        
+    elif plot_type == 'box':
+        # Create box plot
+        fig, ax = plt.subplots(figsize=figsize)
+        
+        # Create box plot
+        bp = ax.boxplot([data[m].dropna() for m in metrics], 
+                        labels=[m.replace('_', ' ').title() for m in metrics],
+                        patch_artist=True, notch=True, showmeans=True,
+                        meanprops=dict(marker='D', markerfacecolor='red', markersize=8))
+        
+        # Color the boxes
+        colors = plt.cm.Set3(np.linspace(0, 1, n_metrics))
+        for patch, color in zip(bp['boxes'], colors):
+            patch.set_facecolor(color)
+            patch.set_alpha(0.7)
+        
+        ax.set_xlabel('Metrics', fontsize=12, fontweight='bold')
+        ax.set_ylabel('Values', fontsize=12, fontweight='bold')
+        ax.set_xticklabels([m.replace('_', ' ').title() for m in metrics], 
+                          rotation=45, ha='right')
+        ax.grid(True, alpha=0.3, axis='y')
+        
+        if title is None:
+            title = 'Bootstrap Distributions Comparison (Box Plot)'
+        ax.set_title(title, fontsize=14, fontweight='bold', pad=20)
+    else:
+        raise ValueError("plot_type must be 'violin', 'box', or 'hist'")
+    
+    plt.tight_layout()
+    
+    # Save if requested
+    if savefig:
+        if isinstance(savefig, dict):
+            plt.savefig(**savefig)
+        else:
+            plt.savefig(savefig, dpi=300, bbox_inches='tight')
+    
+    # Show or return
+    if show:
+        plt.show()
+        plt.close()
+        return None
+    else:
+        return fig
+
+
+def plot_bootstrap_comparison(bootstrap_results: pd.DataFrame,
+                              comparison_col: str = None,
+                              metrics: list = None,
+                              confidence_level: float = 0.95,
+                              figsize: tuple = None,
+                              title: str = None,
+                              savefig: str = None,
+                              show: bool = True):
+    """
+    Plot comparison of bootstrap distributions for in-sample vs out-of-sample or other comparisons.
+    
+    This function expects a DataFrame where column names include suffixes like '_in_sample', 
+    '_out_sample', or similar identifiers for comparison.
+    
+    Args:
+        bootstrap_results: DataFrame with bootstrap samples where columns contain comparison identifiers
+        comparison_col: Substring to identify comparison groups (e.g., 'sample' for in_sample/out_sample)
+        metrics: List of base metric names to compare (if None, auto-detects from columns)
+        confidence_level: Confidence level for intervals (default: 0.95)
+        figsize: Figure size as (width, height). If None, auto-calculated
+        title: Custom title for the plot
+        savefig: Path to save the figure (if None, figure is not saved)
+        show: Whether to display the plot
+    
+    Returns:
+        matplotlib figure object if show=False, otherwise None
+    """
+    if not isinstance(bootstrap_results, pd.DataFrame):
+        raise ValueError("bootstrap_results must be a pandas DataFrame")
+    
+    # Auto-detect comparison groups and metrics
+    columns = bootstrap_results.columns.tolist()
+    
+    # Detect suffixes
+    if comparison_col is None:
+        # Try to detect common patterns
+        if any('_in_sample' in col for col in columns):
+            comparison_col = 'sample'
+        elif any('_train' in col for col in columns):
+            comparison_col = 'train'
+        else:
+            raise ValueError("Cannot auto-detect comparison groups. Please specify comparison_col")
+    
+    # Extract unique metrics and groups
+    metric_groups = {}
+    for col in columns:
+        if comparison_col in col.lower():
+            # Split by the last occurrence of underscore to separate metric from group
+            parts = col.rsplit('_', 2)  # Split from right, max 2 splits
+            if len(parts) >= 2:
+                metric_base = parts[0]
+                group = '_'.join(parts[1:])
+                if metric_base not in metric_groups:
+                    metric_groups[metric_base] = []
+                metric_groups[metric_base].append((col, group))
+    
+    if not metric_groups:
+        raise ValueError(f"No comparison columns found with '{comparison_col}' pattern")
+    
+    # Filter by requested metrics if specified
+    if metrics is not None:
+        metric_groups = {k: v for k, v in metric_groups.items() if k in metrics}
+        if not metric_groups:
+            raise ValueError(f"No matching metrics found: {metrics}")
+    
+    n_metrics = len(metric_groups)
+    
+    # Auto-calculate figsize
+    if figsize is None:
+        cols = min(3, n_metrics)
+        rows = int(np.ceil(n_metrics / cols))
+        figsize = (6 * cols, 5 * rows)
+    
+    # Create subplots
+    cols = min(3, n_metrics)
+    rows = int(np.ceil(n_metrics / cols))
+    fig, axes = plt.subplots(rows, cols, figsize=figsize)
+    
+    if n_metrics == 1:
+        axes = [axes]
+    else:
+        axes = axes.flatten() if n_metrics > 1 else [axes]
+    
+    colors = ['steelblue', 'coral', 'mediumseagreen', 'mediumpurple']
+    
+    for idx, (metric_base, group_cols) in enumerate(metric_groups.items()):
+        ax = axes[idx]
+        
+        for color_idx, (col, group) in enumerate(group_cols):
+            metric_data = bootstrap_results[col].dropna()
+            
+            # Calculate statistics
+            mean_val = metric_data.mean()
+            ci_lower = np.percentile(metric_data, (1 - confidence_level) / 2 * 100)
+            ci_upper = np.percentile(metric_data, (1 + confidence_level) / 2 * 100)
+            
+            # Plot histogram with transparency
+            color = colors[color_idx % len(colors)]
+            ax.hist(metric_data, bins=30, density=True, alpha=0.5, 
+                   color=color, edgecolor='black', linewidth=0.5, 
+                   label=f'{group.replace("_", " ").title()}')
+            
+            # Add mean line
+            ax.axvline(mean_val, color=color, linestyle='--', linewidth=2, alpha=0.8)
+        
+        ax.set_xlabel(metric_base.replace('_', ' ').title(), fontsize=10, fontweight='bold')
+        ax.set_ylabel('Density', fontsize=10)
+        ax.legend(loc='best', fontsize=8)
+        ax.grid(True, alpha=0.3)
+    
+    # Hide extra subplots
+    for idx in range(n_metrics, len(axes)):
+        axes[idx].axis('off')
+    
+    if title is None:
+        title = f'Bootstrap Distribution Comparison: {comparison_col.replace("_", " ").title()}'
+    fig.suptitle(title, fontsize=14, fontweight='bold', y=1.00)
+    
+    plt.tight_layout()
+    
+    # Save if requested
+    if savefig:
+        if isinstance(savefig, dict):
+            plt.savefig(**savefig)
+        else:
+            plt.savefig(savefig, dpi=300, bbox_inches='tight')
+    
+    # Show or return
+    if show:
+        plt.show()
+        plt.close()
+        return None
+    else:
+        return fig
