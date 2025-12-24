@@ -2,7 +2,17 @@
   "permissions": {
     "allow": [
       "Bash(python:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/ --collect-only)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/ -m \"unit and not slow and not data_fetch and not gpu\" -x -q --tb=short)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/ -m \"unit and not slow and not data_fetch and not gpu\" -q --tb=short)",
+      "Bash(cat:*)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/ -m \"unit and not slow and not data_fetch and not gpu\" -q --tb=line)",
+      "Bash(\".venv/Scripts/python.exe\":*)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/test_myData.py tests/test_myBootstrap_GPU.py tests/test_myReturns.py -m \"unit and not slow and not data_fetch and not gpu\" -q --tb=line)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/ --collect-only -q)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/ -m \"unit and not slow and not data_fetch and not gpu\" -q)"
     ]
   }
 }
