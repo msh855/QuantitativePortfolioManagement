@@ -1,11 +1,25 @@
 import pandas as pd
-from feature_engine.outliers import OutlierTrimmer
-import ffn
-import quantstats_lumi as qs
+try:
+    from feature_engine.outliers import OutlierTrimmer
+except ModuleNotFoundError:  # optional dependency
+    OutlierTrimmer = None
+
+try:
+    import ffn
+except ModuleNotFoundError:  # optional dependency
+    ffn = None
+
+try:
+    import quantstats_lumi as qs
+except ModuleNotFoundError:  # optional dependency
+    qs = None
 
 import yfinance as yf
 from operator import itemgetter
-from openbb import obb
+try:
+    from openbb import obb
+except ModuleNotFoundError:  # optional dependency
+    obb = None
 import time
 import json
 
@@ -79,6 +93,14 @@ def cap_outliersTS(returns: pd.DataFrame = None, capping_method='iqr',
                    tail='both',
                    fold=5,
                    plot: bool = False, **kwargs):
+    if OutlierTrimmer is None:
+        raise ModuleNotFoundError(
+            "feature_engine is required for cap_outliersTS(). Install it with: pip install feature-engine"
+        )
+    if ffn is None:
+        raise ModuleNotFoundError(
+            "ffn is required for cap_outliersTS(). Install it with: pip install ffn"
+        )
     # ref: https://nbviewer.org/github/feature-engine/feature-engine-examples/blob/main/outliers/OutlierTrimmer.ipynb
     # ref: https://feature-engine.trainindata.com/en/latest/user_guide/outliers/OutlierTrimmer.html
     capper = OutlierTrimmer(capping_method=capping_method,
@@ -118,6 +140,11 @@ def balance_dates(returns, returns_benchmark):
 
     if isinstance(returns, pd.Series):
         returns = pd.DataFrame(returns)
+
+    if qs is None:
+        raise ModuleNotFoundError(
+            "quantstats_lumi is required for balance_dates(). Install it with the project's requirements."
+        )
 
     ret_balanced_dates = []
 
@@ -330,6 +357,10 @@ def _load_stock(yahoo_ticker: str, period: str = 'max', start_date: str = None,
 
 
 def _load_fx(cross: str = "EURUSD", start_date: str = '1950-01-01', end_date: str = None) -> pd.DataFrame:
+    if obb is None:
+        raise ModuleNotFoundError(
+            "openbb is required for _load_fx(). Install it with: pip install openbb"
+        )
     df_fx = obb.currency.price.historical(symbol=cross, start_date=start_date, end_date=end_date,
                                           provider='yfinance').to_df()
     df_fx = df_fx[['close']]

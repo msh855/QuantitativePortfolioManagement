@@ -16,6 +16,14 @@ Date: December 2024
 import warnings
 warnings.filterwarnings('ignore')
 
+import os
+import sys
+
+# Ensure local imports work when running this script from any directory
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -59,22 +67,19 @@ prices = pd.DataFrame(
 )
 print(f"✓ Generated synthetic data: {len(prices)} days")
 print(f"  Date range: {prices.index[0]} to {prices.index[-1]}")
-print(f"  Current price: ${prices.iloc[-1, 0]:.2f}")
 print(f"✓ Calculated returns: mean={returns.mean()*252:.2%}, std={returns.std()*np.sqrt(252):.2%}")
 
 S0 = prices.iloc[-1, 0]  # Current stock price
 
 # =============================================================================
-# SECTION 2: CREATE OPTION CHAIN
+# SECTION 2: BOOTSTRAP FUTURE DISTRIBUTION (FIRST)
 # =============================================================================
 print("\n" + "=" * 80)
-print("SECTION 2: CREATE SYNTHETIC OPTION CHAIN")
+print("SECTION 2: BOOTSTRAP HISTORICAL DISTRIBUTION")
 print("=" * 80)
 
-from myPortfolioManagement.myOptionPricing import create_option_chain
-
-# Parameters for option pricing
-T_years = 5.0  # 5-year horizon as mentioned in the issue
+# Parameters for option pricing / horizon
+T_years = 5.0  # 5-year horizon
 r = 0.05  # Risk-free rate (5%)
 historical_vol = returns.std() * np.sqrt(252)  # Annualized volatility
 
@@ -84,13 +89,66 @@ print(f"  Time to Expiration (T): {T_years} years")
 print(f"  Risk-free Rate (r): {r:.2%}")
 print(f"  Historical Volatility: {historical_vol:.2%}")
 
-# Create option chain with various strike prices
+print(f"\nBootstrapping future prices using historical returns...")
+print(f"  Number of simulations: 10,000")
+print(f"  Bootstrap method: IID (using simple resampling)")
+
+np.random.seed(123)
+n_sim = 10000
+periods = int(T_years * 252)
+
+bootstrap_prices = []
+for _ in range(n_sim):
+    sampled_returns = np.random.choice(returns.values, size=periods, replace=True)
+    cumulative_return = np.prod(1 + sampled_returns)
+    future_price = S0 * cumulative_return
+    bootstrap_prices.append(future_price)
+
+bootstrap_dist = pd.DataFrame({
+    'simulation': range(n_sim),
+    'future_price': bootstrap_prices
+})
+
+print(f"✓ Bootstrapped distribution created")
+print(f"\nBootstrap Distribution Statistics:")
+print(f"  Mean Price: ${bootstrap_dist['future_price'].mean():.2f}")
+print(f"  Std Deviation: ${bootstrap_dist['future_price'].std():.2f}")
+print(f"  Min Price: ${bootstrap_dist['future_price'].min():.2f}")
+print(f"  Max Price: ${bootstrap_dist['future_price'].max():.2f}")
+
+# =============================================================================
+# SECTION 3: CREATE OPTION CHAIN (USING BOOTSTRAP RANGE)
+# =============================================================================
+print("\n" + "=" * 80)
+print("SECTION 3: CREATE SYNTHETIC OPTION CHAIN")
+print("=" * 80)
+
+from myPortfolioManagement.myOptionPricing import create_option_chain
+
+# Use an asymmetric range: keep the downside from the bootstrap minimum (to avoid
+# clipping the left tail), while trimming only the extreme upside via a high
+# quantile to reduce the impact of a few right-tail outliers.
+q_high = 0.999  # 99.9%
+low_price = float(bootstrap_dist['future_price'].min())
+high_price = float(bootstrap_dist['future_price'].quantile(q_high))
+
+# Convert to spot multipliers expected by create_option_chain().
+# Add a small buffer so the strikes extend slightly beyond the chosen quantiles.
+buffer = 0.05
+min_mult = max(0.01, (low_price / S0) * (1.0 - buffer))
+max_mult = max(min_mult * 1.05, (high_price / S0) * (1.0 + buffer))
+
+print(f"\nStrike range derived from bootstrap (min to upper-quantile):")
+print(f"  Upper quantile: {q_high:.3%}")
+print(f"  Bootstrapped future price range used: ${low_price:.2f} to ${high_price:.2f}")
+print(f"  Strike multipliers vs spot: {min_mult:.3f}x to {max_mult:.3f}x")
+
 option_chain = create_option_chain(
     S=S0,
     T=T_years,
     r=r,
     sigma=historical_vol,
-    strike_range=(0.2, 3.0),  # Wider range for a 5-year horizon
+    strike_range=(min_mult, max_mult),
     num_strikes=80
 )
 
@@ -100,10 +158,10 @@ print("\nSample option prices:")
 print(option_chain.head(5).to_string(index=False))
 
 # =============================================================================
-# SECTION 3: EXTRACT IMPLIED DISTRIBUTION
+# SECTION 4: EXTRACT IMPLIED DISTRIBUTION
 # =============================================================================
 print("\n" + "=" * 80)
-print("SECTION 3: EXTRACT IMPLIED PROBABILITY DISTRIBUTION")
+print("SECTION 4: EXTRACT IMPLIED PROBABILITY DISTRIBUTION")
 print("=" * 80)
 
 from myPortfolioManagement.myImpliedDistribution import extract_implied_distribution
@@ -152,45 +210,6 @@ print(f"\nImplied Distribution Statistics:")
 print(f"  Expected Price: ${implied_mean:.2f}")
 print(f"  Std Deviation: ${implied_std:.2f}")
 print(f"  Expected Return: {((implied_mean / S0) ** (1/T_years) - 1):.2%} annualized")
-
-# =============================================================================
-# SECTION 4: BOOTSTRAP FUTURE DISTRIBUTION
-# =============================================================================
-print("\n" + "=" * 80)
-print("SECTION 4: BOOTSTRAP HISTORICAL DISTRIBUTION")
-print("=" * 80)
-
-from myPortfolioManagement.myImpliedDistribution import bootstrap_future_distribution
-
-print(f"\nBootstrapping future prices using historical returns...")
-print(f"  Number of simulations: 10,000")
-print(f"  Bootstrap method: IID (using simple resampling)")
-
-# For this example, we'll use a simplified bootstrap approach
-# In real usage with full package, use bootstrap_future_distribution()
-np.random.seed(123)
-n_sim = 10000
-periods = int(T_years * 252)
-
-# Simple IID bootstrap
-bootstrap_prices = []
-for _ in range(n_sim):
-    sampled_returns = np.random.choice(returns.values, size=periods, replace=True)
-    cumulative_return = np.prod(1 + sampled_returns)
-    future_price = S0 * cumulative_return
-    bootstrap_prices.append(future_price)
-
-bootstrap_dist = pd.DataFrame({
-    'simulation': range(n_sim),
-    'future_price': bootstrap_prices
-})
-
-print(f"✓ Bootstrapped distribution created")
-print(f"\nBootstrap Distribution Statistics:")
-print(f"  Mean Price: ${bootstrap_dist['future_price'].mean():.2f}")
-print(f"  Std Deviation: ${bootstrap_dist['future_price'].std():.2f}")
-print(f"  Min Price: ${bootstrap_dist['future_price'].min():.2f}")
-print(f"  Max Price: ${bootstrap_dist['future_price'].max():.2f}")
 
 # =============================================================================
 # SECTION 5: COMPARE DISTRIBUTIONS
