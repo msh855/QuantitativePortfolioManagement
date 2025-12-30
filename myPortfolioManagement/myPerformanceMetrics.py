@@ -101,6 +101,11 @@ def assets_drawdown_details(df_prices: pd.DataFrame, **kwargs):
 
 def information_ratio(returns, benchmark):
     asset_col_name = "assets"
+
+    # Handle Series input by converting to DataFrame
+    if isinstance(returns, pd.Series):
+        returns = returns.to_frame()
+
     columns = returns.columns.to_list()
 
     info_ratio = []
@@ -153,12 +158,11 @@ def alpha_beta_table(
     alpha_beta = []
 
     for col in myassets:
-        temp = alpha_beta_aligned(returns[col], returns_benchmark[bench_col], risk_free=rf, period=period)
-        alpha_beta.append(temp)
+        result = alpha_beta_aligned(returns[col], returns_benchmark[bench_col], risk_free=rf, period=period)
+        alpha_beta.append(result)
 
-    temp = pd.DataFrame(alpha_beta)
+    temp = pd.DataFrame(alpha_beta, columns=["alpha", "beta"])
     temp[my_assets_col_name] = myassets
-    temp.columns = ["alpha", "beta", my_assets_col_name]
     temp = temp.set_index(my_assets_col_name)
 
     temp_bull = alpha_beta_bull(returns, returns_benchmark, my_assets_col_name=my_assets_col_name, period=period)

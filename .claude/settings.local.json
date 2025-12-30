@@ -31,7 +31,8 @@
       "Bash(.venv/Scripts/python.exe -m pytest tests/test_myData.py::TestFuncAdjFx -v)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/ -m \"unit and not slow and not data_fetch and not gpu\" -q --tb=line)",
       "Bash(.venv/Scripts/python.exe -m pytest tests/test_myData.py -m \"unit and not slow and not data_fetch and not gpu\" -v)",
-      "Bash(.venv/Scripts/python.exe -m pytest tests/test_myData.py -m \"unit and not slow and not data_fetch and not gpu\" -q)"
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_myData.py -m \"unit and not slow and not data_fetch and not gpu\" -q)",
+      "Bash(.venv/Scripts/python.exe -m pytest:*)"
     ]
   }
 }

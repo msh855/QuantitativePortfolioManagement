@@ -250,7 +250,7 @@ def generate_rp_portfolios(returns_training=None, rf=0.02, risk_measure=[], weig
     return df_rp
 
 
-def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[]):
+def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[], return_dataframe=False):
     """
 
 
@@ -258,57 +258,62 @@ def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[]
         returns_training (TYPE): DESCRIPTION.
         my_assets_col_name (TYPE, optional): DESCRIPTION. Defaults to [].
         weight_max (TYPE, optional): DESCRIPTION. Defaults to [].
+        return_dataframe (bool, optional): If True, returns a DataFrame. Defaults to False.
 
     Returns:
-        df_inverse_vol (TYPE): DESCRIPTION.
+        pd.Series or pd.DataFrame: Portfolio weights.
 
     """
 
     # get inverse vol weights
     weights = pd.Series(ffn.core.calc_inv_vol_weights(returns_training), name="port_inverse_vol")
 
-    # clean
-    df_inverse_vol = pd.DataFrame(weights)
-
-    df_inverse_vol.index = df_inverse_vol.index.set_names(["asset"])
-
-    # df_inverse_vol = df_inverse_vol.reset_index()
+    # Set index name
+    index_name = my_assets_col_name if my_assets_col_name else "asset"
+    weights.index.name = index_name
 
     if weight_max:
+        # clean_limit_weights expects a DataFrame
+        df_inverse_vol = pd.DataFrame(weights)
         df_inverse_vol = clean_limit_weights(
             df_inverse_vol, portfolio_name=df_inverse_vol.columns[0], weight_max=weight_max
         )
-    if my_assets_col_name:
-        df_inverse_vol.index = df_inverse_vol.index.set_names([my_assets_col_name])
+        if return_dataframe:
+            return df_inverse_vol
+        return df_inverse_vol.iloc[:, 0]
 
-    return df_inverse_vol
+    if return_dataframe:
+        return weights.to_frame()
+
+    return weights
 
 
-def equal_weight_portfolio(returns_training, my_assets_col_name=[]):
+def equal_weight_portfolio(returns_training, my_assets_col_name=[], return_dataframe=False):
     """
 
 
     Args:
         returns_training (TYPE): DESCRIPTION.
         my_assets_col_name (TYPE, optional): DESCRIPTION. Defaults to [].
+        return_dataframe (bool, optional): If True, returns a DataFrame. Defaults to False.
 
     Returns:
-        df_naive (TYPE): DESCRIPTION.
+        pd.Series or pd.DataFrame: Portfolio weights.
 
     """
 
     len_assets = len(returns_training.columns)
     naive_weights = [1 / len_assets] * len_assets  # copy the equal weight to a list
 
-    if my_assets_col_name:
-        d = {my_assets_col_name: returns_training.columns.to_list(), "port_naive": naive_weights}
-        df_naive = pd.DataFrame(d).set_index(my_assets_col_name)
+    # Create Series with asset names as index
+    index_name = my_assets_col_name if my_assets_col_name else "asset"
+    weights_series = pd.Series(naive_weights, index=returns_training.columns, name="port_naive")
+    weights_series.index.name = index_name
 
-    else:
-        d = {"asset": returns_training.columns.to_list(), "port_naive": naive_weights}
-        df_naive = pd.DataFrame(d).set_index("asset")
+    if return_dataframe:
+        return weights_series.to_frame()
 
-    return df_naive
+    return weights_series
 
 
 def clean_limit_weights(df_weights, portfolio_name: str, weight_max: float):

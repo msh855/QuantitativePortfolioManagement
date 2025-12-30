@@ -27,8 +27,9 @@ def vol(returns):
 def beta(returns, market):
     # Create a matrix of [returns, market]
     m = numpy.matrix([returns, market])
-    # Return the covariance of m divided by the standard deviation of the market returns
-    return numpy.cov(m)[0][1] / numpy.std(market)
+    # Return the covariance of m divided by the variance of the market returns
+    cov_matrix = numpy.cov(m)
+    return cov_matrix[0][1] / cov_matrix[1][1]
 
 
 def lpm(returns, threshold, order):
@@ -37,9 +38,9 @@ def lpm(returns, threshold, order):
     threshold_array = numpy.empty(len(returns))
     threshold_array.fill(threshold)
     # Calculate the difference between the threshold and the returns
-    diff = threshold_array - returns
+    diff = threshold_array - numpy.asarray(returns)
     # Set the minimum of each to 0
-    diff = diff.clip(min=0)
+    diff = numpy.clip(diff, 0, None)
     # Return the sum of the different to the power of order
     return numpy.sum(diff**order) / len(returns)
 
@@ -50,9 +51,9 @@ def hpm(returns, threshold, order):
     threshold_array = numpy.empty(len(returns))
     threshold_array.fill(threshold)
     # Calculate the difference between the returns and the threshold
-    diff = returns - threshold_array
+    diff = numpy.asarray(returns) - threshold_array
     # Set the minimum of each to 0
-    diff = diff.clip(min=0)
+    diff = numpy.clip(diff, 0, None)
     # Return the sum of the different to the power of order
     return numpy.sum(diff**order) / len(returns)
 
