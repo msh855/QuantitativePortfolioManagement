@@ -22,11 +22,11 @@ def func_adj_fx(prices: pd.DataFrame, yahoo_tickers: list, base_currency: str = 
     df_stock_main_info = df_stock_main_info[["yahooTicker", names, "currency"]]
     df_temp = df_stock_main_info[df_stock_main_info["currency"] != base_currency]
 
-    which_com_to_adjust = list(df_temp[names])
-
     # If no FX adjustment needed, return original prices
-    if not which_com_to_adjust:
+    if df_temp.empty:
         return prices
+
+    which_com_to_adjust = list(df_temp[names])
 
     prices_mini = prices[which_com_to_adjust]
     price_adj_fx = prices_mini.copy()
