@@ -2,21 +2,29 @@
 Bootstrapping Module with Automatic GPU Detection
 Optimized for both CPU and GPU environments
 """
+
+import warnings
+
 import numpy as np
 import pandas as pd
-import warnings
-from arch.bootstrap import StationaryBootstrap, CircularBlockBootstrap, IIDBootstrap, MovingBlockBootstrap, \
-    optimal_block_length
-
+from arch.bootstrap import (
+    CircularBlockBootstrap,
+    IIDBootstrap,
+    MovingBlockBootstrap,
+    StationaryBootstrap,
+    optimal_block_length,
+)
+from timebudget import timebudget
 from tsmoothie.bootstrap import BootstrappingWrapper
 from tsmoothie.smoother import *
-from tsmoothie.utils_func import _id_nb_bootstrap, _id_mb_bootstrap, _id_cb_bootstrap, _id_s_bootstrap
-from timebudget import timebudget
+from tsmoothie.utils_func import _id_cb_bootstrap, _id_mb_bootstrap, _id_nb_bootstrap, _id_s_bootstrap
+
 from myPortfolioManagement.myUtils import _helper
 
 # Try to import CuPy for GPU acceleration
 try:
     import cupy as cp
+
     # Test if GPU is actually available and functional
     try:
         _ = cp.array([1, 2, 3])  # Try a simple operation
@@ -53,8 +61,7 @@ class GPUBootstrap:
         return array
 
     @timebudget
-    def bootstrap_iid_gpu(self, series: pd.Series, n_samples: int = 1000,
-                          seed: int = None) -> pd.DataFrame:
+    def bootstrap_iid_gpu(self, series: pd.Series, n_samples: int = 1000, seed: int = None) -> pd.DataFrame:
         """
         GPU-accelerated IID bootstrap (auto-detects GPU availability)
 
@@ -85,15 +92,15 @@ class GPUBootstrap:
         bootstrap_samples = self._to_numpy(bootstrap_samples)
 
         # Create DataFrame
-        df = pd.DataFrame(bootstrap_samples, columns=[f'path{i+1}' for i in range(n_samples)])
+        df = pd.DataFrame(bootstrap_samples, columns=[f"path{i+1}" for i in range(n_samples)])
         df.index = series.index
 
         return df
 
     @timebudget
-    def bootstrap_block_gpu(self, series: pd.Series, block_size: int = 12,
-                           n_samples: int = 1000, method: str = 'moving',
-                           seed: int = None) -> pd.DataFrame:
+    def bootstrap_block_gpu(
+        self, series: pd.Series, block_size: int = 12, n_samples: int = 1000, method: str = "moving", seed: int = None
+    ) -> pd.DataFrame:
         """
         GPU-accelerated block bootstrap (auto-detects GPU availability)
 
@@ -119,7 +126,7 @@ class GPUBootstrap:
         # Pre-allocate output array
         bootstrap_samples = self.xp.zeros((nobs, n_samples), dtype=data.dtype)
 
-        if method == 'circular':
+        if method == "circular":
             # Circular block bootstrap - wrap around
             n_blocks = int(np.ceil(nobs / block_size))
 
@@ -134,20 +141,20 @@ class GPUBootstrap:
 
                     # Handle wrapping
                     if start_idx + block_size <= nobs:
-                        block = data[start_idx:start_idx + block_size]
+                        block = data[start_idx : start_idx + block_size]
                     else:
                         # Wrap around
                         part1 = data[start_idx:]
-                        part2 = data[:(start_idx + block_size) % nobs]
+                        part2 = data[: (start_idx + block_size) % nobs]
                         block = self.xp.concatenate([part1, part2])
 
                     end_pos = min(pos + len(block), nobs)
-                    sample[pos:end_pos] = block[:end_pos - pos]
+                    sample[pos:end_pos] = block[: end_pos - pos]
                     pos = end_pos
 
                 bootstrap_samples[:, i] = sample
 
-        elif method == 'moving':
+        elif method == "moving":
             # Moving block bootstrap
             max_start = nobs - block_size
             n_blocks = int(np.ceil(nobs / block_size))
@@ -160,10 +167,10 @@ class GPUBootstrap:
                     if pos >= nobs:
                         break
                     start_idx = self.xp.random.randint(0, max_start + 1)
-                    block = data[start_idx:start_idx + block_size]
+                    block = data[start_idx : start_idx + block_size]
 
                     end_pos = min(pos + len(block), nobs)
-                    sample[pos:end_pos] = block[:end_pos - pos]
+                    sample[pos:end_pos] = block[: end_pos - pos]
                     pos = end_pos
 
                 bootstrap_samples[:, i] = sample
@@ -172,7 +179,7 @@ class GPUBootstrap:
         bootstrap_samples = self._to_numpy(bootstrap_samples)
 
         # Create DataFrame
-        df = pd.DataFrame(bootstrap_samples, columns=[f'path{i+1}' for i in range(n_samples)])
+        df = pd.DataFrame(bootstrap_samples, columns=[f"path{i+1}" for i in range(n_samples)])
         df.index = series.index
 
         return df
@@ -217,8 +224,13 @@ def BootstrapIDD(series: pd.Series = None, n_samples: int = 1000, seed: int = No
     return df
 
 
-def BootstrapStationary(series: pd.Series = None, block_size: int or float = 12, n_samples: int = 1000, seed=None,
-                        optimal_block: bool = False):
+def BootstrapStationary(
+    series: pd.Series = None,
+    block_size: int or float = 12,
+    n_samples: int = 1000,
+    seed=None,
+    optimal_block: bool = False,
+):
     # # Initialize with entropy from random.org
     # if seed is not None:
     #     entropy = [877788388, 418255226, 989657335, 69307515]
@@ -226,7 +238,7 @@ def BootstrapStationary(series: pd.Series = None, block_size: int or float = 12,
 
     if optimal_block:
         block_size = optimal_block_length(series)
-        block_size = block_size.loc[series.name, 'stationary']
+        block_size = block_size.loc[series.name, "stationary"]
 
     nobs = len(series)
     bs = StationaryBootstrap(block_size, series, seed=seed)
@@ -245,8 +257,14 @@ def BootstrapStationary(series: pd.Series = None, block_size: int or float = 12,
     return df
 
 
-def BootstrapCircular(series: pd.Series = None, block_size: int or float = 12, n_samples: int = 1000, seed=None,
-                      optimal_block: bool = False, use_gpu: bool = None):
+def BootstrapCircular(
+    series: pd.Series = None,
+    block_size: int or float = 12,
+    n_samples: int = 1000,
+    seed=None,
+    optimal_block: bool = False,
+    use_gpu: bool = None,
+):
     """
     Circular Block Bootstrap with automatic GPU detection
 
@@ -267,12 +285,12 @@ def BootstrapCircular(series: pd.Series = None, block_size: int or float = 12, n
 
     if optimal_block:
         opt = optimal_block_length(series)
-        block_size = int(max(opt.loc[series.name, 'circular'], 1))
+        block_size = int(max(opt.loc[series.name, "circular"], 1))
 
     # Use GPU-accelerated version if available and requested
     if use_gpu and GPU_AVAILABLE:
         gpu_bs = GPUBootstrap(use_gpu=True)
-        return gpu_bs.bootstrap_block_gpu(series, block_size, n_samples, 'circular', seed)
+        return gpu_bs.bootstrap_block_gpu(series, block_size, n_samples, "circular", seed)
 
     # Fall back to CPU version
     nobs = len(series)
@@ -292,7 +310,9 @@ def BootstrapCircular(series: pd.Series = None, block_size: int or float = 12, n
     return df
 
 
-def BootstrapMovingBlock(series: pd.Series = None, block_size: int or float = 12, n_samples: int = 1000, seed=None, use_gpu: bool = None):
+def BootstrapMovingBlock(
+    series: pd.Series = None, block_size: int or float = 12, n_samples: int = 1000, seed=None, use_gpu: bool = None
+):
     """
     Moving Block Bootstrap with automatic GPU detection
 
@@ -313,7 +333,7 @@ def BootstrapMovingBlock(series: pd.Series = None, block_size: int or float = 12
     # Use GPU-accelerated version if available and requested
     if use_gpu and GPU_AVAILABLE:
         gpu_bs = GPUBootstrap(use_gpu=True)
-        return gpu_bs.bootstrap_block_gpu(series, block_size, n_samples, 'moving', seed)
+        return gpu_bs.bootstrap_block_gpu(series, block_size, n_samples, "moving", seed)
 
     # Fall back to CPU version
     nobs = len(series)
@@ -336,9 +356,15 @@ def BootstrapMovingBlock(series: pd.Series = None, block_size: int or float = 12
 # ts smoothie bootsrapping
 # =========================
 
-def bootstrappingTS_smoothie(series: pd.Series = None, bootstrap_type: str = 'mbb', block_size: int = 12,
-                             n_samples: int = None,
-                             residual_method: bool = False, optimal_block: bool = False):
+
+def bootstrappingTS_smoothie(
+    series: pd.Series = None,
+    bootstrap_type: str = "mbb",
+    block_size: int = 12,
+    n_samples: int = None,
+    residual_method: bool = False,
+    optimal_block: bool = False,
+):
     # btype = ['nbb', 'mbb', 'cbb', 'sb'][1]
 
     if isinstance(series, pd.DataFrame):
@@ -346,10 +372,10 @@ def bootstrappingTS_smoothie(series: pd.Series = None, bootstrap_type: str = 'mb
 
     if optimal_block:
         opt = optimal_block_length(series.dropna())
-        if bootstrap_type == 'cbb':
-            block_size = opt['circular'][0]
-        elif bootstrap_type == 'stationary':
-            block_size = opt['stationary'][0]
+        if bootstrap_type == "cbb":
+            block_size = opt["circular"][0]
+        elif bootstrap_type == "stationary":
+            block_size = opt["stationary"][0]
 
     if residual_method:
         spc = SpectralSmoother(smooth_fraction=0.18, pad_len=12)
@@ -361,10 +387,10 @@ def bootstrappingTS_smoothie(series: pd.Series = None, bootstrap_type: str = 'mb
     else:
 
         bootstrap_functions = {
-            'nbb': _id_nb_bootstrap,
-            'mbb': _id_mb_bootstrap,
-            'cbb': _id_cb_bootstrap,
-            'sbb': _id_s_bootstrap
+            "nbb": _id_nb_bootstrap,
+            "mbb": _id_mb_bootstrap,
+            "cbb": _id_cb_bootstrap,
+            "sbb": _id_s_bootstrap,
         }
 
         bootstrap_func = bootstrap_functions.get(bootstrap_type, _id_s_bootstrap)
@@ -383,19 +409,19 @@ def bootstrappingTS_smoothie(series: pd.Series = None, bootstrap_type: str = 'mb
 
 
 @timebudget
-def bootstrappingTS(series: pd.Series or pd.DataFrame = None, block_size: int = None, optimal_block: bool = False,
-                    n_samples: int = 1000,
-                    bootstrap_type: bool = 'mbb', seed: int or None = None) -> pd.DataFrame:
+def bootstrappingTS(
+    series: pd.Series or pd.DataFrame = None,
+    block_size: int = None,
+    optimal_block: bool = False,
+    n_samples: int = 1000,
+    bootstrap_type: bool = "mbb",
+    seed: int or None = None,
+) -> pd.DataFrame:
     # convert dataframe to series. If a multi-column df is passed would only consider the first column.
     if isinstance(series, pd.DataFrame):
         series = pd.Series(series.iloc[:, 0], name=series.columns[0])
 
-    func_map = {
-        'nbb': BootstrapIDD,
-        'sb': BootstrapStationary,
-        'mbb': BootstrapMovingBlock,
-        'cbb': BootstrapCircular
-    }
+    func_map = {"nbb": BootstrapIDD, "sb": BootstrapStationary, "mbb": BootstrapMovingBlock, "cbb": BootstrapCircular}
 
     BootstrapFunc = func_map.get(bootstrap_type)
 
@@ -404,8 +430,8 @@ def bootstrappingTS(series: pd.Series or pd.DataFrame = None, block_size: int = 
 
     kwargs = {}
     if BootstrapFunc is not BootstrapIDD:
-        kwargs['block_size'] = block_size
-        kwargs['optimal_block'] = optimal_block
+        kwargs["block_size"] = block_size
+        kwargs["optimal_block"] = optimal_block
 
     if BootstrapFunc is not BootstrapMovingBlock:
         results = BootstrapFunc(series, n_samples=n_samples, seed=seed, **kwargs)

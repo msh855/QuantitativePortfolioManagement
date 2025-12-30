@@ -2,7 +2,36 @@
   "permissions": {
     "allow": [
       "Bash(python:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(wc:*)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/ --collect-only)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/ -m \"unit and not slow and not data_fetch and not gpu\" -x -q --tb=short)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/ -m \"unit and not slow and not data_fetch and not gpu\" -q --tb=short)",
+      "Bash(cat:*)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/ -m \"unit and not slow and not data_fetch and not gpu\" -q --tb=line)",
+      "Bash(\".venv/Scripts/python.exe\":*)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/test_myData.py tests/test_myBootstrap_GPU.py tests/test_myReturns.py -m \"unit and not slow and not data_fetch and not gpu\" -q --tb=line)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/ --collect-only -q)",
+      "Bash(\".venv/Scripts/python.exe\" -m pytest tests/ -m \"unit and not slow and not data_fetch and not gpu\" -q)",
+      "Bash(pytest:*)",
+      "Bash(git add:*)",
+      "Bash(\".venv/Scripts/python.exe\" -m flake8 myPortfolioManagement/myPortfolioOptimisation.py)",
+      "Bash(for file in myPortfolioManagement/*.py tests/*.py)",
+      "Bash(do sed -n '16p' \"$file\")",
+      "Bash(echo:*)",
+      "Bash(done)",
+      "Bash(\".venv/Scripts/python.exe\" -W error::SyntaxWarning -m py_compile myPortfolioManagement/*.py)",
+      "Bash(\".venv/Scripts/python.exe\" -m flake8 myPortfolioManagement/ tests/)",
+      "Bash(pre-commit run:*)",
+      "Bash(\".venv/Scripts/pre-commit.exe\" run --files .flake8 .pre-commit-config.yaml myPortfolioManagement/myPortfolioOptimisation.py)",
+      "Bash(\".venv/Scripts/pre-commit.exe\" run --files myPortfolioManagement/myPortfolioOptimisation.py)",
+      "Bash(\".venv/Scripts/pre-commit.exe\" run --all-files)",
+      "Bash(git commit:*)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_myData.py::TestFuncAdjFx::test_no_adjustment_needed_usd -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_myData.py::TestFuncAdjFx -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/ -m \"unit and not slow and not data_fetch and not gpu\" -q --tb=line)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_myData.py -m \"unit and not slow and not data_fetch and not gpu\" -v)",
+      "Bash(.venv/Scripts/python.exe -m pytest tests/test_myData.py -m \"unit and not slow and not data_fetch and not gpu\" -q)"
     ]
   }
 }
