@@ -9,25 +9,26 @@ Tests cover:
 - Data validation and edge cases
 """
 
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pandas as pd
 import pytest
-from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
 
 from myPortfolioManagement.myData import (
-    get_stock_prices,
-    get_stock_info,
     func_adj_fx,
-    get_sp500_tickers,
     get_nasdaq_tickers,
     get_option_exp_dates,
+    get_sp500_tickers,
+    get_stock_info,
+    get_stock_prices,
 )
-
 
 # =============================================================================
 # Test Classes
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestGetStockPrices:
@@ -37,9 +38,7 @@ class TestGetStockPrices:
     def test_single_ticker_fetch(self, real_date_range):
         """Test fetching data for a single ticker."""
         prices = get_stock_prices(
-            yahoo_tickers=["AAPL"],
-            start_date=real_date_range["start"],
-            end_date=real_date_range["end"]
+            yahoo_tickers=["AAPL"], start_date=real_date_range["start"], end_date=real_date_range["end"]
         )
 
         assert isinstance(prices, pd.DataFrame)
@@ -52,9 +51,7 @@ class TestGetStockPrices:
         """Test fetching data for multiple tickers."""
         tickers = ["AAPL", "MSFT", "GOOGL"]
         prices = get_stock_prices(
-            yahoo_tickers=tickers,
-            start_date=real_date_range["start"],
-            end_date=real_date_range["end"]
+            yahoo_tickers=tickers, start_date=real_date_range["start"], end_date=real_date_range["end"]
         )
 
         assert isinstance(prices, pd.DataFrame)
@@ -66,10 +63,7 @@ class TestGetStockPrices:
     def test_daily_frequency(self, real_date_range):
         """Test fetching daily frequency data."""
         prices = get_stock_prices(
-            yahoo_tickers=["AAPL"],
-            start_date=real_date_range["start"],
-            end_date=real_date_range["end"],
-            freq="D"
+            yahoo_tickers=["AAPL"], start_date=real_date_range["start"], end_date=real_date_range["end"], freq="D"
         )
 
         # Daily data should have more rows than monthly
@@ -79,10 +73,7 @@ class TestGetStockPrices:
     def test_monthly_frequency(self, real_date_range):
         """Test fetching monthly frequency data."""
         prices = get_stock_prices(
-            yahoo_tickers=["AAPL"],
-            start_date=real_date_range["start"],
-            end_date=real_date_range["end"],
-            freq="M"
+            yahoo_tickers=["AAPL"], start_date=real_date_range["start"], end_date=real_date_range["end"], freq="M"
         )
 
         assert isinstance(prices, pd.DataFrame)
@@ -95,7 +86,7 @@ class TestGetStockPrices:
             yahoo_tickers=["AAPL", "MSFT"],
             start_date=real_date_range["start"],
             end_date=real_date_range["end"],
-            wide_format=True
+            wide_format=True,
         )
 
         # Wide format should have tickers as columns
@@ -105,9 +96,7 @@ class TestGetStockPrices:
     def test_datetime_index_type(self, real_date_range):
         """Test that returned DataFrame has DatetimeIndex."""
         prices = get_stock_prices(
-            yahoo_tickers=["AAPL"],
-            start_date=real_date_range["start"],
-            end_date=real_date_range["end"]
+            yahoo_tickers=["AAPL"], start_date=real_date_range["start"], end_date=real_date_range["end"]
         )
 
         assert isinstance(prices.index, pd.DatetimeIndex)
@@ -116,9 +105,7 @@ class TestGetStockPrices:
     def test_no_future_dates(self, real_date_range):
         """Test that returned data doesn't contain future dates."""
         prices = get_stock_prices(
-            yahoo_tickers=["AAPL"],
-            start_date=real_date_range["start"],
-            end_date=real_date_range["end"]
+            yahoo_tickers=["AAPL"], start_date=real_date_range["start"], end_date=real_date_range["end"]
         )
 
         today = pd.Timestamp.now().normalize()
@@ -128,9 +115,7 @@ class TestGetStockPrices:
     def test_prices_are_positive(self, real_date_range):
         """Test that all prices are positive."""
         prices = get_stock_prices(
-            yahoo_tickers=["AAPL"],
-            start_date=real_date_range["start"],
-            end_date=real_date_range["end"]
+            yahoo_tickers=["AAPL"], start_date=real_date_range["start"], end_date=real_date_range["end"]
         )
 
         assert (prices.dropna() > 0).all().all()
@@ -138,20 +123,14 @@ class TestGetStockPrices:
     def test_empty_ticker_list(self):
         """Test handling of empty ticker list."""
         with pytest.raises((ValueError, TypeError, KeyError)):
-            get_stock_prices(
-                yahoo_tickers=[],
-                start_date="2023-01-01",
-                end_date="2023-12-31"
-            )
+            get_stock_prices(yahoo_tickers=[], start_date="2023-01-01", end_date="2023-12-31")
 
     @pytest.mark.data_fetch
     def test_invalid_ticker(self):
         """Test handling of invalid ticker symbol."""
         # Invalid tickers should either raise an error or return empty/NaN
         result = get_stock_prices(
-            yahoo_tickers=["INVALID_TICKER_XYZ123"],
-            start_date="2023-01-01",
-            end_date="2023-12-31"
+            yahoo_tickers=["INVALID_TICKER_XYZ123"], start_date="2023-01-01", end_date="2023-12-31"
         )
 
         # Either empty or all NaN
@@ -161,9 +140,7 @@ class TestGetStockPrices:
     def test_date_order_validation(self, real_date_range):
         """Test fetching with valid date ordering."""
         prices = get_stock_prices(
-            yahoo_tickers=["AAPL"],
-            start_date=real_date_range["start"],
-            end_date=real_date_range["end"]
+            yahoo_tickers=["AAPL"], start_date=real_date_range["start"], end_date=real_date_range["end"]
         )
 
         # Dates should be in ascending order
@@ -209,18 +186,19 @@ class TestFuncAdjFx:
     def test_no_adjustment_needed_usd(self, sample_prices):
         """Test that USD prices don't get adjusted for USD base currency."""
         # Mock the stock info to return USD currency
-        with patch('myPortfolioManagement.myData.get_stock_info') as mock_info:
-            mock_df = pd.DataFrame({
-                'ticker': sample_prices.columns.tolist(),
-                'currency': ['USD'] * len(sample_prices.columns)
-            })
+        with patch("myPortfolioManagement.myData.get_stock_info") as mock_info:
+            mock_df = pd.DataFrame(
+                {
+                    "yahooTicker": sample_prices.columns.tolist(),
+                    "longName": sample_prices.columns.tolist(),
+                    "currency": ["USD"] * len(sample_prices.columns),
+                }
+            )
             mock_info.return_value = mock_df
 
             # This should return prices unchanged since all are USD
             adjusted = func_adj_fx(
-                prices=sample_prices,
-                yahoo_tickers=sample_prices.columns.tolist(),
-                base_currency="USD"
+                prices=sample_prices, yahoo_tickers=sample_prices.columns.tolist(), base_currency="USD"
             )
 
             assert isinstance(adjusted, pd.DataFrame)
@@ -229,34 +207,36 @@ class TestFuncAdjFx:
     def test_fx_adjustment_preserves_shape(self, sample_prices):
         """Test that FX adjustment preserves DataFrame shape."""
         # Even with adjustments, shape should be preserved
-        with patch('myPortfolioManagement.myData.get_stock_info') as mock_info:
-            mock_df = pd.DataFrame({
-                'ticker': sample_prices.columns.tolist(),
-                'currency': ['USD'] * len(sample_prices.columns)
-            })
+        with patch("myPortfolioManagement.myData.get_stock_info") as mock_info:
+            mock_df = pd.DataFrame(
+                {
+                    "yahooTicker": sample_prices.columns.tolist(),
+                    "longName": sample_prices.columns.tolist(),
+                    "currency": ["USD"] * len(sample_prices.columns),
+                }
+            )
             mock_info.return_value = mock_df
 
             adjusted = func_adj_fx(
-                prices=sample_prices,
-                yahoo_tickers=sample_prices.columns.tolist(),
-                base_currency="USD"
+                prices=sample_prices, yahoo_tickers=sample_prices.columns.tolist(), base_currency="USD"
             )
 
             assert adjusted.shape == sample_prices.shape
 
     def test_fx_adjustment_output_type(self, sample_prices):
         """Test that FX adjustment returns DataFrame."""
-        with patch('myPortfolioManagement.myData.get_stock_info') as mock_info:
-            mock_df = pd.DataFrame({
-                'ticker': sample_prices.columns.tolist(),
-                'currency': ['USD'] * len(sample_prices.columns)
-            })
+        with patch("myPortfolioManagement.myData.get_stock_info") as mock_info:
+            mock_df = pd.DataFrame(
+                {
+                    "yahooTicker": sample_prices.columns.tolist(),
+                    "longName": sample_prices.columns.tolist(),
+                    "currency": ["USD"] * len(sample_prices.columns),
+                }
+            )
             mock_info.return_value = mock_df
 
             adjusted = func_adj_fx(
-                prices=sample_prices,
-                yahoo_tickers=sample_prices.columns.tolist(),
-                base_currency="USD"
+                prices=sample_prices, yahoo_tickers=sample_prices.columns.tolist(), base_currency="USD"
             )
 
             assert isinstance(adjusted, pd.DataFrame)
@@ -369,10 +349,7 @@ class TestEdgeCases:
 
     def test_single_day_data(self, sample_dates):
         """Test handling of single day of data."""
-        single_day = pd.DataFrame(
-            {"AAPL": [100.0]},
-            index=[sample_dates[0]]
-        )
+        single_day = pd.DataFrame({"AAPL": [100.0]}, index=[sample_dates[0]])
 
         # Should have one row
         assert len(single_day) == 1
@@ -418,15 +395,11 @@ class TestParallelFetching:
 
         # Fetch twice and compare
         prices1 = get_stock_prices(
-            yahoo_tickers=tickers,
-            start_date=real_date_range["start"],
-            end_date=real_date_range["end"]
+            yahoo_tickers=tickers, start_date=real_date_range["start"], end_date=real_date_range["end"]
         )
 
         prices2 = get_stock_prices(
-            yahoo_tickers=tickers,
-            start_date=real_date_range["start"],
-            end_date=real_date_range["end"]
+            yahoo_tickers=tickers, start_date=real_date_range["start"], end_date=real_date_range["end"]
         )
 
         # Should have same shape
@@ -455,7 +428,7 @@ class TestCurrencyHandling:
             yahoo_tickers=["AAPL"],
             start_date=real_date_range["start"],
             end_date=real_date_range["end"],
-            base_currency="USD"
+            base_currency="USD",
         )
 
         assert isinstance(prices, pd.DataFrame)
@@ -470,7 +443,7 @@ class TestCurrencyHandling:
                 start_date=real_date_range["start"],
                 end_date=real_date_range["end"],
                 base_currency="EUR",
-                adj_fx=True
+                adj_fx=True,
             )
 
             assert isinstance(prices, pd.DataFrame)

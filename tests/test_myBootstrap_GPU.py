@@ -11,26 +11,20 @@ Tests cover:
 - Bootstrap statistics (myBacktesting)
 """
 
+import time
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pandas as pd
 import pytest
-import time
-from unittest.mock import patch, MagicMock
 
-from myPortfolioManagement.myBootstrapping import (
-    GPUBootstrap,
-    BootstrapIDD,
-)
-
-from myPortfolioManagement.myBacktesting import (
-    bootstrap_stats_vectorized,
-    bootstrap_portfolio_performance,
-)
-
+from myPortfolioManagement.myBacktesting import bootstrap_portfolio_performance, bootstrap_stats_vectorized
+from myPortfolioManagement.myBootstrapping import BootstrapIDD, GPUBootstrap
 
 # =============================================================================
 # GPU Availability Tests
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestGPUDetection:
@@ -69,6 +63,7 @@ class TestGPUDetection:
 # =============================================================================
 # IID Bootstrap Tests
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestIIDBootstrap:
@@ -179,6 +174,7 @@ class TestBootstrapIDDWrapper:
 # Block Bootstrap Tests
 # =============================================================================
 
+
 @pytest.mark.unit
 class TestBlockBootstrap:
     """Tests for block bootstrap functionality."""
@@ -188,9 +184,7 @@ class TestBlockBootstrap:
         bootstrap = GPUBootstrap(use_gpu=False)
         series = sample_returns.iloc[:, 0]
 
-        result = bootstrap.bootstrap_block_gpu(
-            series, block_size=20, n_samples=100, seed=42
-        )
+        result = bootstrap.bootstrap_block_gpu(series, block_size=20, n_samples=100, seed=42)
 
         assert isinstance(result, pd.DataFrame)
         assert len(result.columns) == 100
@@ -201,12 +195,8 @@ class TestBlockBootstrap:
         bootstrap = GPUBootstrap(use_gpu=False)
         series = sample_returns.iloc[:, 0]
 
-        result1 = bootstrap.bootstrap_block_gpu(
-            series, block_size=20, n_samples=100, seed=42
-        )
-        result2 = bootstrap.bootstrap_block_gpu(
-            series, block_size=20, n_samples=100, seed=42
-        )
+        result1 = bootstrap.bootstrap_block_gpu(series, block_size=20, n_samples=100, seed=42)
+        result2 = bootstrap.bootstrap_block_gpu(series, block_size=20, n_samples=100, seed=42)
 
         pd.testing.assert_frame_equal(result1, result2)
 
@@ -216,9 +206,7 @@ class TestBlockBootstrap:
         series = sample_returns.iloc[:, 0]
 
         for block_size in [5, 10, 20, 50]:
-            result = bootstrap.bootstrap_block_gpu(
-                series, block_size=block_size, n_samples=50, seed=42
-            )
+            result = bootstrap.bootstrap_block_gpu(series, block_size=block_size, n_samples=50, seed=42)
 
             assert isinstance(result, pd.DataFrame)
             assert len(result.columns) == 50
@@ -229,14 +217,10 @@ class TestBlockBootstrap:
         series = sample_returns.iloc[:, 0]
 
         # Large block size should preserve more structure
-        result_large = bootstrap.bootstrap_block_gpu(
-            series, block_size=50, n_samples=100, seed=42
-        )
+        result_large = bootstrap.bootstrap_block_gpu(series, block_size=50, n_samples=100, seed=42)
 
         # Small block size (closer to IID)
-        result_small = bootstrap.bootstrap_block_gpu(
-            series, block_size=5, n_samples=100, seed=42
-        )
+        result_small = bootstrap.bootstrap_block_gpu(series, block_size=5, n_samples=100, seed=42)
 
         # Both should return valid results
         assert isinstance(result_large, pd.DataFrame)
@@ -248,9 +232,7 @@ class TestBlockBootstrap:
         bootstrap = GPUBootstrap(use_gpu=False)
         series = sample_returns.iloc[:, 0]
 
-        result = bootstrap.bootstrap_block_gpu(
-            series, block_size=20, n_samples=50, method=method, seed=42
-        )
+        result = bootstrap.bootstrap_block_gpu(series, block_size=20, n_samples=50, method=method, seed=42)
 
         assert isinstance(result, pd.DataFrame)
 
@@ -258,6 +240,7 @@ class TestBlockBootstrap:
 # =============================================================================
 # Bootstrap Statistics Tests
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestBootstrapStatsVectorized:
@@ -272,12 +255,7 @@ class TestBootstrapStatsVectorized:
 
         try:
             result = bootstrap_stats_vectorized(
-                returns=ret,
-                returns_benchmark=bench,
-                rf=0.02,
-                periods=252,
-                n_sim=100,
-                use_gpu=False
+                returns=ret, returns_benchmark=bench, rf=0.02, periods=252, n_sim=100, use_gpu=False
             )
 
             assert isinstance(result, pd.DataFrame)
@@ -293,12 +271,7 @@ class TestBootstrapStatsVectorized:
 
         try:
             result = bootstrap_stats_vectorized(
-                returns=ret,
-                returns_benchmark=bench,
-                rf=0.02,
-                periods=252,
-                n_sim=100,
-                use_gpu=False
+                returns=ret, returns_benchmark=bench, rf=0.02, periods=252, n_sim=100, use_gpu=False
             )
 
             assert isinstance(result, pd.DataFrame)
@@ -322,12 +295,7 @@ class TestBootstrapPortfolioPerformance:
 
         try:
             result = bootstrap_portfolio_performance(
-                returns=ret,
-                returns_benchmark=bench,
-                rf=0.02,
-                out_of_sample_date=split_date,
-                n_sim=50,
-                use_gpu=False
+                returns=ret, returns_benchmark=bench, rf=0.02, out_of_sample_date=split_date, n_sim=50, use_gpu=False
             )
 
             # Should return tuple of DataFrames
@@ -340,6 +308,7 @@ class TestBootstrapPortfolioPerformance:
 # =============================================================================
 # GPU-Specific Tests (Skip if no GPU)
 # =============================================================================
+
 
 @pytest.mark.gpu
 class TestGPUSpecific:
@@ -365,9 +334,7 @@ class TestGPUSpecific:
         bootstrap = GPUBootstrap(use_gpu=True)
         series = sample_returns.iloc[:, 0]
 
-        result = bootstrap.bootstrap_block_gpu(
-            series, block_size=20, n_samples=100, seed=42
-        )
+        result = bootstrap.bootstrap_block_gpu(series, block_size=20, n_samples=100, seed=42)
 
         assert isinstance(result, pd.DataFrame)
 
@@ -397,12 +364,8 @@ class TestGPUSpecific:
         bootstrap_gpu = GPUBootstrap(use_gpu=True)
         bootstrap_cpu = GPUBootstrap(use_gpu=False)
 
-        result_gpu = bootstrap_gpu.bootstrap_block_gpu(
-            series, block_size=20, n_samples=100, seed=42
-        )
-        result_cpu = bootstrap_cpu.bootstrap_block_gpu(
-            series, block_size=20, n_samples=100, seed=42
-        )
+        result_gpu = bootstrap_gpu.bootstrap_block_gpu(series, block_size=20, n_samples=100, seed=42)
+        result_cpu = bootstrap_cpu.bootstrap_block_gpu(series, block_size=20, n_samples=100, seed=42)
 
         # Results should be identical with same seed
         pd.testing.assert_frame_equal(result_gpu, result_cpu)
@@ -460,6 +423,7 @@ class TestGPUPerformance:
 # =============================================================================
 # Edge Cases Tests
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestBootstrapEdgeCases:
@@ -527,9 +491,7 @@ class TestBootstrapEdgeCases:
         # Block size larger than series - this is an edge case that
         # may raise ValueError or handle gracefully
         try:
-            result = bootstrap.bootstrap_block_gpu(
-                series, block_size=len(series) + 10, n_samples=50, seed=42
-            )
+            result = bootstrap.bootstrap_block_gpu(series, block_size=len(series) + 10, n_samples=50, seed=42)
             # If it succeeds, verify it's a DataFrame
             assert isinstance(result, pd.DataFrame)
         except ValueError:
@@ -540,6 +502,7 @@ class TestBootstrapEdgeCases:
 # =============================================================================
 # Statistical Properties Tests
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestBootstrapStatisticalProperties:
@@ -606,6 +569,7 @@ class TestBootstrapStatisticalProperties:
 # Parametrized Tests
 # =============================================================================
 
+
 @pytest.mark.unit
 @pytest.mark.parametrize("n_samples", [10, 100, 500, 1000])
 def test_iid_bootstrap_different_sample_sizes(sample_returns, n_samples):
@@ -625,9 +589,7 @@ def test_block_bootstrap_different_block_sizes(sample_returns, block_size):
     bootstrap = GPUBootstrap(use_gpu=False)
     series = sample_returns.iloc[:, 0]
 
-    result = bootstrap.bootstrap_block_gpu(
-        series, block_size=block_size, n_samples=50, seed=42
-    )
+    result = bootstrap.bootstrap_block_gpu(series, block_size=block_size, n_samples=50, seed=42)
 
     assert isinstance(result, pd.DataFrame)
     assert len(result.columns) == 50

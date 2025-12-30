@@ -6,41 +6,43 @@ Created on Sat Dec  4 07:29:35 2021
 @author: safishajjouz
 """
 
-import riskfolio as rp
-import pandas as pd
-import numpy as np
 import ffn
+import numpy as np
+import pandas as pd
 import quantstats_lumi as qs
+import riskfolio as rp
 
 # for portfolio optimisation
-from pypfopt import risk_models
-from pypfopt import EfficientFrontier
-
-from pypfopt import objective_functions
-from pypfopt import EfficientCVaR
+from pypfopt import EfficientCVaR, EfficientFrontier, objective_functions, risk_models
 
 try:
     import ray
+
     RAY_AVAILABLE = True
 except ImportError:
     RAY_AVAILABLE = False
-from timebudget import timebudget  # to time functions
 import itertools
-from myPortfolioManagement.myReturns import average_returns
+
 import matplotlib.pyplot as plt
+from timebudget import timebudget  # to time functions
+
+from myPortfolioManagement.myReturns import average_returns
 
 
 # Hierarchical Risk Parity Default option
-def HRP(model: str = 'HRP',
-        returns_training: str = None,
-        covariance: str = "hist",
-        codependence: str = 'pearson',
-        rm: str = 'MV',
-        linkage: str = 'single',
-        weight_max: float = None,
-        weight_min: float = None,
-        leaf_order: bool = False, **kwargs):
-    '''
+def HRP(
+    model: str = "HRP",
+    returns_training: str = None,
+    covariance: str = "hist",
+    codependence: str = "pearson",
+    rm: str = "MV",
+    linkage: str = "single",
+    weight_max: float = None,
+    weight_min: float = None,
+    leaf_order: bool = False,
+    **kwargs
+):
+    """
 
     model : str, can be {'HRP', 'HERC' or 'HERC2'}
         The hierarchical cluster portfolio model used for optimize the
@@ -55,14 +57,14 @@ def HRP(model: str = 'HRP',
         The codependence or similarity matrix used to build the distance
         metric and clusters. The default is 'pearson'. Posible values are:
 
-        - 'pearson': pearson correlation matrix. Distance formula: :math:`D_{i,j} = \sqrt{0.5(1-\rho^{pearson}_{i,j})}`.
-        - 'spearman': spearman correlation matrix. Distance formula: :math:`D_{i,j} = \sqrt{0.5(1-\rho^{spearman}_{i,j})}`.
-        - 'abs_pearson': absolute value pearson correlation matrix. Distance formula: :math:`D_{i,j} = \sqrt{(1-|\rho^{pearson}_{i,j}|)}`.
-        - 'abs_spearman': absolute value spearman correlation matrix. Distance formula: :math:`D_{i,j} = \sqrt{(1-|\rho^{spearman}_{i,j}|)}`.
-        - 'distance': distance correlation matrix. Distance formula :math:`D_{i,j} = \sqrt{(1-\rho^{distance}_{i,j})}`.
+        - 'pearson': pearson correlation matrix. Distance formula: :math:`D_{i,j} = \\sqrt{0.5(1-\\rho^{pearson}_{i,j})}`.
+        - 'spearman': spearman correlation matrix. Distance formula: :math:`D_{i,j} = \\sqrt{0.5(1-\\rho^{spearman}_{i,j})}`.
+        - 'abs_pearson': absolute value pearson correlation matrix. Distance formula: :math:`D_{i,j} = \\sqrt{(1-|\\rho^{pearson}_{i,j}|)}`.
+        - 'abs_spearman': absolute value spearman correlation matrix. Distance formula: :math:`D_{i,j} = \\sqrt{(1-|\\rho^{spearman}_{i,j}|)}`.
+        - 'distance': distance correlation matrix. Distance formula :math:`D_{i,j} = \\sqrt{(1-\\rho^{distance}_{i,j})}`.
         - 'mutual_info': mutual information matrix. Distance used is variation information matrix.
-        - 'tail': lower tail dependence index matrix. Dissimilarity formula :math:`D_{i,j} = -\log{\lambda_{i,j}}`.
-        - 'custom_cov': use custom correlation matrix based on the custom_cov parameter. Distance formula: :math:`D_{i,j} = \sqrt{0.5(1-\rho^{pearson}_{i,j})}`.
+        - 'tail': lower tail dependence index matrix. Dissimilarity formula :math:`D_{i,j} = -\\log{\\lambda_{i,j}}`.
+        - 'custom_cov': use custom correlation matrix based on the custom_cov parameter. Distance formula: :math:`D_{i,j} = \\sqrt{0.5(1-\\rho^{pearson}_{i,j})}`.
 
     covariance : str, optional
         The method used to estimate the covariance matrix:
@@ -86,7 +88,7 @@ def HRP(model: str = 'HRP',
         The default is 'MinRisk'. Posible values are:
 
         - 'MinRisk': Minimize the selected risk measure.
-        - 'Utility': Maximize the Utility function :math:`\mu w - l \phi_{i}(w)`.
+        - 'Utility': Maximize the Utility function :math:`\\mu w - l \\phi_{i}(w)`.
         - 'Sharpe': Maximize the risk adjusted return ratio based on the selected risk measure.
         - 'ERC': Equally risk contribution portfolio of the selected risk measure.
 
@@ -157,7 +159,7 @@ def HRP(model: str = 'HRP',
     w : DataFrame
         The weights of optimal portfolio.
 
-    '''
+    """
 
     # sanity checks
     if not isinstance(returns_training, pd.DataFrame):
@@ -167,16 +169,18 @@ def HRP(model: str = 'HRP',
 
     if weight_max is not None or weight_min is not None:
         # impose constraints
-        asset_classes = {'Assets': returns_training.columns.to_list()}
+        asset_classes = {"Assets": returns_training.columns.to_list()}
         asset_classes = pd.DataFrame(asset_classes)
-        asset_classes = asset_classes.sort_values(by=['Assets'])
+        asset_classes = asset_classes.sort_values(by=["Assets"])
 
-        constraints = {'Disabled': [False, False],
-                       'Type': ['All Assets', 'All Assets'],
-                       'Set': ['', ''],
-                       'Position': ['', ''],
-                       'Sign': ['<=', '>='],
-                       'Weight': [weight_max, weight_min]}
+        constraints = {
+            "Disabled": [False, False],
+            "Type": ["All Assets", "All Assets"],
+            "Set": ["", ""],
+            "Position": ["", ""],
+            "Sign": ["<=", ">="],
+            "Weight": [weight_max, weight_min],
+        }
 
         constraints = pd.DataFrame(constraints)
 
@@ -185,28 +189,21 @@ def HRP(model: str = 'HRP',
         port.w_min = w_min
 
     # HRP Default
-    weights = port.optimization(model=model,
-                                codependence=codependence,
-                                rm=rm,
-                                linkage=linkage,
-                                leaf_order=leaf_order,
-                                **kwargs)
+    weights = port.optimization(
+        model=model, codependence=codependence, rm=rm, linkage=linkage, leaf_order=leaf_order, **kwargs
+    )
 
-    weights = weights.rename(columns={'weights': 'port_weight'})
-    weights.index.name = 'asset'
+    weights = weights.rename(columns={"weights": "port_weight"})
+    weights.index.name = "asset"
 
-    if model != 'HRP' and weight_max is not None:
-        temp = clean_limit_weights(weights[['port_weight']],
-                                   portfolio_name='port_weight',
-                                   weight_max=weight_max)
-        weights[['port_weight']] = temp
+    if model != "HRP" and weight_max is not None:
+        temp = clean_limit_weights(weights[["port_weight"]], portfolio_name="port_weight", weight_max=weight_max)
+        weights[["port_weight"]] = temp
 
     return weights
 
 
-def generate_rp_portfolios(returns_training=None,
-                           rf=0.02, risk_measure=[],
-                           weight_max=[]):
+def generate_rp_portfolios(returns_training=None, rf=0.02, risk_measure=[], weight_max=[]):
     """
     Args:
         returns_training (TYPE, optional): DESCRIPTION. Defaults to None.
@@ -227,37 +224,33 @@ def generate_rp_portfolios(returns_training=None,
 
     # Select method and estimate input parameters:
 
-    method_mu = 'hist'
-    method_cov = 'ledoit'
+    method_mu = "hist"
+    method_cov = "ledoit"
 
     portRP.assets_stats(method_mu=method_mu, method_cov=method_cov)
-    model = 'Classic'
-    risk_measures = ['MV', 'MSV', 'FLPM', 'SLPM']
+    model = "Classic"
+    risk_measures = ["MV", "MSV", "FLPM", "SLPM"]
     df_rp = []
     for rm in risk_measures:
         w = portRP.rp_optimization(model=model, rm=rm, rf=rf)
         w = round(w, 2)
-        w.columns = ['por_rp' + '_' + rm]
+        w.columns = ["por_rp" + "_" + rm]
         df_rp.append(w)
 
     df_rp = pd.concat(df_rp, axis=1)
 
     if weight_max:
         for col in df_rp.columns.to_list():
-            temp = clean_limit_weights(df_rp[[col]],
-                                       portfolio_name=col,
-                                       weight_max=weight_max)
+            temp = clean_limit_weights(df_rp[[col]], portfolio_name=col, weight_max=weight_max)
             df_rp[[col]] = temp
 
     if risk_measure:
-        df_rp = df_rp[['por_rp' + '_' + risk_measure]]
+        df_rp = df_rp[["por_rp" + "_" + risk_measure]]
 
     return df_rp
 
 
-def inverse_vol_portfolio(returns_training,
-                          my_assets_col_name=[],
-                          weight_max=[]):
+def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[]):
     """
 
 
@@ -272,20 +265,19 @@ def inverse_vol_portfolio(returns_training,
     """
 
     # get inverse vol weights
-    weights = pd.Series(ffn.core.calc_inv_vol_weights(returns_training),
-                        name='port_inverse_vol')
+    weights = pd.Series(ffn.core.calc_inv_vol_weights(returns_training), name="port_inverse_vol")
 
     # clean
     df_inverse_vol = pd.DataFrame(weights)
 
-    df_inverse_vol.index = df_inverse_vol.index.set_names(['asset'])
+    df_inverse_vol.index = df_inverse_vol.index.set_names(["asset"])
 
     # df_inverse_vol = df_inverse_vol.reset_index()
 
     if weight_max:
-        df_inverse_vol = clean_limit_weights(df_inverse_vol,
-                                             portfolio_name=df_inverse_vol.columns[0],
-                                             weight_max=weight_max)
+        df_inverse_vol = clean_limit_weights(
+            df_inverse_vol, portfolio_name=df_inverse_vol.columns[0], weight_max=weight_max
+        )
     if my_assets_col_name:
         df_inverse_vol.index = df_inverse_vol.index.set_names([my_assets_col_name])
 
@@ -309,25 +301,23 @@ def equal_weight_portfolio(returns_training, my_assets_col_name=[]):
     naive_weights = [1 / len_assets] * len_assets  # copy the equal weight to a list
 
     if my_assets_col_name:
-        d = {my_assets_col_name: returns_training.columns.to_list(),
-             'port_naive': naive_weights}
+        d = {my_assets_col_name: returns_training.columns.to_list(), "port_naive": naive_weights}
         df_naive = pd.DataFrame(d).set_index(my_assets_col_name)
 
     else:
-        d = {'asset': returns_training.columns.to_list(),
-             'port_naive': naive_weights}
-        df_naive = pd.DataFrame(d).set_index('asset')
+        d = {"asset": returns_training.columns.to_list(), "port_naive": naive_weights}
+        df_naive = pd.DataFrame(d).set_index("asset")
 
     return df_naive
 
 
 def clean_limit_weights(df_weights, portfolio_name: str, weight_max: float):
-    '''
+    """
     df_weights: dataframe with index set as the names of the assets
                 columns is the weight of the assets
-    '''
+    """
     if weight_max >= 1:
-        raise ValueError('Limit cannot be more than 1')
+        raise ValueError("Limit cannot be more than 1")
 
     dict_df = df_weights.to_dict()
     weights = dict_df[list(dict_df.keys())[0]]
@@ -335,14 +325,13 @@ def clean_limit_weights(df_weights, portfolio_name: str, weight_max: float):
 
     weights = pd.Series(weights, name=portfolio_name)
     df_weights = pd.DataFrame(weights)
-    df_weights.index = df_weights.index.set_names(['asset'])
+    df_weights.index = df_weights.index.set_names(["asset"])
 
     return df_weights
 
 
 # Global Minimum Variance
-def port_GMV(returns_training=None, S=None, periods=252, weight_min=0.02,
-             weight_max=0.4):
+def port_GMV(returns_training=None, S=None, periods=252, weight_min=0.02, weight_max=0.4):
     """
 
     '''
@@ -366,31 +355,31 @@ def port_GMV(returns_training=None, S=None, periods=252, weight_min=0.02,
     """
 
     if S is None:
-        S = risk_models.CovarianceShrinkage(returns_training,
-                                            returns_data=True,
-                                            frequency=periods).ledoit_wolf()
+        S = risk_models.CovarianceShrinkage(returns_training, returns_data=True, frequency=periods).ledoit_wolf()
 
     ef = EfficientFrontier(None, S, weight_bounds=(weight_min, weight_max))
     ef.min_volatility()
     weights = ef.clean_weights()
     weights = pd.DataFrame(weights, index=[0])
 
-    weights = pd.melt(weights, var_name='asset',
-                      value_name='port_min_vol')
-    weights = weights.set_index('asset')
+    weights = pd.melt(weights, var_name="asset", value_name="port_min_vol")
+    weights = weights.set_index("asset")
     return weights
 
 
 # Maximise returns_training for a given level of volatility
-def port_target_volatility(returns_training, market_returns=None,
-                           S=None,
-                           average_returns_method='hist',
-                           target_volatility=None,
-                           rf=0.02,
-                           span=500,
-                           periods=252,
-                           weight_min=0.02,
-                           weight_max=0.4):
+def port_target_volatility(
+    returns_training,
+    market_returns=None,
+    S=None,
+    average_returns_method="hist",
+    target_volatility=None,
+    rf=0.02,
+    span=500,
+    periods=252,
+    weight_min=0.02,
+    weight_max=0.4,
+):
     """
 
 
@@ -411,44 +400,47 @@ def port_target_volatility(returns_training, market_returns=None,
 
     """
 
-    '''
-    This portfolio optimisation routine maximises returns 
-    for a given level of volatility 
-    
-    '''
+    """
+    This portfolio optimisation routine maximises returns
+    for a given level of volatility
+
+    """
 
     if S is None:
-        S = risk_models.CovarianceShrinkage(returns_training,
-                                            returns_data=True,
-                                            frequency=periods).ledoit_wolf()
+        S = risk_models.CovarianceShrinkage(returns_training, returns_data=True, frequency=periods).ledoit_wolf()
 
     # calculate expected returns_training
-    mu = average_returns(returns_training,
-                         method=average_returns_method,
-                         benchmark_returns=market_returns,
-                         span=span,
-                         periods=periods, rf=rf,
-                         log_returns=False)
+    mu = average_returns(
+        returns_training,
+        method=average_returns_method,
+        benchmark_returns=market_returns,
+        span=span,
+        periods=periods,
+        rf=rf,
+        log_returns=False,
+    )
 
     ef = EfficientFrontier(mu, S, weight_bounds=(weight_min, weight_max))
     ef.efficient_risk(target_volatility=target_volatility)
     weights = ef.clean_weights()
     weights = pd.DataFrame(weights, index=[0])
-    weights = pd.melt(weights, var_name='asset',
-                      value_name='port_target_vol')
+    weights = pd.melt(weights, var_name="asset", value_name="port_target_vol")
     return weights
 
 
 # Maximise returns_training for a given level of volatility
-def port_target_return(returns_training, market_returns=None,
-                       average_returns_method='hist',
-                       S=None,
-                       target_return=None,
-                       rf=0.02,
-                       span=500,
-                       periods=252,
-                       weight_min=0.02,
-                       weight_max=0.4):
+def port_target_return(
+    returns_training,
+    market_returns=None,
+    average_returns_method="hist",
+    S=None,
+    target_return=None,
+    rf=0.02,
+    span=500,
+    periods=252,
+    weight_min=0.02,
+    weight_max=0.4,
+):
     """
 
 
@@ -469,43 +461,47 @@ def port_target_return(returns_training, market_returns=None,
 
     """
 
-    '''
-    This portfolio optimisation routine minimise volatility for a given 
-    level of return the user will choose 
-    '''
+    """
+    This portfolio optimisation routine minimise volatility for a given
+    level of return the user will choose
+    """
 
     if S is None:
-        S = risk_models.CovarianceShrinkage(returns_training, returns_data=True,
-                                            frequency=periods).ledoit_wolf()
+        S = risk_models.CovarianceShrinkage(returns_training, returns_data=True, frequency=periods).ledoit_wolf()
 
     # calculate expected returns_training
-    mu = average_returns(returns_training,
-                         method=average_returns_method,
-                         benchmark_returns=market_returns,
-                         span=span,
-                         periods=periods, rf=rf,
-                         log_returns=False)
+    mu = average_returns(
+        returns_training,
+        method=average_returns_method,
+        benchmark_returns=market_returns,
+        span=span,
+        periods=periods,
+        rf=rf,
+        log_returns=False,
+    )
 
     ef = EfficientFrontier(mu, S, weight_bounds=(weight_min, weight_max))
     ef.add_objective(objective_functions.L2_reg)
     ef.efficient_return(target_return=target_return, market_neutral=False)
     weights = ef.clean_weights()
     weights = pd.DataFrame(weights, index=[0])
-    weights = pd.melt(weights, var_name='asset',
-                      value_name='port_target_returns')
+    weights = pd.melt(weights, var_name="asset", value_name="port_target_returns")
     return weights
 
 
 # Maximise Sharpe
-def port_max_sharpe(returns_training, market_returns=None,
-                    S=None,
-                    average_returns_method='hist',
-                    target_volatility=None,
-                    rf=0.02,
-                    span=500,
-                    periods=252,
-                    weight_min=0.02,
-                    weight_max=0.4):
+def port_max_sharpe(
+    returns_training,
+    market_returns=None,
+    S=None,
+    average_returns_method="hist",
+    target_volatility=None,
+    rf=0.02,
+    span=500,
+    periods=252,
+    weight_min=0.02,
+    weight_max=0.4,
+):
     """
 
 
@@ -526,43 +522,47 @@ def port_max_sharpe(returns_training, market_returns=None,
 
     """
 
-    '''
-    This portfolio optimisation routine maximised the Sharpe ratio 
-    of portoflio 
-    '''
+    """
+    This portfolio optimisation routine maximised the Sharpe ratio
+    of portoflio
+    """
 
     if S is None:
-        S = risk_models.CovarianceShrinkage(returns_training, returns_data=True,
-                                            frequency=periods).ledoit_wolf()
+        S = risk_models.CovarianceShrinkage(returns_training, returns_data=True, frequency=periods).ledoit_wolf()
 
     # calculate expected returns_training
-    mu = average_returns(returns_training,
-                         method=average_returns_method,
-                         benchmark_returns=market_returns,
-                         span=span,
-                         periods=periods, rf=rf,
-                         log_returns=False)
+    mu = average_returns(
+        returns_training,
+        method=average_returns_method,
+        benchmark_returns=market_returns,
+        span=span,
+        periods=periods,
+        rf=rf,
+        log_returns=False,
+    )
 
     ef = EfficientFrontier(mu, S, weight_bounds=(weight_min, weight_max))
     ef.max_sharpe()
     weights = ef.clean_weights()
     weights = pd.DataFrame(weights, index=[0])
-    weights = pd.melt(weights, var_name='asset',
-                      value_name='port_max_Sharpe')
-    weights = weights.set_index('asset')
+    weights = pd.melt(weights, var_name="asset", value_name="port_max_Sharpe")
+    weights = weights.set_index("asset")
     return weights
 
 
 # Port CVAR
-def port_CVAR(returns_training, market_returns=None,
-              average_returns_method='hist',
-              target_CVAR=None,
-              confidence_interval=0.95,
-              rf=0.02,
-              span=500,
-              periods=252,
-              weight_min=0.02,
-              weight_max=0.4):
+def port_CVAR(
+    returns_training,
+    market_returns=None,
+    average_returns_method="hist",
+    target_CVAR=None,
+    confidence_interval=0.95,
+    rf=0.02,
+    span=500,
+    periods=252,
+    weight_min=0.02,
+    weight_max=0.4,
+):
     """
 
 
@@ -583,23 +583,26 @@ def port_CVAR(returns_training, market_returns=None,
 
     """
 
-    '''
-    This value of the CVaR means that our average loss on the worst 5% of days 
-    will be -3.35%. Let's say that this were beyond our comfort zone 
-    (for a $100,000 portfolio, this would mean losing \$3350 in a day).
-    
-    The algorithm with maximise retunrs for a given Target of CVAR 
-    '''
+    """
+    This value of the CVaR means that our average loss on the worst 5% of days
+    will be -3.35%. Let's say that this were beyond our comfort zone
+    (for a $100,000 portfolio, this would mean losing $3350 in a day).
+
+    The algorithm with maximise retunrs for a given Target of CVAR
+    """
 
     # calculate expected returns_training
-    mu = average_returns(returns_training, method=average_returns_method,
-                         benchmark_returns=market_returns,
-                         span=span,
-                         periods=periods, rf=rf,
-                         log_returns=False)
+    mu = average_returns(
+        returns_training,
+        method=average_returns_method,
+        benchmark_returns=market_returns,
+        span=span,
+        periods=periods,
+        rf=rf,
+        log_returns=False,
+    )
 
-    ec = EfficientCVaR(mu, returns_training, beta=confidence_interval,
-                       weight_bounds=(weight_min, weight_max))
+    ec = EfficientCVaR(mu, returns_training, beta=confidence_interval, weight_bounds=(weight_min, weight_max))
 
     if target_CVAR is None:
         ec.min_cvar()
@@ -608,22 +611,24 @@ def port_CVAR(returns_training, market_returns=None,
 
     weights = ec.clean_weights()
     weights = pd.DataFrame(weights, index=[0])
-    weights = pd.melt(weights, var_name='asset',
-                      value_name='port_target_CVAR')
-    weights = weights.set_index('asset')
+    weights = pd.melt(weights, var_name="asset", value_name="port_target_CVAR")
+    weights = weights.set_index("asset")
     return weights
 
 
 @ray.remote
-def HRP_ray(model: str = 'HRP',
-            returns_training: pd.DataFrame = None,
-            covariance: str = "hist",
-            codependence: str = 'pearson',
-            rm: str = 'MV',
-            linkage: str = 'single',
-            weight_max: float = None,
-            weight_min: float = None,
-            leaf_order: bool = False, **kwargs):
+def HRP_ray(
+    model: str = "HRP",
+    returns_training: pd.DataFrame = None,
+    covariance: str = "hist",
+    codependence: str = "pearson",
+    rm: str = "MV",
+    linkage: str = "single",
+    weight_max: float = None,
+    weight_min: float = None,
+    leaf_order: bool = False,
+    **kwargs
+):
     # sanity checks
     if not isinstance(returns_training, pd.DataFrame):
         raise ValueError("you must pass a Pandas DataFrame")
@@ -632,16 +637,18 @@ def HRP_ray(model: str = 'HRP',
 
     if weight_max is not None or weight_min is not None:
         # impose constraints
-        asset_classes = {'Assets': returns_training.columns.to_list()}
+        asset_classes = {"Assets": returns_training.columns.to_list()}
         asset_classes = pd.DataFrame(asset_classes)
-        asset_classes = asset_classes.sort_values(by=['Assets'])
+        asset_classes = asset_classes.sort_values(by=["Assets"])
 
-        constraints = {'Disabled': [False, False],
-                       'Type': ['All Assets', 'All Assets'],
-                       'Set': ['', ''],
-                       'Position': ['', ''],
-                       'Sign': ['<=', '>='],
-                       'Weight': [weight_max, weight_min]}
+        constraints = {
+            "Disabled": [False, False],
+            "Type": ["All Assets", "All Assets"],
+            "Set": ["", ""],
+            "Position": ["", ""],
+            "Sign": ["<=", ">="],
+            "Weight": [weight_max, weight_min],
+        }
 
         constraints = pd.DataFrame(constraints)
 
@@ -650,62 +657,70 @@ def HRP_ray(model: str = 'HRP',
         port.w_min = w_min
 
     # HRP Default
-    weights = port.optimization(model=model,
-                                codependence=codependence,
-                                covariance=covariance,
-                                rm=rm,
-                                linkage=linkage,
-                                leaf_order=leaf_order,
-                                **kwargs)
+    weights = port.optimization(
+        model=model,
+        codependence=codependence,
+        covariance=covariance,
+        rm=rm,
+        linkage=linkage,
+        leaf_order=leaf_order,
+        **kwargs
+    )
 
-    weights = weights.rename(columns={'weights': 'port_weight'})
+    weights = weights.rename(columns={"weights": "port_weight"})
 
-    if model != 'HRP' and weight_max is not None:
-        temp = clean_limit_weights(weights[['port_weight']],
-                                   portfolio_name='port_weight',
-                                   weight_max=weight_max)
-        weights[['port_weight']] = temp
+    if model != "HRP" and weight_max is not None:
+        temp = clean_limit_weights(weights[["port_weight"]], portfolio_name="port_weight", weight_max=weight_max)
+        weights[["port_weight"]] = temp
 
     return weights
 
 
 @timebudget
-def generate_HRP_portfolios(returns=None, weight_max=None,
-                            weight_min=None,
-                            rf=0.02, num_cpus=1):
-    models = ['HRP', 'HERC', 'HERC2']
+def generate_HRP_portfolios(returns=None, weight_max=None, weight_min=None, rf=0.02, num_cpus=1):
+    models = ["HRP", "HERC", "HERC2"]
 
-    codependences = ['pearson', 'spearman',
-                     # 'abs_pearson', 'abs_spearman',
-                     'tail',
-                     # 'distance',
-                     'mutual_info']
+    codependences = [
+        "pearson",
+        "spearman",
+        # 'abs_pearson', 'abs_spearman',
+        "tail",
+        # 'distance',
+        "mutual_info",
+    ]
 
-    covariances = ['hist',
-                   # 'ewma1','ewma2',
-                   'ledoit',
-                   'oas',
-                   'shrunk',
-                   'gl',
-                   'jlogo', 'fixed', 'spectral', 'shrink']
+    covariances = [
+        "hist",
+        # 'ewma1','ewma2',
+        "ledoit",
+        "oas",
+        "shrunk",
+        "gl",
+        "jlogo",
+        "fixed",
+        "spectral",
+        "shrink",
+    ]
 
     linkages = [  # 'single',
         # 'complete',
         # 'average',
         # 'weighted',
         # 'centroid','median',
-        'ward']
+        "ward"
+    ]
     # 'DBHT']
 
     risk_measures = [  # 'equal',
         # 'vol',
-        'MV',
+        "MV",
         # 'MAD',
-        'MSV',
+        "MSV",
         #  'FLPM',
         #  'SLPM',
         # 'VaR',
-        'CVaR']
+        "CVaR",
+    ]
     # 'TG',
     # 'EVaR',
     #  'WR',
@@ -725,8 +740,7 @@ def generate_HRP_portfolios(returns=None, weight_max=None,
     # 'EDaR_Rel',
     # 'UCI_Rel']
 
-    objects = itertools.product(models, covariances, codependences,
-                                risk_measures, linkages)
+    objects = itertools.product(models, covariances, codependences, risk_measures, linkages)
 
     # ray.shutdown()
     # ray.init(ignore_reinit_error=True,
@@ -746,15 +760,17 @@ def generate_HRP_portfolios(returns=None, weight_max=None,
     portfolios = []
     for obj in objects:
         try:
-            portf_temp = HRP(model=obj[0],
-                             returns_training=returns,
-                             covariance=obj[1],
-                             codependence=obj[2],
-                             rm=obj[3],
-                             linkage=obj[4],
-                             rf=rf,
-                             weight_max=weight_max,
-                             weight_min=weight_min)
+            portf_temp = HRP(
+                model=obj[0],
+                returns_training=returns,
+                covariance=obj[1],
+                codependence=obj[2],
+                rm=obj[3],
+                linkage=obj[4],
+                rf=rf,
+                weight_max=weight_max,
+                weight_min=weight_min,
+            )
         except:
             next
 
@@ -762,12 +778,10 @@ def generate_HRP_portfolios(returns=None, weight_max=None,
 
     portfolios = pd.concat(portfolios, axis=1)
 
-    all_nums_iter = itertools.product(models, covariances,
-                                      codependences,
-                                      risk_measures, linkages)
+    all_nums_iter = itertools.product(models, covariances, codependences, risk_measures, linkages)
     names = []
     for name in all_nums_iter:
-        names.append('port_weights_' + '_'.join(name))
+        names.append("port_weights_" + "_".join(name))
 
     portfolios.columns = names
 
@@ -825,10 +839,14 @@ def generate_HRP_portfolios(returns=None, weight_max=None,
 #     return df_all_weights
 
 
-def make_standard_portfolios(returns_training: pd.DataFrame, target_return: float = None,
-                             target_volatility: float = None,
-                             weight_min: float = 0, weight_max: float = 1,
-                             rebalance: str = None):
+def make_standard_portfolios(
+    returns_training: pd.DataFrame,
+    target_return: float = None,
+    target_volatility: float = None,
+    weight_min: float = 0,
+    weight_max: float = 1,
+    rebalance: str = None,
+):
     """
 
 
@@ -848,166 +866,147 @@ def make_standard_portfolios(returns_training: pd.DataFrame, target_return: floa
     # naive or equal weight portfolio allocation
     df_naive = equal_weight_portfolio(returns_training)
     port_naive_w = df_naive.iloc[:, 0].to_dict()
-    portfolio_naive = qs.utils.make_index(ticker_weights=port_naive_w,
-                                          rebalance=rebalance,
-                                          period='max',
-                                          returns=returns_training,
-                                          match_dates=False)
+    portfolio_naive = qs.utils.make_index(
+        ticker_weights=port_naive_w, rebalance=rebalance, period="max", returns=returns_training, match_dates=False
+    )
 
     # Risk Parity
-    df_rp = generate_rp_portfolios(returns_training.fillna(0),
-                                   weight_max=0.99)
-    df_rp = df_rp[['por_rp_MV']]
+    df_rp = generate_rp_portfolios(returns_training.fillna(0), weight_max=0.99)
+    df_rp = df_rp[["por_rp_MV"]]
     port_rp_w = df_rp.iloc[:, 0].to_dict()
-    portfolio_rp = qs.utils.make_index(ticker_weights=port_rp_w,
-                                       rebalance=rebalance,
-                                       period='max',
-                                       returns=returns_training,
-                                       match_dates=False)
+    portfolio_rp = qs.utils.make_index(
+        ticker_weights=port_rp_w, rebalance=rebalance, period="max", returns=returns_training, match_dates=False
+    )
 
     # inverse_volatility
     df_inverse_vol = inverse_vol_portfolio(returns_training, weight_max=0.99)
     port_inverse_vol_w = df_inverse_vol.iloc[:, 0].to_dict()
-    portfolio_inverse_vol = qs.utils.make_index(ticker_weights=port_inverse_vol_w,
-                                                rebalance=rebalance,
-                                                period='max',
-                                                returns=returns_training,
-                                                match_dates=False)
+    portfolio_inverse_vol = qs.utils.make_index(
+        ticker_weights=port_inverse_vol_w,
+        rebalance=rebalance,
+        period="max",
+        returns=returns_training,
+        match_dates=False,
+    )
 
     # Hierarchical Risks Parity
-    port_HRP_w = HRP(returns_training=returns_training.fillna(0),
-                     weight_max=weight_max,
-                     weight_min=weight_min)
+    port_HRP_w = HRP(returns_training=returns_training.fillna(0), weight_max=weight_max, weight_min=weight_min)
 
-    port_HRP_w.index = port_HRP_w.index.set_names('asset')
+    port_HRP_w.index = port_HRP_w.index.set_names("asset")
     weight_HRP = port_HRP_w
 
     # port_HRP_w = port_HRP_w.set_index('asset')
     port_HRP_w = port_HRP_w.iloc[:, 0].to_dict()
-    portfolio_HRP = qs.utils.make_index(ticker_weights=port_HRP_w,
-                                        rebalance=rebalance,
-                                        period='max',
-                                        returns=returns_training,
-                                        match_dates=False)
+    portfolio_HRP = qs.utils.make_index(
+        ticker_weights=port_HRP_w, rebalance=rebalance, period="max", returns=returns_training, match_dates=False
+    )
 
     # min vol portfolio
-    port_min_vol_w = port_GMV(returns_training, S=None, weight_min=weight_min,
-                              weight_max=weight_max)
+    port_min_vol_w = port_GMV(returns_training, S=None, weight_min=weight_min, weight_max=weight_max)
 
-    port_min_vol_w = port_min_vol_w.set_index('asset')
+    port_min_vol_w = port_min_vol_w.set_index("asset")
     weight_min_vol = port_min_vol_w
 
     port_min_vol_w = port_min_vol_w.iloc[:, 0].to_dict()
 
-    portfolio_mv = qs.utils.make_index(ticker_weights=port_min_vol_w,
-                                       rebalance=rebalance,
-                                       period='max',
-                                       returns=returns_training,
-                                       match_dates=False)
+    portfolio_mv = qs.utils.make_index(
+        ticker_weights=port_min_vol_w, rebalance=rebalance, period="max", returns=returns_training, match_dates=False
+    )
 
     # target returns_training
     if target_return != None:
-        port_target_returns_w = port_target_return(returns_training, target_return=target_return,
-                                                   weight_min=weight_min, weight_max=weight_max)
+        port_target_returns_w = port_target_return(
+            returns_training, target_return=target_return, weight_min=weight_min, weight_max=weight_max
+        )
 
-        port_target_returns_w = port_target_returns_w.set_index('asset')
+        port_target_returns_w = port_target_returns_w.set_index("asset")
         weight_target_returns = port_target_returns_w
 
         port_target_returns_w = port_target_returns_w.iloc[:, 0].to_dict()
 
-        portfolio_tr = qs.utils.make_index(ticker_weights=port_target_returns_w,
-                                           rebalance=rebalance,
-                                           period='max',
-                                           returns=returns_training,
-                                           match_dates=False)
+        portfolio_tr = qs.utils.make_index(
+            ticker_weights=port_target_returns_w,
+            rebalance=rebalance,
+            period="max",
+            returns=returns_training,
+            match_dates=False,
+        )
 
     # target volatility
     if target_volatility != None:
-        port_target_vol_w = port_target_volatility(returns_training,
-                                                   target_volatility=target_volatility)
+        port_target_vol_w = port_target_volatility(returns_training, target_volatility=target_volatility)
 
-        port_target_vol_w = port_target_vol_w.set_index('asset')
+        port_target_vol_w = port_target_vol_w.set_index("asset")
         weight_target_vol = port_target_vol_w
 
         port_target_vol_w = port_target_vol_w.iloc[:, 0].to_dict()
-        portfolio_tv = qs.utils.make_index(ticker_weights=port_target_vol_w,
-                                           rebalance=rebalance,
-                                           period='max',
-                                           returns=returns_training,
-                                           match_dates=False)
+        portfolio_tv = qs.utils.make_index(
+            ticker_weights=port_target_vol_w,
+            rebalance=rebalance,
+            period="max",
+            returns=returns_training,
+            match_dates=False,
+        )
 
     # max sharpe
-    max_sharpe = port_max_sharpe(returns_training, weight_min=weight_min,
-                                 weight_max=weight_max)
+    max_sharpe = port_max_sharpe(returns_training, weight_min=weight_min, weight_max=weight_max)
 
-    max_sharpe = max_sharpe.set_index('asset')
+    max_sharpe = max_sharpe.set_index("asset")
     weight_max_sharpe = max_sharpe
     max_sharpe = max_sharpe.iloc[:, 0].to_dict()
-    portfolio_max_sharpe = qs.utils.make_index(ticker_weights=max_sharpe,
-                                               rebalance=rebalance,
-                                               period='max',
-                                               returns=returns_training,
-                                               match_dates=False)
+    portfolio_max_sharpe = qs.utils.make_index(
+        ticker_weights=max_sharpe, rebalance=rebalance, period="max", returns=returns_training, match_dates=False
+    )
 
     # CVar
-    cvar = port_CVAR(returns_training, weight_min=weight_min,
-                     weight_max=weight_max)
-    cvar = cvar.set_index('asset')
+    cvar = port_CVAR(returns_training, weight_min=weight_min, weight_max=weight_max)
+    cvar = cvar.set_index("asset")
     weight_cvar = cvar
     cvar_weights = cvar.iloc[:, 0].to_dict()
-    portfolio_cvar = qs.utils.make_index(ticker_weights=cvar_weights,
-                                         rebalance=rebalance,
-                                         period='max',
-                                         returns=returns_training,
-                                         match_dates=False)
-    frame = {'port_GMV': portfolio_mv,
-             'port_HRP': portfolio_HRP,
-             'port_max_Sharpe': portfolio_max_sharpe,
-             'port_min_CVaR': portfolio_cvar,
-             'port_inverse_vol': portfolio_inverse_vol,
-             'port_naive': portfolio_naive,
-             'port_rp': portfolio_rp}
+    portfolio_cvar = qs.utils.make_index(
+        ticker_weights=cvar_weights, rebalance=rebalance, period="max", returns=returns_training, match_dates=False
+    )
+    frame = {
+        "port_GMV": portfolio_mv,
+        "port_HRP": portfolio_HRP,
+        "port_max_Sharpe": portfolio_max_sharpe,
+        "port_min_CVaR": portfolio_cvar,
+        "port_inverse_vol": portfolio_inverse_vol,
+        "port_naive": portfolio_naive,
+        "port_rp": portfolio_rp,
+    }
 
-    df_weights_all = pd.concat([weight_HRP, df_naive,
-                                df_rp, df_inverse_vol,
-                                weight_min_vol,
-                                weight_cvar,
-                                weight_max_sharpe], axis=1)
+    df_weights_all = pd.concat(
+        [weight_HRP, df_naive, df_rp, df_inverse_vol, weight_min_vol, weight_cvar, weight_max_sharpe], axis=1
+    )
 
     # collect
     if target_return != None and target_volatility != None:
-        frame_add = {'port_Max_Returns': portfolio_tr,
-                     'port_targ_vol': portfolio_tv}
+        frame_add = {"port_Max_Returns": portfolio_tr, "port_targ_vol": portfolio_tv}
 
         frame.update(frame_add)
 
-        df_weights_all = pd.concat([df_weights_all,
-                                    weight_target_returns,
-                                    weight_target_vol], axis=1)
+        df_weights_all = pd.concat([df_weights_all, weight_target_returns, weight_target_vol], axis=1)
 
     elif target_return != None and target_volatility == None:
-        frame_add = {'port_Max_Returns': portfolio_tr}
+        frame_add = {"port_Max_Returns": portfolio_tr}
         frame.update(frame_add)
 
-        df_weights_all = pd.concat([df_weights_all,
-                                    weight_target_returns], axis=1)
+        df_weights_all = pd.concat([df_weights_all, weight_target_returns], axis=1)
 
     elif target_return == None and target_volatility != None:
-        frame_add = {'port_Targ_Vol': portfolio_tv}
+        frame_add = {"port_Targ_Vol": portfolio_tv}
         frame.update(frame_add)
 
-        df_weights_all = pd.concat([df_weights_all,
-                                    weight_target_vol], axis=1)
+        df_weights_all = pd.concat([df_weights_all, weight_target_vol], axis=1)
 
     portfolios = pd.DataFrame(frame)
 
     return [portfolios, df_weights_all]
 
 
-def risk_contributions(port_weights=None, returns=None,
-                       risk_measure='MV',
-                       plot=True):
-    '''
+def risk_contributions(port_weights=None, returns=None, risk_measure="MV", plot=True):
+    """
     port_weights (pd.DataFrame): dataframe of asset weights. Assets are the index
     returns (pd.DataFrame): Returns of your assets. Date is an index
     risk_measure (str): string that defines the risk measure: MV for Variance and MSV for semi-Variance
@@ -1015,15 +1014,15 @@ def risk_contributions(port_weights=None, returns=None,
 
     retunrs:
         a plot of risk contributions or an array of risk contributions
-    '''
+    """
 
     cov = returns.cov()
     if plot:
-        ax = rp.plot_risk_con(port_weights, cov=cov, returns=returns, rm=risk_measure,
-                              color="tab:blue", height=6, width=10, ax=None)
-        plt.setp(ax.get_xticklabels(), rotation=30, horizontalalignment='right')
+        ax = rp.plot_risk_con(
+            port_weights, cov=cov, returns=returns, rm=risk_measure, color="tab:blue", height=6, width=10, ax=None
+        )
+        plt.setp(ax.get_xticklabels(), rotation=30, horizontalalignment="right")
         return ax
     else:
-        risk_cont = rp.Risk_Contribution(port_weights, cov=cov, returns=returns,
-                                         rm=risk_measure)
+        risk_cont = rp.Risk_Contribution(port_weights, cov=cov, returns=returns, rm=risk_measure)
         return np.round(risk_cont, 3)

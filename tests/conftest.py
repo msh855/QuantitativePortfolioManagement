@@ -9,20 +9,22 @@ This module provides reusable fixtures for testing:
 - GPU availability detection
 """
 
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
 import pytest
-from datetime import datetime, timedelta
-
 
 # =============================================================================
 # GPU Detection
 # =============================================================================
 
+
 def is_gpu_available():
     """Check if CuPy/GPU is available for testing."""
     try:
         import cupy as cp
+
         # Try to allocate a small array to verify GPU works
         test_array = cp.array([1, 2, 3])
         _ = cp.asnumpy(test_array)
@@ -37,6 +39,7 @@ GPU_AVAILABLE = is_gpu_available()
 # =============================================================================
 # Pytest Configuration
 # =============================================================================
+
 
 def pytest_configure(config):
     """Register custom markers."""
@@ -61,6 +64,7 @@ def pytest_collection_modifyitems(config, items):
 # Date Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def sample_dates():
     """Generate a sequence of business dates for testing."""
@@ -83,6 +87,7 @@ def monthly_dates():
 # Price Data Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def sample_prices(sample_dates):
     """
@@ -100,14 +105,13 @@ def sample_prices(sample_dates):
 
     # Asset characteristics (annualized)
     drifts = np.array([0.12, 0.10, 0.08, 0.15, 0.05])  # Expected returns
-    vols = np.array([0.25, 0.22, 0.28, 0.35, 0.30])    # Volatilities
+    vols = np.array([0.25, 0.22, 0.28, 0.35, 0.30])  # Volatilities
 
     # Generate log returns
     dt = 1 / 252  # Daily time step
     log_returns = np.zeros((n_days, n_assets))
     for i in range(n_assets):
-        log_returns[:, i] = (drifts[i] - 0.5 * vols[i]**2) * dt + \
-                           vols[i] * np.sqrt(dt) * np.random.randn(n_days)
+        log_returns[:, i] = (drifts[i] - 0.5 * vols[i] ** 2) * dt + vols[i] * np.sqrt(dt) * np.random.randn(n_days)
 
     # Convert to prices (starting at 100)
     prices = np.exp(np.cumsum(log_returns, axis=0)) * 100
@@ -157,11 +161,7 @@ def prices_with_zeros(sample_prices):
 def constant_prices(sample_dates):
     """Generate constant (zero volatility) prices for edge case testing."""
     tickers = ["FLAT1", "FLAT2", "FLAT3"]
-    prices = pd.DataFrame(
-        np.ones((len(sample_dates), 3)) * 100,
-        index=sample_dates,
-        columns=tickers
-    )
+    prices = pd.DataFrame(np.ones((len(sample_dates), 3)) * 100, index=sample_dates, columns=tickers)
     return prices
 
 
@@ -194,6 +194,7 @@ def extreme_prices(sample_dates):
 # Returns Data Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def sample_returns(sample_prices):
     """Calculate simple returns from sample prices."""
@@ -213,11 +214,7 @@ def short_returns(short_dates):
     n_days = len(short_dates)
     tickers = ["A", "B", "C"]
 
-    returns = pd.DataFrame(
-        np.random.randn(n_days, 3) * 0.02,  # 2% daily vol
-        index=short_dates,
-        columns=tickers
-    )
+    returns = pd.DataFrame(np.random.randn(n_days, 3) * 0.02, index=short_dates, columns=tickers)  # 2% daily vol
     return returns
 
 
@@ -228,22 +225,14 @@ def correlated_returns(sample_dates):
     n_days = len(sample_dates)
 
     # Define correlation matrix
-    corr_matrix = np.array([
-        [1.0, 0.8, 0.3],
-        [0.8, 1.0, 0.5],
-        [0.3, 0.5, 1.0]
-    ])
+    corr_matrix = np.array([[1.0, 0.8, 0.3], [0.8, 1.0, 0.5], [0.3, 0.5, 1.0]])
 
     # Generate correlated returns via Cholesky decomposition
     L = np.linalg.cholesky(corr_matrix)
     uncorrelated = np.random.randn(n_days, 3) * 0.02
     correlated = uncorrelated @ L.T
 
-    return pd.DataFrame(
-        correlated,
-        index=sample_dates,
-        columns=["HIGH_CORR_A", "HIGH_CORR_B", "LOW_CORR"]
-    )
+    return pd.DataFrame(correlated, index=sample_dates, columns=["HIGH_CORR_A", "HIGH_CORR_B", "LOW_CORR"])
 
 
 @pytest.fixture
@@ -287,22 +276,17 @@ def zero_mean_returns(sample_dates):
 # Portfolio Weights Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def equal_weights():
     """Generate equal weights for 5 assets."""
-    return pd.Series(
-        [0.2, 0.2, 0.2, 0.2, 0.2],
-        index=["AAPL", "MSFT", "GOOGL", "AMZN", "META"]
-    )
+    return pd.Series([0.2, 0.2, 0.2, 0.2, 0.2], index=["AAPL", "MSFT", "GOOGL", "AMZN", "META"])
 
 
 @pytest.fixture
 def concentrated_weights():
     """Generate concentrated (non-equal) weights."""
-    return pd.Series(
-        [0.4, 0.3, 0.15, 0.1, 0.05],
-        index=["AAPL", "MSFT", "GOOGL", "AMZN", "META"]
-    )
+    return pd.Series([0.4, 0.3, 0.15, 0.1, 0.05], index=["AAPL", "MSFT", "GOOGL", "AMZN", "META"])
 
 
 @pytest.fixture
@@ -314,27 +298,26 @@ def single_asset_weight():
 @pytest.fixture
 def weights_dict():
     """Generate weights as dictionary (alternative format)."""
-    return {
-        "AAPL": 0.25,
-        "MSFT": 0.25,
-        "GOOGL": 0.25,
-        "AMZN": 0.25
-    }
+    return {"AAPL": 0.25, "MSFT": 0.25, "GOOGL": 0.25, "AMZN": 0.25}
 
 
 @pytest.fixture
 def multiple_portfolios_weights():
     """Generate weights for multiple portfolios."""
-    return pd.DataFrame({
-        "Conservative": [0.6, 0.3, 0.1, 0.0, 0.0],
-        "Balanced": [0.3, 0.3, 0.2, 0.1, 0.1],
-        "Aggressive": [0.1, 0.1, 0.2, 0.3, 0.3]
-    }, index=["AAPL", "MSFT", "GOOGL", "AMZN", "META"])
+    return pd.DataFrame(
+        {
+            "Conservative": [0.6, 0.3, 0.1, 0.0, 0.0],
+            "Balanced": [0.3, 0.3, 0.2, 0.1, 0.1],
+            "Aggressive": [0.1, 0.1, 0.2, 0.3, 0.3],
+        },
+        index=["AAPL", "MSFT", "GOOGL", "AMZN", "META"],
+    )
 
 
 # =============================================================================
 # Benchmark Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def market_returns(sample_dates):
@@ -344,7 +327,7 @@ def market_returns(sample_dates):
 
     # Market characteristics
     drift = 0.08  # 8% annual return
-    vol = 0.18    # 18% annual vol
+    vol = 0.18  # 18% annual vol
     dt = 1 / 252
 
     returns = (drift - 0.5 * vol**2) * dt + vol * np.sqrt(dt) * np.random.randn(n_days)
@@ -360,7 +343,7 @@ def bond_returns(sample_dates):
 
     # Bond characteristics
     drift = 0.03  # 3% annual return
-    vol = 0.05    # 5% annual vol
+    vol = 0.05  # 5% annual vol
     dt = 1 / 252
 
     returns = (drift - 0.5 * vol**2) * dt + vol * np.sqrt(dt) * np.random.randn(n_days)
@@ -372,28 +355,23 @@ def bond_returns(sample_dates):
 # Option Pricing Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def option_params():
     """Standard option pricing parameters."""
     return {
-        "S": 100,      # Spot price
-        "K": 100,      # Strike price (ATM)
-        "T": 0.25,     # Time to expiration (3 months)
-        "r": 0.05,     # Risk-free rate (5%)
-        "sigma": 0.20  # Volatility (20%)
+        "S": 100,  # Spot price
+        "K": 100,  # Strike price (ATM)
+        "T": 0.25,  # Time to expiration (3 months)
+        "r": 0.05,  # Risk-free rate (5%)
+        "sigma": 0.20,  # Volatility (20%)
     }
 
 
 @pytest.fixture
 def option_chain_params():
     """Parameters for generating option chains."""
-    return {
-        "S": 100,
-        "T": 0.25,
-        "r": 0.05,
-        "sigma": 0.20,
-        "strikes": np.arange(80, 121, 5)  # Strikes from 80 to 120
-    }
+    return {"S": 100, "T": 0.25, "r": 0.05, "sigma": 0.20, "strikes": np.arange(80, 121, 5)}  # Strikes from 80 to 120
 
 
 @pytest.fixture
@@ -412,17 +390,14 @@ def otm_call_params():
 # Covariance Matrix Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def simple_cov_matrix():
     """Generate a simple positive-definite covariance matrix."""
     return pd.DataFrame(
-        np.array([
-            [0.04, 0.02, 0.01],
-            [0.02, 0.05, 0.015],
-            [0.01, 0.015, 0.03]
-        ]),
+        np.array([[0.04, 0.02, 0.01], [0.02, 0.05, 0.015], [0.01, 0.015, 0.03]]),
         index=["A", "B", "C"],
-        columns=["A", "B", "C"]
+        columns=["A", "B", "C"],
     )
 
 
@@ -431,11 +406,7 @@ def identity_cov_matrix():
     """Generate identity covariance matrix (uncorrelated assets)."""
     n = 5
     tickers = ["A", "B", "C", "D", "E"]
-    return pd.DataFrame(
-        np.eye(n) * 0.04,  # 20% volatility
-        index=tickers,
-        columns=tickers
-    )
+    return pd.DataFrame(np.eye(n) * 0.04, index=tickers, columns=tickers)  # 20% volatility
 
 
 @pytest.fixture
@@ -456,6 +427,7 @@ def high_corr_cov_matrix():
 # Utility Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def risk_free_rate():
     """Standard risk-free rate for testing."""
@@ -465,12 +437,7 @@ def risk_free_rate():
 @pytest.fixture
 def periods_annual():
     """Annualization periods for different frequencies."""
-    return {
-        "daily": 252,
-        "weekly": 52,
-        "monthly": 12,
-        "quarterly": 4
-    }
+    return {"daily": 252, "weekly": 52, "monthly": 12, "quarterly": 4}
 
 
 @pytest.fixture
@@ -489,6 +456,7 @@ def relative_tolerance():
 # GPU Testing Fixtures
 # =============================================================================
 
+
 @pytest.fixture
 def gpu_available():
     """Check if GPU is available for the test."""
@@ -503,27 +471,20 @@ def large_returns_for_gpu(sample_dates):
     n_assets = 50  # Larger portfolio for GPU testing
 
     tickers = [f"ASSET_{i}" for i in range(n_assets)]
-    returns = pd.DataFrame(
-        np.random.randn(n_days, n_assets) * 0.02,
-        index=sample_dates,
-        columns=tickers
-    )
+    returns = pd.DataFrame(np.random.randn(n_days, n_assets) * 0.02, index=sample_dates, columns=tickers)
     return returns
 
 
 @pytest.fixture
 def bootstrap_params():
     """Standard bootstrap parameters."""
-    return {
-        "n_samples": 1000,
-        "seed": 42,
-        "block_size": 20
-    }
+    return {"n_samples": 1000, "seed": 42, "block_size": 20}
 
 
 # =============================================================================
 # Edge Case Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def empty_dataframe():
@@ -534,18 +495,14 @@ def empty_dataframe():
 @pytest.fixture
 def single_row_returns():
     """Single row of returns for edge case testing."""
-    return pd.DataFrame(
-        {"A": [0.01], "B": [-0.02], "C": [0.005]},
-        index=[pd.Timestamp("2023-01-01")]
-    )
+    return pd.DataFrame({"A": [0.01], "B": [-0.02], "C": [0.005]}, index=[pd.Timestamp("2023-01-01")])
 
 
 @pytest.fixture
 def two_row_returns():
     """Two rows of returns for minimum data edge case."""
     return pd.DataFrame(
-        {"A": [0.01, -0.02], "B": [-0.02, 0.03]},
-        index=pd.date_range("2023-01-01", periods=2, freq="D")
+        {"A": [0.01, -0.02], "B": [-0.02, 0.03]}, index=pd.date_range("2023-01-01", periods=2, freq="D")
     )
 
 
@@ -561,16 +518,13 @@ def infinite_values_returns(sample_returns):
 @pytest.fixture
 def all_nan_returns(sample_dates):
     """All-NaN returns for edge case testing."""
-    return pd.DataFrame(
-        np.nan,
-        index=sample_dates[:100],
-        columns=["NAN_ASSET"]
-    )
+    return pd.DataFrame(np.nan, index=sample_dates[:100], columns=["NAN_ASSET"])
 
 
 # =============================================================================
 # Integration Test Fixtures
 # =============================================================================
+
 
 @pytest.fixture
 def full_portfolio_setup(sample_prices, sample_returns, equal_weights, market_returns):
@@ -581,7 +535,7 @@ def full_portfolio_setup(sample_prices, sample_returns, equal_weights, market_re
         "weights": equal_weights,
         "benchmark": market_returns,
         "rf": 0.02,
-        "periods": 252
+        "periods": 252,
     }
 
 
@@ -595,16 +549,14 @@ def optimization_setup(sample_returns, simple_cov_matrix):
     return {
         "returns": returns,
         "cov_matrix": simple_cov_matrix,
-        "constraints": {
-            "min_weight": 0.05,
-            "max_weight": 0.50
-        }
+        "constraints": {"min_weight": 0.05, "max_weight": 0.50},
     }
 
 
 # =============================================================================
 # Real Data Fixtures (for integration tests with API)
 # =============================================================================
+
 
 @pytest.fixture
 def real_tickers():
@@ -617,7 +569,4 @@ def real_date_range():
     """Date range for real data tests."""
     end_date = datetime.now() - timedelta(days=1)
     start_date = end_date - timedelta(days=365)
-    return {
-        "start": start_date.strftime("%Y-%m-%d"),
-        "end": end_date.strftime("%Y-%m-%d")
-    }
+    return {"start": start_date.strftime("%Y-%m-%d"), "end": end_date.strftime("%Y-%m-%d")}

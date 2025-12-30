@@ -6,15 +6,12 @@ Created on Wed Mar 16 07:09:13 2022
 @author: safishajjouz
 """
 
-import pandas as pd
-import numpy as np
-
-from pypfopt.expected_returns import returns_from_prices, mean_historical_return, capm_return, ema_historical_return
-from empyrical.stats import aggregate_returns
 import ffn
-
+import numpy as np
+import pandas as pd
 import quantstats_lumi as qs
-
+from empyrical.stats import aggregate_returns
+from pypfopt.expected_returns import capm_return, ema_historical_return, mean_historical_return, returns_from_prices
 
 # TODO
 # This part here has a function the 'get_stock_returns` that I dropped
@@ -22,13 +19,13 @@ import quantstats_lumi as qs
 
 
 # calculate portfolio returns
-def calculate_portfolio_returns(returns: pd.DataFrame,
-                                myweights: pd.DataFrame,
-                                portfolio_name: str = None) -> pd.DataFrame:
+def calculate_portfolio_returns(
+    returns: pd.DataFrame, myweights: pd.DataFrame, portfolio_name: str = None
+) -> pd.DataFrame:
     """
-    returns: a wide DataFrame series with assets returns 
-    df_wegiths: a long Datafrane with Fund names in the first colum 
-                and weight in the other 
+    returns: a wide DataFrame series with assets returns
+    df_wegiths: a long Datafrane with Fund names in the first colum
+                and weight in the other
 
     Args:
         returns (pd.DataFrame): DESCRIPTION.
@@ -45,7 +42,7 @@ def calculate_portfolio_returns(returns: pd.DataFrame,
 
     """
 
-    # sanity checks 
+    # sanity checks
     if not isinstance(returns, pd.DataFrame):
         raise ValueError("you must pass a Pandas DataFrame")
 
@@ -57,13 +54,13 @@ def calculate_portfolio_returns(returns: pd.DataFrame,
     # set zero values with NA
     port_returns = returns.fillna(0).dot(weights)
 
-    # name the column of portfolio returns 
+    # name the column of portfolio returns
     if portfolio_name is None:
         port_returns = pd.Series(port_returns, name="myPortfolio")
     else:
         port_returns = pd.Series(port_returns, name=portfolio_name)
 
-    port_returns = pd.to_numeric(port_returns, errors='coerce')
+    port_returns = pd.to_numeric(port_returns, errors="coerce")
     ret = pd.DataFrame(port_returns)
 
     return ret
@@ -80,14 +77,13 @@ def create_portfolios(returns: pd.DataFrame, weights: pd.DataFrame) -> pd.DataFr
 
     """
 
-    # calculate return series 
+    # calculate return series
     df_portfolio_returns = pd.DataFrame([])
 
     for portfolio_name in list(weights.columns):
-        temp = calculate_portfolio_returns(returns,
-                                           weights.index.to_list(),
-                                           weights[portfolio_name].to_list(),
-                                           portfolio_name=portfolio_name)
+        temp = calculate_portfolio_returns(
+            returns, weights.index.to_list(), weights[portfolio_name].to_list(), portfolio_name=portfolio_name
+        )
         df_portfolio_returns = pd.concat([df_portfolio_returns, temp], axis=1)
 
     return df_portfolio_returns
@@ -112,51 +108,54 @@ def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
 
         ret = aggregate_returns(ret, convert_to)
 
-        if convert_to == 'weekly':
+        if convert_to == "weekly":
             new_dates = pd.date_range(first_date, periods=len(ret), freq="w")
             new_dates = list(new_dates.strftime("%Y-%m-%d"))
             new_dates[-1] = last_date.strftime("%Y-%m-%d")
-            ret['Date'] = new_dates
-            ret = ret.set_index('Date')
+            ret["Date"] = new_dates
+            ret = ret.set_index("Date")
             ret.index = pd.to_datetime(ret.index, infer_datetime_format=True)
 
-        elif convert_to == 'monthly':
+        elif convert_to == "monthly":
             new_dates = pd.date_range(first_date, periods=len(ret), freq="m")
             new_dates = list(new_dates.strftime("%Y-%m-%d"))
             new_dates[-1] = last_date.strftime("%Y-%m-%d")
-            ret['Date'] = new_dates
-            ret = ret.set_index('Date')
+            ret["Date"] = new_dates
+            ret = ret.set_index("Date")
             ret.index = pd.to_datetime(ret.index, infer_datetime_format=True)
 
-        elif convert_to == 'quarterly':
+        elif convert_to == "quarterly":
             new_dates = pd.date_range(first_date, periods=len(ret), freq="q")
             new_dates = list(new_dates.strftime("%Y-%m-%d"))
             new_dates[-1] = last_date.strftime("%Y-%m-%d")
-            ret['Date'] = new_dates
-            ret = ret.set_index('Date')
+            ret["Date"] = new_dates
+            ret = ret.set_index("Date")
             ret.index = pd.to_datetime(ret.index, infer_datetime_format=True)
 
-
-        elif convert_to == 'yearly':
+        elif convert_to == "yearly":
             new_dates = pd.date_range(first_date, periods=len(ret), freq="y")
             new_dates = list(new_dates.strftime("%Y-%m-%d"))
             new_dates[-1] = last_date.strftime("%Y-%m-%d")
-            ret['Date'] = new_dates
-            ret = ret.set_index('Date')
+            ret["Date"] = new_dates
+            ret = ret.set_index("Date")
             ret.index = pd.to_datetime(ret.index, infer_datetime_format=True)
         else:
-            raise 'This frequency conversion is not supported'
+            raise "This frequency conversion is not supported"
 
     return ret
 
 
-def calculate_returns(df_prices: pd.DataFrame, log_returns: bool = False,
-                      convert_to: str = None,
-                      annualize_factor: int = None,
-                      add_portfolio: bool = False, **kwargs) -> pd.DataFrame:
+def calculate_returns(
+    df_prices: pd.DataFrame,
+    log_returns: bool = False,
+    convert_to: str = None,
+    annualize_factor: int = None,
+    add_portfolio: bool = False,
+    **kwargs,
+) -> pd.DataFrame:
     """
-    function to compute returns. Can be simple returns or log returns. It 
-    also allows aggregation of retunrs from daily to ['weekly', 'monthly', 
+    function to compute returns. Can be simple returns or log returns. It
+    also allows aggregation of retunrs from daily to ['weekly', 'monthly',
                                                       quarterly, 'yearly']
 
     The user can also calculate returns on a rolling basis.
@@ -181,24 +180,28 @@ def calculate_returns(df_prices: pd.DataFrame, log_returns: bool = False,
         ret_port = calculate_portfolio_returns(ret, **kwargs)
         ret = pd.concat([ret, ret_port], axis=1)
 
-    if convert_to in ['weekly', 'monthly', 'quarterly', 'yearly']:
+    if convert_to in ["weekly", "monthly", "quarterly", "yearly"]:
         ret = convert_returns_freq(ret, convert_to)
 
     if annualize_factor:
         # memo: 252 for daily, 52 for weekly, 12 for monthly
-        # output from fnn is in 100 so I devide with 100 
+        # output from fnn is in 100 so I devide with 100
         ret = ffn.core.annualize(ret, annualize_factor, one_year=365) / 100
 
     return ret
 
 
-def average_returns(returns: pd.DataFrame or pd.Series,
-                    method: str = 'hist',
-                    benchmark_returns: pd.Series or pd.DataFrame = None,
-                    span=500,
-                    periods=252, rf=0.02, log_returns=False) -> float or pd.Series:
+def average_returns(
+    returns: pd.DataFrame or pd.Series,
+    method: str = "hist",
+    benchmark_returns: pd.Series or pd.DataFrame = None,
+    span=500,
+    periods=252,
+    rf=0.02,
+    log_returns=False,
+) -> float or pd.Series:
     """
-    
+
 
     Args:
         returns (pd.DataFrame or pd.Series): DESCRIPTION.
@@ -217,64 +220,59 @@ def average_returns(returns: pd.DataFrame or pd.Series,
 
     """
 
-    if method == 'hist':
-        mu = mean_historical_return(prices=returns,
-                                    returns_data=True,
-                                    compounding=True,
-                                    frequency=periods,
-                                    log_returns=log_returns)
+    if method == "hist":
+        mu = mean_historical_return(
+            prices=returns, returns_data=True, compounding=True, frequency=periods, log_returns=log_returns
+        )
 
-    if method == 'capm':
+    if method == "capm":
         if isinstance(benchmark_returns, type(None)):
-            raise ValueError('benchmark_returns is missing')
+            raise ValueError("benchmark_returns is missing")
 
-        mu = capm_return(returns,
-                         market_prices=benchmark_returns,
-                         returns_data=True,
-                         risk_free_rate=rf,
-                         compounding=True,
-                         frequency=periods,
-                         log_returns=log_returns)
+        mu = capm_return(
+            returns,
+            market_prices=benchmark_returns,
+            returns_data=True,
+            risk_free_rate=rf,
+            compounding=True,
+            frequency=periods,
+            log_returns=log_returns,
+        )
 
-    if method == 'ema':
-        mu = ema_historical_return(returns,
-                                   returns_data=True,
-                                   compounding=True,
-                                   span=span,
-                                   frequency=periods,
-                                   log_returns=log_returns)
+    if method == "ema":
+        mu = ema_historical_return(
+            returns, returns_data=True, compounding=True, span=span, frequency=periods, log_returns=log_returns
+        )
 
     return mu
 
 
 def get_benchmark_porfolios(rebalance=None):
     # All-Weather-Porfolio based on weights
-    tickers = {'VTI': 0.30,
-               'VGLT': 0.40,
-               'VGIT': 0.15,
-               'GLD': 0.075,
-               'DBC': 0.075}  # DBC replaces DJP (which is delisted)
+    tickers = {
+        "VTI": 0.30,
+        "VGLT": 0.40,
+        "VGIT": 0.15,
+        "GLD": 0.075,
+        "DBC": 0.075,
+    }  # DBC replaces DJP (which is delisted)
 
     try:
-        ret_all_weather_dalio = qs.utils.make_index(ticker_weights=tickers,
-                                                    rebalance=rebalance,
-                                                    period='max',
-                                                    returns=None,
-                                                    match_dates=False)
+        ret_all_weather_dalio = qs.utils.make_index(
+            ticker_weights=tickers, rebalance=rebalance, period="max", returns=None, match_dates=False
+        )
 
-        ret_all_weather_dalio = pd.Series(ret_all_weather_dalio,
-                                          name='All_Weather_Dalio')
+        ret_all_weather_dalio = pd.Series(ret_all_weather_dalio, name="All_Weather_Dalio")
     except (ValueError, Exception) as e:
         print(f"Warning: Could not create All-Weather portfolio: {e}")
-        ret_all_weather_dalio = pd.Series(dtype=float, name='All_Weather_Dalio')
+        ret_all_weather_dalio = pd.Series(dtype=float, name="All_Weather_Dalio")
 
     # 60/40 based on BlackRock
     try:
-        ret_60_40 = pd.Series(qs.utils.download_returns('BAGPX'),
-                              name='Port_60/40_BlackRock')
+        ret_60_40 = pd.Series(qs.utils.download_returns("BAGPX"), name="Port_60/40_BlackRock")
     except Exception as e:
         print(f"Warning: Could not download 60/40 portfolio: {e}")
-        ret_60_40 = pd.Series(dtype=float, name='Port_60/40_BlackRock')
+        ret_60_40 = pd.Series(dtype=float, name="Port_60/40_BlackRock")
 
     retun_bench_port = pd.concat([ret_all_weather_dalio, ret_60_40], axis=1)
 
@@ -282,39 +280,39 @@ def get_benchmark_porfolios(rebalance=None):
 
 
 def get_benchmark_returns(choose_bench: str or list = None) -> pd.DataFrame:
-    '''
+    """
     Download benchmark returns. Only downloads the benchmarks you request.
-    
+
     Args:
         choose_bench: str, list of str, or None
             - str: download a single benchmark (e.g., 'S&P500')
             - list: download multiple benchmarks (e.g., ['S&P500', 'Nasdaq'])
             - None: download all available benchmarks
-    
-    Options for benchmarking: 'Nasdaq', 'S&P500', 'World_Index', 'Cash', 
+
+    Options for benchmarking: 'Nasdaq', 'S&P500', 'World_Index', 'Cash',
                                'Emerging_Markets', 'US_Real_Estate',
                                'US_mid_Cap', 'US_small_Cap', 'World_Non_US',
                                'US_TIPS', 'US_Bonds', 'Bloomberg_Commodity_Index'
-    
+
     Returns:
         pd.DataFrame: DataFrame with benchmark returns
-    '''
+    """
     # Mapping of benchmark names to Yahoo tickers
     benchmark_map = {
-        'Nasdaq': '^IXIC',
-        'S&P500': '^GSPC',
-        'World_Index': 'VT',
-        'Cash': 'BIL',
-        'Emerging_Markets': 'EEM',
-        'US_Real_Estate': 'VNQ',
-        'US_mid_Cap': 'MDY',
-        'US_small_Cap': 'SLY',
-        'World_Non_US': 'EFA',
-        'US_TIPS': 'TIP',
-        'US_Bonds': 'AGG',
-        'Bloomberg_Commodity_Index': 'DBC'  # DBC replaces DJP (delisted)
+        "Nasdaq": "^IXIC",
+        "S&P500": "^GSPC",
+        "World_Index": "VT",
+        "Cash": "BIL",
+        "Emerging_Markets": "EEM",
+        "US_Real_Estate": "VNQ",
+        "US_mid_Cap": "MDY",
+        "US_small_Cap": "SLY",
+        "World_Non_US": "EFA",
+        "US_TIPS": "TIP",
+        "US_Bonds": "AGG",
+        "Bloomberg_Commodity_Index": "DBC",  # DBC replaces DJP (delisted)
     }
-    
+
     # Determine which benchmarks to download
     if choose_bench is None:
         # Download all benchmarks
@@ -327,13 +325,12 @@ def get_benchmark_returns(choose_bench: str or list = None) -> pd.DataFrame:
         benchmarks_to_download = choose_bench
     else:
         raise ValueError("choose_bench must be a string, list of strings, or None")
-    
+
     # Validate benchmark names
     invalid = [b for b in benchmarks_to_download if b not in benchmark_map]
     if invalid:
-        raise ValueError(f"Invalid benchmark(s): {invalid}. "
-                        f"Available options: {list(benchmark_map.keys())}")
-    
+        raise ValueError(f"Invalid benchmark(s): {invalid}. " f"Available options: {list(benchmark_map.keys())}")
+
     # Download only requested benchmarks
     ret_bench = []
     for name in benchmarks_to_download:
@@ -349,10 +346,10 @@ def get_benchmark_returns(choose_bench: str or list = None) -> pd.DataFrame:
             ret_bench.append(ret)
         except Exception as e:
             print(f"Warning: Could not download {name} ({ticker}): {e}")
-    
+
     if not ret_bench:
         raise ValueError("No benchmark data could be downloaded")
-    
+
     ret_bench = pd.concat(ret_bench, axis=1)
 
     return ret_bench

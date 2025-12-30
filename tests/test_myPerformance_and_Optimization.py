@@ -24,46 +24,41 @@ Tests cover:
   - Max Sharpe
 """
 
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pandas as pd
 import pytest
-from unittest.mock import patch, MagicMock
-
-from myPortfolioManagement.myPerformanceMetrics import (
-    cagr,
-    age,
-    drawdown_details,
-    assets_drawdown_details,
-    information_ratio,
-    alpha_beta_table,
-    get_main_stats,
-)
 
 from myPortfolioManagement.metrics import (
-    vol,
     beta,
-    var,
+    calmar_ratio,
     cvar,
+    gain_loss_ratio,
+    hpm,
+    lpm,
     max_dd,
+    omega_ratio,
     sharpe_ratio,
     sortino_ratio,
-    calmar_ratio,
-    omega_ratio,
-    gain_loss_ratio,
-    lpm,
-    hpm,
+    var,
+    vol,
 )
-
-from myPortfolioManagement.myPortfolioOptimisation import (
-    HRP,
-    inverse_vol_portfolio,
-    equal_weight_portfolio,
+from myPortfolioManagement.myPerformanceMetrics import (
+    age,
+    alpha_beta_table,
+    assets_drawdown_details,
+    cagr,
+    drawdown_details,
+    get_main_stats,
+    information_ratio,
 )
-
+from myPortfolioManagement.myPortfolioOptimisation import HRP, equal_weight_portfolio, inverse_vol_portfolio
 
 # =============================================================================
 # Performance Metrics Tests
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestCAGR:
@@ -96,9 +91,7 @@ class TestCAGR:
     def test_cagr_doubling_in_one_year(self):
         """Test CAGR when price doubles in one year."""
         dates = pd.date_range(start="2023-01-01", periods=252, freq="B")
-        prices = pd.DataFrame({
-            "DOUBLE": np.linspace(100, 200, 252)
-        }, index=dates)
+        prices = pd.DataFrame({"DOUBLE": np.linspace(100, 200, 252)}, index=dates)
 
         result = cagr(prices)
 
@@ -111,9 +104,7 @@ class TestCAGR:
     def test_cagr_halving_in_one_year(self):
         """Test CAGR when price halves in one year."""
         dates = pd.date_range(start="2023-01-01", periods=252, freq="B")
-        prices = pd.DataFrame({
-            "HALF": np.linspace(100, 50, 252)
-        }, index=dates)
+        prices = pd.DataFrame({"HALF": np.linspace(100, 50, 252)}, index=dates)
 
         result = cagr(prices)
 
@@ -241,6 +232,7 @@ class TestAlphaBeta:
 # =============================================================================
 # Risk Metrics Tests
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestVolatility:
@@ -434,10 +426,7 @@ class TestSortinoRatio:
         dates = pd.date_range("2023-01-01", periods=500)
 
         # Positive skew: mostly small losses, some big gains
-        pos_skew = pd.Series(
-            np.abs(np.random.randn(500)) * 0.02 - 0.005,
-            index=dates
-        )
+        pos_skew = pd.Series(np.abs(np.random.randn(500)) * 0.02 - 0.005, index=dates)
         er = pos_skew.mean() * 252
 
         result = sortino_ratio(er=er, returns=pos_skew, rf=0.02)
@@ -506,6 +495,7 @@ class TestOtherRatios:
 # =============================================================================
 # Portfolio Optimization Tests
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestEqualWeightPortfolio:
@@ -604,12 +594,7 @@ class TestHRP:
     def test_hrp_weights_bounded(self, sample_returns):
         """Test that HRP weights are bounded by constraints."""
         try:
-            weights = HRP(
-                model="HRP",
-                returns_training=sample_returns,
-                weight_min=0.05,
-                weight_max=0.40
-            )
+            weights = HRP(model="HRP", returns_training=sample_returns, weight_min=0.05, weight_max=0.40)
 
             assert (weights >= 0.05 - 1e-4).all()
             assert (weights <= 0.40 + 1e-4).all()
@@ -635,9 +620,7 @@ class TestHRP:
             weights1 = HRP(model="HRP", returns_training=sample_returns)
             weights2 = HRP(model="HRP", returns_training=sample_returns)
 
-            np.testing.assert_array_almost_equal(
-                weights1.values, weights2.values, decimal=6
-            )
+            np.testing.assert_array_almost_equal(weights1.values, weights2.values, decimal=6)
         except Exception as e:
             pytest.skip(f"HRP optimization failed: {e}")
 
@@ -652,12 +635,7 @@ class TestOptimizationConstraints:
         max_w = 0.30
 
         try:
-            weights = HRP(
-                model="HRP",
-                returns_training=sample_returns,
-                weight_min=min_w,
-                weight_max=max_w
-            )
+            weights = HRP(model="HRP", returns_training=sample_returns, weight_min=min_w, weight_max=max_w)
 
             assert (weights >= min_w - 1e-4).all()
             assert (weights <= max_w + 1e-4).all()
@@ -668,12 +646,7 @@ class TestOptimizationConstraints:
         """Test handling of infeasible constraints."""
         # 5 assets, min 30% each = 150% total (infeasible)
         try:
-            weights = HRP(
-                model="HRP",
-                returns_training=sample_returns,
-                weight_min=0.30,
-                weight_max=0.50
-            )
+            weights = HRP(model="HRP", returns_training=sample_returns, weight_min=0.30, weight_max=0.50)
 
             # Should either raise error or relax constraints
             assert weights.sum() == pytest.approx(1.0, rel=0.1)
@@ -698,10 +671,7 @@ class TestOptimizationEdgeCases:
         """Test optimization with two assets."""
         dates = pd.date_range("2023-01-01", periods=100)
         np.random.seed(42)
-        returns = pd.DataFrame({
-            "A": np.random.randn(100) * 0.02,
-            "B": np.random.randn(100) * 0.03
-        }, index=dates)
+        returns = pd.DataFrame({"A": np.random.randn(100) * 0.02, "B": np.random.randn(100) * 0.03}, index=dates)
 
         weights = inverse_vol_portfolio(returns)
 
@@ -715,11 +685,7 @@ class TestOptimizationEdgeCases:
         np.random.seed(42)
         ret = np.random.randn(100) * 0.02
 
-        returns = pd.DataFrame({
-            "A": ret,
-            "B": ret,
-            "C": ret
-        }, index=dates)
+        returns = pd.DataFrame({"A": ret, "B": ret, "C": ret}, index=dates)
 
         weights = equal_weight_portfolio(returns)
 
@@ -730,6 +696,7 @@ class TestOptimizationEdgeCases:
 # =============================================================================
 # Integration Tests
 # =============================================================================
+
 
 @pytest.mark.unit
 @pytest.mark.integration
@@ -790,6 +757,7 @@ class TestMetricsIntegration:
 # Parametrized Tests
 # =============================================================================
 
+
 @pytest.mark.unit
 @pytest.mark.parametrize("alpha", [0.01, 0.05, 0.10])
 def test_var_different_alphas(sample_returns, alpha):
@@ -819,9 +787,7 @@ def test_equal_weight_different_sizes(n_assets):
     np.random.seed(42)
 
     returns = pd.DataFrame(
-        np.random.randn(100, n_assets) * 0.02,
-        index=dates,
-        columns=[f"ASSET_{i}" for i in range(n_assets)]
+        np.random.randn(100, n_assets) * 0.02, index=dates, columns=[f"ASSET_{i}" for i in range(n_assets)]
     )
 
     weights = equal_weight_portfolio(returns)

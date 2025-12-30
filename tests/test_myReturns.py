@@ -13,16 +13,16 @@ import pandas as pd
 import pytest
 
 from myPortfolioManagement.myReturns import (
+    average_returns,
     calculate_returns,
     convert_returns_freq,
-    average_returns,
     get_benchmark_returns,
 )
-
 
 # =============================================================================
 # Test Simple Returns Calculation
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestCalculateReturns:
@@ -69,27 +69,21 @@ class TestCalculateReturns:
 
     def test_positive_price_change_positive_return(self):
         """Test that positive price change gives positive return."""
-        prices = pd.DataFrame({
-            "A": [100.0, 110.0]
-        }, index=pd.date_range("2023-01-01", periods=2))
+        prices = pd.DataFrame({"A": [100.0, 110.0]}, index=pd.date_range("2023-01-01", periods=2))
 
         returns = calculate_returns(prices, log_returns=False)
         assert returns.iloc[0, 0] == pytest.approx(0.1, rel=1e-6)
 
     def test_negative_price_change_negative_return(self):
         """Test that negative price change gives negative return."""
-        prices = pd.DataFrame({
-            "A": [100.0, 90.0]
-        }, index=pd.date_range("2023-01-01", periods=2))
+        prices = pd.DataFrame({"A": [100.0, 90.0]}, index=pd.date_range("2023-01-01", periods=2))
 
         returns = calculate_returns(prices, log_returns=False)
         assert returns.iloc[0, 0] == pytest.approx(-0.1, rel=1e-6)
 
     def test_zero_return_for_unchanged_price(self):
         """Test that unchanged price gives zero return."""
-        prices = pd.DataFrame({
-            "A": [100.0, 100.0, 100.0]
-        }, index=pd.date_range("2023-01-01", periods=3))
+        prices = pd.DataFrame({"A": [100.0, 100.0, 100.0]}, index=pd.date_range("2023-01-01", periods=3))
 
         returns = calculate_returns(prices, log_returns=False)
         assert (returns == 0).all().all()
@@ -116,16 +110,13 @@ class TestCalculateReturns:
         total_log_return = log_ret.sum()
         expected = np.log(sample_prices.iloc[-1] / sample_prices.iloc[0])
 
-        np.testing.assert_array_almost_equal(
-            total_log_return.values,
-            expected.values,
-            decimal=10
-        )
+        np.testing.assert_array_almost_equal(total_log_return.values, expected.values, decimal=10)
 
 
 # =============================================================================
 # Test Frequency Conversion
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestConvertReturnsFreq:
@@ -171,6 +162,7 @@ class TestConvertReturnsFreq:
 # Test Average Returns
 # =============================================================================
 
+
 @pytest.mark.unit
 class TestAverageReturns:
     """Tests for average_returns function."""
@@ -209,6 +201,7 @@ class TestAverageReturns:
 # Test Benchmark Returns
 # =============================================================================
 
+
 @pytest.mark.unit
 class TestGetBenchmarkReturns:
     """Tests for get_benchmark_returns function."""
@@ -243,16 +236,14 @@ class TestGetBenchmarkReturns:
 # Test Edge Cases
 # =============================================================================
 
+
 @pytest.mark.unit
 class TestReturnsEdgeCases:
     """Tests for edge cases in returns calculation."""
 
     def test_two_row_returns(self):
         """Test returns with minimum data (2 rows gives 1 return)."""
-        prices = pd.DataFrame({
-            "A": [100.0, 110.0],
-            "B": [50.0, 55.0]
-        }, index=pd.date_range("2023-01-01", periods=2))
+        prices = pd.DataFrame({"A": [100.0, 110.0], "B": [50.0, 55.0]}, index=pd.date_range("2023-01-01", periods=2))
 
         returns = calculate_returns(prices)
         assert len(returns) == 1
@@ -268,6 +259,7 @@ class TestReturnsEdgeCases:
 # Test Mathematical Properties
 # =============================================================================
 
+
 @pytest.mark.unit
 class TestReturnsMathematicalProperties:
     """Tests for mathematical properties of returns."""
@@ -279,11 +271,7 @@ class TestReturnsMathematicalProperties:
         total_log = np.log(sample_prices.iloc[-1] / sample_prices.iloc[0])
         sum_log = log_ret.sum()
 
-        np.testing.assert_array_almost_equal(
-            total_log.values,
-            sum_log.values,
-            decimal=10
-        )
+        np.testing.assert_array_almost_equal(total_log.values, sum_log.values, decimal=10)
 
     def test_simple_returns_product_equals_total(self, sample_prices):
         """Test that product of (1+r) equals price ratio."""
@@ -298,6 +286,7 @@ class TestReturnsMathematicalProperties:
 # =============================================================================
 # Test Annualization
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestAnnualization:
@@ -315,6 +304,7 @@ class TestAnnualization:
 # =============================================================================
 # Test Data Alignment
 # =============================================================================
+
 
 @pytest.mark.unit
 class TestDataAlignment:
@@ -334,6 +324,7 @@ class TestDataAlignment:
 # =============================================================================
 # Parametrized Tests
 # =============================================================================
+
 
 @pytest.mark.unit
 @pytest.mark.parametrize("freq", ["weekly", "monthly", "quarterly", "yearly"])

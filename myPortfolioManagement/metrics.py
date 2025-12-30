@@ -1,4 +1,5 @@
 import math
+
 import numpy
 import numpy.random as nrand
 
@@ -40,7 +41,7 @@ def lpm(returns, threshold, order):
     # Set the minimum of each to 0
     diff = diff.clip(min=0)
     # Return the sum of the different to the power of order
-    return numpy.sum(diff ** order) / len(returns)
+    return numpy.sum(diff**order) / len(returns)
 
 
 def hpm(returns, threshold, order):
@@ -53,7 +54,7 @@ def hpm(returns, threshold, order):
     # Set the minimum of each to 0
     diff = diff.clip(min=0)
     # Return the sum of the different to the power of order
-    return numpy.sum(diff ** order) / len(returns)
+    return numpy.sum(diff**order) / len(returns)
 
 
 def var(returns, alpha):
@@ -92,7 +93,7 @@ def dd(returns, tau):
     values = prices(returns, 100)
     pos = len(values) - 1
     pre = pos - tau
-    drawdown = float('+inf')
+    drawdown = float("+inf")
     # Find the maximum drawdown given tau
     while pre >= 0:
         dd_i = (values[pos] / values[pre]) - 1
@@ -105,7 +106,7 @@ def dd(returns, tau):
 
 def max_dd(returns):
     # Returns the maximum draw-down for any tau in (0, T) where T is the length of the return series
-    max_drawdown = float('-inf')
+    max_drawdown = float("-inf")
     for i in range(0, len(returns)):
         drawdown_i = dd(returns, i)
         if drawdown_i > max_drawdown:
@@ -178,7 +179,7 @@ def sortino_ratio(er, returns, rf, target=0):
 
 
 def kappa_three_ratio(er, returns, rf, target=0):
-    return (er - rf) / math.pow(lpm(returns, target, 3), float(1/3))
+    return (er - rf) / math.pow(lpm(returns, target, 3), float(1 / 3))
 
 
 def gain_loss_ratio(returns, target=0):
