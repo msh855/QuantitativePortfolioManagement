@@ -121,19 +121,26 @@ def balance_dates(returns, returns_benchmark):
         ret, ret_bench = qs.reports._match_dates(returns[col], returns_benchmark)
         ret_balanced_dates.append(ret)
 
+    # Handle case where no dates were matched
+    if not ret_balanced_dates:
+        return returns, pd.DataFrame(returns_benchmark)
+
     ret_balanced_dates = pd.concat(ret_balanced_dates, axis=1)
+
+    # Use unique column name for benchmark to avoid dropping returns with same name
+    bench_col_name = "__benchmark__"
     ret_bench = pd.DataFrame(ret_bench)
+    ret_bench.columns = [bench_col_name]
 
     # this to create a df with equal length
     ret = pd.concat([ret_balanced_dates, ret_bench], axis=1)
     ret = ret.fillna(0)
 
-    # get the bench
-    ret_bench = ret.iloc[:, -1]
-    ret_bench = pd.DataFrame(ret_bench)
+    # get the bench (last column)
+    ret_bench = ret[[bench_col_name]]
 
-    # get the returns
-    ret_balanced_dates = ret.drop(ret_bench.columns, axis=1)
+    # get the returns (all columns except benchmark)
+    ret_balanced_dates = ret.drop(bench_col_name, axis=1)
 
     return ret_balanced_dates, ret_bench
 

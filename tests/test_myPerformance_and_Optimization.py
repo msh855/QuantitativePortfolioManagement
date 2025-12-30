@@ -513,7 +513,7 @@ class TestEqualWeightPortfolio:
         weights = equal_weight_portfolio(sample_returns)
 
         expected_weight = 1.0 / len(sample_returns.columns)
-        assert (weights == pytest.approx(expected_weight, rel=1e-10)).all()
+        assert np.allclose(weights.values, expected_weight, rtol=1e-10)
 
     def test_equal_weights_positive(self, sample_returns):
         """Test that all weights are positive."""
@@ -704,7 +704,11 @@ class TestMetricsIntegration:
     """Integration tests combining multiple metrics."""
 
     def test_portfolio_metrics_pipeline(self, full_portfolio_setup):
-        """Test full pipeline of portfolio metrics calculation."""
+        """Test full pipeline of portfolio metrics calculation.
+
+        Note: This implementation returns POSITIVE values (absolute values)
+        for risk measures, representing the magnitude of potential loss.
+        """
         returns = full_portfolio_setup["returns"]
         benchmark = full_portfolio_setup["benchmark"]
         rf = full_portfolio_setup["rf"]
@@ -719,20 +723,24 @@ class TestMetricsIntegration:
 
             # Calculate metrics
             vol_result = vol(asset_ret)
-            var_result = var(asset_ret)
-            cvar_result = cvar(asset_ret)
-            mdd_result = max_dd(asset_ret)
+            var_result = var(asset_ret.values, alpha=0.05)
+            cvar_result = cvar(asset_ret.values, alpha=0.05)
+            mdd_result = max_dd(asset_ret.values)
             beta_result = beta(asset_ret, bench)
 
-            # Validate relationships
+            # Validate relationships (risk measures return positive absolute values)
             assert vol_result >= 0
-            assert var_result <= 0
-            assert cvar_result <= var_result
-            assert mdd_result <= 0
+            assert var_result >= 0
+            assert cvar_result >= var_result  # CVaR should be >= VaR (both positive)
+            assert mdd_result >= 0
             assert isinstance(beta_result, (int, float))
 
     def test_optimization_to_performance(self, sample_returns, market_returns):
-        """Test pipeline from optimization to performance measurement."""
+        """Test pipeline from optimization to performance measurement.
+
+        Note: This implementation returns POSITIVE values (absolute values)
+        for risk measures, representing the magnitude of potential loss.
+        """
         # Optimize
         weights = equal_weight_portfolio(sample_returns)
 
@@ -746,11 +754,11 @@ class TestMetricsIntegration:
 
         vol_result = vol(port)
         beta_result = beta(port, bench)
-        mdd_result = max_dd(port)
+        mdd_result = max_dd(port.values)
 
         assert vol_result > 0
         assert isinstance(beta_result, (int, float))
-        assert mdd_result <= 0
+        assert mdd_result >= 0  # Returns positive absolute value
 
 
 # =============================================================================
@@ -761,11 +769,15 @@ class TestMetricsIntegration:
 @pytest.mark.unit
 @pytest.mark.parametrize("alpha", [0.01, 0.05, 0.10])
 def test_var_different_alphas(sample_returns, alpha):
-    """Test VaR at different confidence levels."""
-    ret = sample_returns.iloc[:, 0]
-    result = var(ret, alpha=alpha)
+    """Test VaR at different confidence levels.
 
-    assert result <= 0
+    Note: This implementation returns POSITIVE values (absolute values)
+    for risk measures, representing the magnitude of potential loss.
+    """
+    ret = sample_returns.iloc[:, 0]
+    result = var(ret.values, alpha=alpha)
+
+    assert result >= 0  # Returns positive absolute value
     assert isinstance(result, (int, float))
 
 
@@ -794,4 +806,4 @@ def test_equal_weight_different_sizes(n_assets):
 
     assert len(weights) == n_assets
     assert weights.sum() == pytest.approx(1.0, rel=1e-10)
-    assert (weights == pytest.approx(1.0 / n_assets, rel=1e-10)).all()
+    assert np.allclose(weights.values, 1.0 / n_assets, rtol=1e-10)
