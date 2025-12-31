@@ -287,10 +287,6 @@ def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[]
             df_inverse_vol, portfolio_name=df_inverse_vol.columns[0], weight_max=weight_max
         )
 
-    # Ensure we're returning a DataFrame, not a Series
-    if isinstance(df_inverse_vol, pd.Series):
-        df_inverse_vol = df_inverse_vol.to_frame()
-
     return df_inverse_vol
 
 
