@@ -192,7 +192,7 @@ def HRP(
     weights = port.optimization(
         model=model,
         codependence=codependence,
-        covariance=covariance,
+        method_cov=covariance,
         rm=rm,
         linkage=linkage,
         leaf_order=leaf_order,
@@ -675,7 +675,7 @@ def HRP_ray(
     weights = port.optimization(
         model=model,
         codependence=codependence,
-        covariance=covariance,
+        method_cov=covariance,
         rm=rm,
         linkage=linkage,
         leaf_order=leaf_order,
