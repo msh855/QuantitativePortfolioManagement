@@ -316,12 +316,8 @@ def equal_weight_portfolio(returns_training, my_assets_col_name=[], return_dataf
     weights_series = pd.Series(naive_weights, index=returns_training.columns, name="port_naive")
     weights_series.index.name = index_name
 
-    # Convert to DataFrame - ensure it's a proper DataFrame
+    # Convert to DataFrame
     df_equal_weight = weights_series.to_frame()
-
-    # Ensure we're returning a DataFrame, not a Series
-    if isinstance(df_equal_weight, pd.Series):
-        df_equal_weight = df_equal_weight.to_frame()
 
     return df_equal_weight
 
