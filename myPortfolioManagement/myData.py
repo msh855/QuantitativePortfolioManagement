@@ -7,7 +7,13 @@ from joblib import Parallel, delayed
 from timebudget import timebudget
 from tqdm import tqdm
 
-from myPortfolioManagement.myUtils import _add_stock_info, _load_fx, _load_stock
+try:
+    from finvizfinance.screener.overview import Overview
+except ModuleNotFoundError:  # optional dependency
+    Overview = None
+from myPortfolioManagement.myUtils import _load_stock, _load_fx, _add_stock_info
+import yfinance as yf
+
 
 # from openbb import obb
 # obb.user.credentials.fmp_api_key = 'eb50221eaef20292fe4b57f675be8b23'
@@ -119,6 +125,11 @@ def get_sp500_tickers() -> pd.DataFrame:
         df (TYPE): DESCRIPTION.
     """
 
+    if Overview is None:
+        raise ModuleNotFoundError(
+            "finvizfinance is required for get_sp500_tickers(). Install it with: pip install finvizfinance"
+        )
+
     # for filtering: https://finviz.com/screener.ashx
     foverview = Overview()
     filters_dict = {"Index": "S&P 500"}
@@ -133,6 +144,11 @@ def get_nasdaq_tickers() -> pd.DataFrame:
     Returns:
         df (TYPE): DESCRIPTION.
     """
+
+    if Overview is None:
+        raise ModuleNotFoundError(
+            "finvizfinance is required for get_nasdaq_tickers(). Install it with: pip install finvizfinance"
+        )
 
     # for filtering: https://finviz.com/screener.ashx
     foverview = Overview()
