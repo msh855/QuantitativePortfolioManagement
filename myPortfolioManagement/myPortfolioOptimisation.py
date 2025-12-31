@@ -256,7 +256,7 @@ def generate_rp_portfolios(returns_training=None, rf=0.02, risk_measure=[], weig
     return df_rp
 
 
-def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[], return_dataframe=True):
+def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[]):
     """
 
 
@@ -264,7 +264,6 @@ def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[]
         returns_training (TYPE): DESCRIPTION.
         my_assets_col_name (TYPE, optional): DESCRIPTION. Defaults to [].
         weight_max (TYPE, optional): DESCRIPTION. Defaults to [].
-        return_dataframe (bool, optional): If True, returns a DataFrame. Defaults to True.
 
     Returns:
         pd.DataFrame: Portfolio weights.
@@ -290,14 +289,13 @@ def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[]
     return df_inverse_vol
 
 
-def equal_weight_portfolio(returns_training, my_assets_col_name=[], return_dataframe=True):
+def equal_weight_portfolio(returns_training, my_assets_col_name=[]):
     """
 
 
     Args:
         returns_training (TYPE): DESCRIPTION.
         my_assets_col_name (TYPE, optional): DESCRIPTION. Defaults to [].
-        return_dataframe (bool, optional): If True, returns a DataFrame. Defaults to True.
 
     Returns:
         pd.DataFrame: Portfolio weights.
