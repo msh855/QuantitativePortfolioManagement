@@ -190,7 +190,13 @@ def HRP(
 
     # HRP Default
     weights = port.optimization(
-        model=model, codependence=codependence, rm=rm, linkage=linkage, leaf_order=leaf_order, **kwargs
+        model=model,
+        codependence=codependence,
+        covariance=covariance,
+        rm=rm,
+        linkage=linkage,
+        leaf_order=leaf_order,
+        **kwargs
     )
 
     weights = weights.rename(columns={"weights": "port_weight"})
@@ -250,7 +256,7 @@ def generate_rp_portfolios(returns_training=None, rf=0.02, risk_measure=[], weig
     return df_rp
 
 
-def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[], return_dataframe=False):
+def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[], return_dataframe=True):
     """
 
 
@@ -258,10 +264,10 @@ def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[]
         returns_training (TYPE): DESCRIPTION.
         my_assets_col_name (TYPE, optional): DESCRIPTION. Defaults to [].
         weight_max (TYPE, optional): DESCRIPTION. Defaults to [].
-        return_dataframe (bool, optional): If True, returns a DataFrame. Defaults to False.
+        return_dataframe (bool, optional): If True, returns a DataFrame. Defaults to True.
 
     Returns:
-        pd.Series or pd.DataFrame: Portfolio weights.
+        pd.DataFrame: Portfolio weights.
 
     """
 
@@ -272,33 +278,33 @@ def inverse_vol_portfolio(returns_training, my_assets_col_name=[], weight_max=[]
     index_name = my_assets_col_name if my_assets_col_name else "asset"
     weights.index.name = index_name
 
+    # Convert to DataFrame - ensure it's a proper DataFrame
+    df_inverse_vol = weights.to_frame()
+
     if weight_max:
-        # clean_limit_weights expects a DataFrame
-        df_inverse_vol = pd.DataFrame(weights)
+        # Apply weight limits
         df_inverse_vol = clean_limit_weights(
             df_inverse_vol, portfolio_name=df_inverse_vol.columns[0], weight_max=weight_max
         )
-        if return_dataframe:
-            return df_inverse_vol
-        return df_inverse_vol.iloc[:, 0]
 
-    if return_dataframe:
-        return weights.to_frame()
+    # Ensure we're returning a DataFrame, not a Series
+    if isinstance(df_inverse_vol, pd.Series):
+        df_inverse_vol = df_inverse_vol.to_frame()
 
-    return weights
+    return df_inverse_vol
 
 
-def equal_weight_portfolio(returns_training, my_assets_col_name=[], return_dataframe=False):
+def equal_weight_portfolio(returns_training, my_assets_col_name=[], return_dataframe=True):
     """
 
 
     Args:
         returns_training (TYPE): DESCRIPTION.
         my_assets_col_name (TYPE, optional): DESCRIPTION. Defaults to [].
-        return_dataframe (bool, optional): If True, returns a DataFrame. Defaults to False.
+        return_dataframe (bool, optional): If True, returns a DataFrame. Defaults to True.
 
     Returns:
-        pd.Series or pd.DataFrame: Portfolio weights.
+        pd.DataFrame: Portfolio weights.
 
     """
 
@@ -310,10 +316,14 @@ def equal_weight_portfolio(returns_training, my_assets_col_name=[], return_dataf
     weights_series = pd.Series(naive_weights, index=returns_training.columns, name="port_naive")
     weights_series.index.name = index_name
 
-    if return_dataframe:
-        return weights_series.to_frame()
+    # Convert to DataFrame - ensure it's a proper DataFrame
+    df_equal_weight = weights_series.to_frame()
 
-    return weights_series
+    # Ensure we're returning a DataFrame, not a Series
+    if isinstance(df_equal_weight, pd.Series):
+        df_equal_weight = df_equal_weight.to_frame()
+
+    return df_equal_weight
 
 
 def clean_limit_weights(df_weights, portfolio_name: str, weight_max: float):
