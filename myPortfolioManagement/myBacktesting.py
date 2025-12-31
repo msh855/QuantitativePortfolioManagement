@@ -420,7 +420,10 @@ def bootstrap_portfolio_performance(
         results_means = metrics_all
         results_dist = bootstrap_metrics
 
-    results_dist_stats = results_dist.apply(pf.tears.plotting.timeseries.calc_distribution_stats)
+    results_dist_stats = results_dist.apply(pf.tears.plotting.timeseries.calc_distribution_stats).T
+    # Rename 'median' to '50%' to match GPU path column naming
+    if "median" in results_dist_stats.columns:
+        results_dist_stats = results_dist_stats.rename(columns={"median": "50%"})
 
     return results_means, results_dist, results_dist_stats
 
