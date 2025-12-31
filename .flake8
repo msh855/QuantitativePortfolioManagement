@@ -1,0 +1,48 @@
+[flake8]
+max-line-length = 120
+max-complexity = 15
+extend-ignore =
+    # Whitespace before ':' (conflicts with Black)
+    E203,
+    # Line break before binary operator (conflicts with Black)
+    W503,
+    # Line too long (Black handles this, docstrings often need to be longer)
+    E501,
+    # All docstring-related warnings (pydocstyle handles these)
+    D,
+    # Unused imports (can fix later)
+    F401,
+    # Unused variables (can fix later)
+    F841,
+    # Undefined names from star imports (can fix later)
+    F403,
+    F405,
+    # Comparison warnings (can fix later)
+    E711,
+    E712,
+    E721,
+    E722,
+    # Bare except (can fix later)
+    B001,
+    # Bugbear warnings about mutable defaults, etc (can fix later)
+    B006,
+    B007,
+    B014,
+    B016,
+    B028,
+    # Function complexity (can fix later)
+    C901,
+    # Too many leading # (can fix later)
+    E266,
+    # Module level import not at top (can fix later)
+    E402,
+    # f-string without placeholders (can fix later)
+    F541
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    *.egg-info,
+    build,
+    dist
