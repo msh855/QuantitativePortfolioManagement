@@ -203,6 +203,8 @@ def HRP(
     weights.index.name = "asset"
 
     if model != "HRP" and weight_max is not None:
+        # Normalize weights to sum to 1.0 before applying additional constraints
+        weights["port_weight"] = weights["port_weight"] / weights["port_weight"].sum()
         temp = clean_limit_weights(weights[["port_weight"]], portfolio_name="port_weight", weight_max=weight_max)
         weights[["port_weight"]] = temp
 
