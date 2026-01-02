@@ -29,6 +29,36 @@ from timebudget import timebudget  # to time functions
 from myPortfolioManagement.myReturns import average_returns
 
 
+def _enforce_weight_constraints(weights_dict, weight_min, n_assets):
+    """
+    Helper function to enforce weight constraints when optimization constraints are infeasible.
+
+    If n_assets * weight_min > 1.0, this function allows unselected assets to have zero weight
+    while ensuring selected assets meet the minimum weight requirement.
+
+    Args:
+        weights_dict: Dictionary of asset weights from optimizer
+        weight_min: Minimum weight constraint
+        n_assets: Number of assets
+
+    Returns:
+        Dictionary of adjusted weights that sum to 1.0
+    """
+    if weight_min is None or n_assets * weight_min <= 1.0:
+        # Constraints are feasible, return as-is
+        return weights_dict
+
+    # Constraints are infeasible - enforce weight_min only on selected assets
+    weights_filtered = {k: max(v, weight_min) if v > 1e-4 else 0 for k, v in weights_dict.items()}
+
+    # Renormalize to sum to 1
+    total = sum(weights_filtered.values())
+    if total > 0:
+        return {k: v / total for k, v in weights_filtered.items()}
+    else:
+        return weights_filtered
+
+
 # Hierarchical Risk Parity Default option
 def HRP(
     model: str = "HRP",
@@ -203,6 +233,8 @@ def HRP(
     weights.index.name = "asset"
 
     if model != "HRP" and weight_max is not None:
+        # Normalize weights to sum to 1.0 before applying additional constraints
+        weights["port_weight"] = weights["port_weight"] / weights["port_weight"].sum()
         temp = clean_limit_weights(weights[["port_weight"]], portfolio_name="port_weight", weight_max=weight_max)
         weights[["port_weight"]] = temp
 
@@ -362,9 +394,21 @@ def port_GMV(returns_training=None, S=None, periods=252, weight_min=0.02, weight
     if S is None:
         S = risk_models.CovarianceShrinkage(returns_training, returns_data=True, frequency=periods).ledoit_wolf()
 
-    ef = EfficientFrontier(None, S, weight_bounds=(weight_min, weight_max))
+    # Check if constraints are feasible (n_assets * weight_min <= 1.0)
+    n_assets = len(S)
+    if weight_min is not None and n_assets * weight_min > 1.0:
+        # Constraints are infeasible - allow zero weights for unselected assets
+        ef = EfficientFrontier(None, S, weight_bounds=(0, weight_max))
+    else:
+        # Constraints are feasible - use original approach
+        ef = EfficientFrontier(None, S, weight_bounds=(weight_min, weight_max))
+
     ef.min_volatility()
     weights = ef.clean_weights()
+
+    # Apply weight constraints post-optimization if needed
+    weights = _enforce_weight_constraints(weights, weight_min, n_assets)
+
     weights = pd.DataFrame(weights, index=[0])
 
     weights = pd.melt(weights, var_name="asset", value_name="port_min_vol")
@@ -425,9 +469,19 @@ def port_target_volatility(
         log_returns=False,
     )
 
-    ef = EfficientFrontier(mu, S, weight_bounds=(weight_min, weight_max))
+    # Check if constraints are feasible
+    n_assets = len(S)
+    if weight_min is not None and n_assets * weight_min > 1.0:
+        ef = EfficientFrontier(mu, S, weight_bounds=(0, weight_max))
+    else:
+        ef = EfficientFrontier(mu, S, weight_bounds=(weight_min, weight_max))
+
     ef.efficient_risk(target_volatility=target_volatility)
     weights = ef.clean_weights()
+
+    # Apply weight constraints post-optimization if needed
+    weights = _enforce_weight_constraints(weights, weight_min, n_assets)
+
     weights = pd.DataFrame(weights, index=[0])
     weights = pd.melt(weights, var_name="asset", value_name="port_target_vol")
     return weights
@@ -485,10 +539,20 @@ def port_target_return(
         log_returns=False,
     )
 
-    ef = EfficientFrontier(mu, S, weight_bounds=(weight_min, weight_max))
+    # Check if constraints are feasible
+    n_assets = len(S)
+    if weight_min is not None and n_assets * weight_min > 1.0:
+        ef = EfficientFrontier(mu, S, weight_bounds=(0, weight_max))
+    else:
+        ef = EfficientFrontier(mu, S, weight_bounds=(weight_min, weight_max))
+
     ef.add_objective(objective_functions.L2_reg)
     ef.efficient_return(target_return=target_return, market_neutral=False)
     weights = ef.clean_weights()
+
+    # Apply weight constraints post-optimization if needed
+    weights = _enforce_weight_constraints(weights, weight_min, n_assets)
+
     weights = pd.DataFrame(weights, index=[0])
     weights = pd.melt(weights, var_name="asset", value_name="port_target_returns")
     return weights
@@ -546,9 +610,19 @@ def port_max_sharpe(
         log_returns=False,
     )
 
-    ef = EfficientFrontier(mu, S, weight_bounds=(weight_min, weight_max))
+    # Check if constraints are feasible
+    n_assets = len(S)
+    if weight_min is not None and n_assets * weight_min > 1.0:
+        ef = EfficientFrontier(mu, S, weight_bounds=(0, weight_max))
+    else:
+        ef = EfficientFrontier(mu, S, weight_bounds=(weight_min, weight_max))
+
     ef.max_sharpe()
     weights = ef.clean_weights()
+
+    # Apply weight constraints post-optimization if needed
+    weights = _enforce_weight_constraints(weights, weight_min, n_assets)
+
     weights = pd.DataFrame(weights, index=[0])
     weights = pd.melt(weights, var_name="asset", value_name="port_max_Sharpe")
     weights = weights.set_index("asset")
@@ -607,7 +681,12 @@ def port_CVAR(
         log_returns=False,
     )
 
-    ec = EfficientCVaR(mu, returns_training, beta=confidence_interval, weight_bounds=(weight_min, weight_max))
+    # Check if constraints are feasible
+    n_assets = len(returns_training.columns)
+    if weight_min is not None and n_assets * weight_min > 1.0:
+        ec = EfficientCVaR(mu, returns_training, beta=confidence_interval, weight_bounds=(0, weight_max))
+    else:
+        ec = EfficientCVaR(mu, returns_training, beta=confidence_interval, weight_bounds=(weight_min, weight_max))
 
     if target_CVAR is None:
         ec.min_cvar()
@@ -615,6 +694,10 @@ def port_CVAR(
         ec.efficient_risk(target_cvar=target_CVAR)
 
     weights = ec.clean_weights()
+
+    # Apply weight constraints post-optimization if needed
+    weights = _enforce_weight_constraints(weights, weight_min, n_assets)
+
     weights = pd.DataFrame(weights, index=[0])
     weights = pd.melt(weights, var_name="asset", value_name="port_target_CVAR")
     weights = weights.set_index("asset")
