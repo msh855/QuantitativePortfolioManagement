@@ -34,7 +34,6 @@
       "Bash(.venv/Scripts/python.exe -m pytest tests/test_myData.py -m \"unit and not slow and not data_fetch and not gpu\" -q)",
       "Bash(.venv/Scripts/python.exe -m pytest:*)",
       "Bash(.venv/Scripts/python.exe -c:*)",
-      "Bash(git push:*)",
       "Bash(git ls-tree:*)"
     ]
   }
