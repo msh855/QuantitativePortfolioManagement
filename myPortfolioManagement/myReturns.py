@@ -13,10 +13,6 @@ import quantstats_lumi as qs
 from empyrical.stats import aggregate_returns
 from pypfopt.expected_returns import capm_return, ema_historical_return, mean_historical_return, returns_from_prices
 
-# TODO
-# This part here has a function the 'get_stock_returns` that I dropped
-# from myPortfolioManagement.myData import get_stock_returns
-
 
 # calculate portfolio returns
 def calculate_portfolio_returns(
@@ -358,38 +354,3 @@ def get_benchmark_returns(choose_bench: str or list = None) -> pd.DataFrame:
     ret_bench = pd.concat(ret_bench, axis=1)
 
     return ret_bench
-
-
-#
-# def get_multi_asset_returns() -> pd.DataFrame:
-#     # - EEM  # iShares Emerging Markets - Emering Markets
-#     # - VNQ  # Vangaurd Real Estate  - Real Estate
-#     # - MDY  # SPDR S&P MIDCAP 400 ETF Trust (MDY) - mid cap
-#     # - SLY  # SPDR S&P 600 Small Cap ETF (SLY) - small cap
-#     # - SPY  # S&P 500   - large cap
-#     # - EFA  # International Stocks iShares MSCI EAFE ETF (EFA)
-#     # - TIP  # iShares TIPS Bond ETF (TIP) - TIPS
-#     # - AGG  # iShares Core U.S. Aggregate Bond ETF (AGG) - Bonds
-#     # - DJP  # iPath Bloomberg Commodity Index Total Return(SM) ETN (DJP) - Commodities
-#     # - BIL  # SPDR Bloomberg Barclays 1-3 Month T-Bill ETF (BIL)         - Cash
-#
-#     multi_asset_tickers = ['EEM',
-#                            'VNQ', 'MDY', 'SLY',
-#                            'SPY', 'EFA',
-#                            'TIP',
-#                            'AGG',
-#                            'DJP', 'BIL']
-#
-#     df_multi_asset = get_stock_returns(multi_asset_tickers)
-#
-#     df_multi_asset = df_multi_asset.dropna()
-#
-#     # naive or equal weight portfolio allocation
-#     from myPortfolioManagement.myPortfolioOptimisation import equal_weight_portfolio
-#     df_naive = equal_weight_portfolio(df_multi_asset)
-#
-#     port_returns = calculate_portfolio_returns(df_multi_asset,
-#                                                myassets_list=multi_asset_tickers,
-#                                                myweights_list=df_naive.port_naive.to_list(),
-#                                                portfolio_name='port_multi_asset')
-#     return port_returns

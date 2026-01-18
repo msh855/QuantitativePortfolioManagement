@@ -830,21 +830,6 @@ def generate_HRP_portfolios(returns=None, weight_max=None, weight_min=None, rf=0
 
     objects = itertools.product(models, covariances, codependences, risk_measures, linkages)
 
-    # ray.shutdown()
-    # ray.init(ignore_reinit_error=True,
-    #          num_cpus=num_cpus)
-    # portfolios = ray.get([HRP_ray.remote(model = obj[0],
-    #                                         returns_training = returns,
-    #                                         covariance=obj[1],
-    #                                         codependence =obj[2],
-    #                                         rm=obj[3],
-    #                                         linkage = obj[4],
-    #                                         rf = rf,
-    #                                         weight_max = weight_max,
-    #                                         weight_min = weight_min)
-    #                      for obj in objects])
-    # ray.shutdown()
-
     portfolios = []
     for obj in objects:
         try:
@@ -860,7 +845,7 @@ def generate_HRP_portfolios(returns=None, weight_max=None, weight_min=None, rf=0
                 weight_min=weight_min,
             )
             portfolios.append(portf_temp)
-        except:
+        except Exception:
             continue
 
     portfolios = pd.concat(portfolios, axis=1)
@@ -873,57 +858,6 @@ def generate_HRP_portfolios(returns=None, weight_max=None, weight_min=None, rf=0
     portfolios.columns = names
 
     return portfolios
-
-
-# def get_portfolios(returns, training_start_date=None,
-#                      training_end_date=None,
-#                      weight_max = [], weight_min = [], rf = 0.02):
-#     """
-
-
-#     Args:
-#         returns (TYPE): DESCRIPTION.
-#         training_start_date (TYPE, optional): DESCRIPTION. Defaults to None.
-#         training_end_date (TYPE, optional): DESCRIPTION. Defaults to None.
-#         weight_max (TYPE, optional): DESCRIPTION. Defaults to [].
-#         weight_min (TYPE, optional): DESCRIPTION. Defaults to [].
-#         rf (TYPE, optional): DESCRIPTION. Defaults to 0.02.
-
-#     Returns:
-#         df_all_weights (TYPE): DESCRIPTION.
-
-#     """
-
-#     # training period for portfolio optimisation
-
-#     if (training_start_date==None) & (training_end_date!=None):
-#         ret_training = returns[returns.index<=training_end_date]
-#     else:
-#         ret_training = returns[(returns.index>=training_start_date) &
-#                                (returns.index<=training_end_date)]
-
-#     # naive or equal weight portfolio allocation
-#     df_naive = equal_weight_portfolio(ret_training)
-
-#     # inverse volatility
-#     df_inverse_vol = inverse_vol_portfolio(ret_training, limit = weight_max)
-
-#     # Risk Parity
-#     df_rp = generate_rp_portfolios(ret_training.fillna(0), limit = weight_max, rf = rf)
-
-#     # HRP portfolios
-#     df_HRP_portfolios = generate_HRP_portfolios(returns_training = ret_training.fillna(0),
-#                             weight_max = weight_max,
-#                             weight_min = weight_min,
-#                             rf = rf)
-
-#     df_all_weights = pd.concat([df_inverse_vol, df_naive,
-#                                 df_HRP_portfolios, df_rp],axis = 1)
-
-#     df_all_weights = df_all_weights.dropna(axis = 1, how ='any')
-
-
-#     return df_all_weights
 
 
 def make_standard_portfolios(
@@ -1001,7 +935,7 @@ def make_standard_portfolios(
     )
 
     # target returns_training
-    if target_return != None:
+    if target_return is not None:
         port_target_returns_w = port_target_return(
             returns_training, target_return=target_return, weight_min=weight_min, weight_max=weight_max
         )
@@ -1020,7 +954,7 @@ def make_standard_portfolios(
         )
 
     # target volatility
-    if target_volatility != None:
+    if target_volatility is not None:
         port_target_vol_w = port_target_volatility(returns_training, target_volatility=target_volatility)
 
         port_target_vol_w = port_target_vol_w.set_index("asset")
@@ -1068,20 +1002,20 @@ def make_standard_portfolios(
     )
 
     # collect
-    if target_return != None and target_volatility != None:
+    if target_return is not None and target_volatility is not None:
         frame_add = {"port_Max_Returns": portfolio_tr, "port_targ_vol": portfolio_tv}
 
         frame.update(frame_add)
 
         df_weights_all = pd.concat([df_weights_all, weight_target_returns, weight_target_vol], axis=1)
 
-    elif target_return != None and target_volatility == None:
+    elif target_return is not None and target_volatility is None:
         frame_add = {"port_Max_Returns": portfolio_tr}
         frame.update(frame_add)
 
         df_weights_all = pd.concat([df_weights_all, weight_target_returns], axis=1)
 
-    elif target_return == None and target_volatility != None:
+    elif target_return is None and target_volatility is not None:
         frame_add = {"port_Targ_Vol": portfolio_tv}
         frame.update(frame_add)
 

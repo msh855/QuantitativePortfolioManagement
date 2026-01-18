@@ -115,7 +115,7 @@ def bootstrap_stats_vectorized(
                     sample_metrics[metric_name] = metric_func(returns_i, bench_i)
                 else:
                     sample_metrics[metric_name] = metric_func(returns_i)
-            except:
+            except Exception:
                 sample_metrics[metric_name] = np.nan
 
         return sample_metrics
@@ -832,111 +832,6 @@ def tear_sheet_pyfolio(returns=None, returns_benchmark=None, **kwargs):
     pf.create_returns_tear_sheet(returns=ret, benchmark_rets=bench, **kwargs)
 
     return
-
-
-#
-#
-# def backtest_report(returns: pd.DataFrame,
-#                     benchmark: pd.DataFrame = None,
-#                     out_of_sample_date: str = None,
-#                     n_sim: int = 100,
-#                     rf=0.0, **kwargs):
-#     print('[Performance Metrics]\n')
-#     # metrics
-#     df_metrics = metrics(returns=returns, benchmark=benchmark, rf=rf, **kwargs)
-#     df_metrics
-#     # # change name
-#     # Risk-Free Rate = Risk-Free Rate (%)
-#     # Cumulative Return*100
-#     # CAGR﹪ * 100
-#
-#     iDisplay(df_metrics)
-#
-#     if not isinstance(benchmark, type(None)):
-#         print('Bull and Bear Market correlations')
-#         iDisplay(alpha_beta_table(returns, benchmark,
-#                                   rf=rf, **kwargs))
-#
-#     print('Monte Carlo Simulations')
-#     bootstrap_portfolio_performance_stats = bootstrap_portfolio_performance(returns=returns,
-#                                                                             returns_benchmark=benchmark,
-#                                                                             periods=252,
-#                                                                             rf=rf,
-#                                                                             out_of_sample_date=out_of_sample_date,
-#                                                                             n_sim=n_sim)
-#     if out_of_sample_date:
-#
-#         cols = bootstrap_portfolio_performance_stats[2].columns
-#         df_temp = bootstrap_portfolio_performance_stats[2]
-#
-#         # get in- and out- sample columns
-#         cols_in_sample = cols[cols.str.contains('in_sample', regex=False)]
-#         cols_out_sample = cols[cols.str.contains('out_sample', regex=False)]
-#
-#         # col_full_sample = list(set(cols) - set(cols_in_sample) - set(cols_out_sample))
-#
-#         # stats for in- and out- sample
-#         df_out_of_sample = df_temp[cols_out_sample]
-#         df_in_sample = df_temp[cols_in_sample]
-#
-#         df_out_of_sample.columns = df_out_of_sample.columns.str.replace("_out_sample", "")
-#         df_in_sample.columns = df_in_sample.columns.str.replace("_in_sample", "")
-#
-#         # columns of either in- or out- of sample df should now be the same
-#         # with the full sample
-#         df_full_sample = df_temp[df_in_sample.columns]
-#
-#         # add caption
-#         df1 = df_in_sample.transpose().style.set_table_attributes("style='display:inline'").set_caption('In-Sample')
-#         df2 = df_out_of_sample.transpose().style.set_table_attributes("style='display:inline'").set_caption(
-#             'Out Of Sample')
-#         df3 = df_full_sample.transpose().style.set_table_attributes("style='display:inline'").set_caption('Full Sample')
-#
-#         iDisplay(df1)
-#         iDisplay(df2)
-#         iDisplay(df3)
-#
-#     else:
-#
-#         iDisplay(bootstrap_portfolio_performance_stats[2].transpose())
-#
-#     # performance stats according to ffn
-#
-#     # rets_dummy = returns.copy()
-#     # if isinstance(benchmark, type(None)) == False:
-#     #     rets_dummy = pd.concat([returns, benchmark], axis = 1)
-#
-#     # iDisplay(performance_overview(rets_dummy).transpose())
-#
-#     # price_index = ffn.core.to_price_index(returns, start=100)
-#     # perf = price_index.calc_stats()
-#     # perf[0].display_monthly_returns()
-#
-#     # Monthly Returns
-#     print("--------------------------------------------")
-#     print(" Monthly Returns (%) ")
-#
-#     # produce fan chart
-#     if out_of_sample_date is None:
-#         out_of_sample_date = '2020-01-01'
-#
-#     fan_chart(returns=returns,
-#               weight_period=None,
-#               out_of_sample_date=out_of_sample_date,
-#               n_sample=n_sim,
-#               chart_title='Cumulative Returns')
-#
-#     # Monthly Returns
-#     print("--------------------------------------------")
-#     print(" [Monthly Returns] \n ")
-#
-#     iDisplay(monthly_heatmap(returns.squeeze(), figsize=(8, 16),
-#                              cbar=True, eoy=True))
-#
-#     # df_monthly_returns = qs.stats.monthly_returns(returns)
-#     # df_monthly_returns.style.background_gradient(cmap='Blues' , cbar = True)
-#
-#     return
 
 
 def performance(signal: pd.Series = None, returns: pd.Series = None, bps: float = 2e-4):

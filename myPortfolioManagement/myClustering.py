@@ -114,12 +114,7 @@ def kMeansClusterSeries(df: pd.DataFrame, method="ward", metric="euclidean", tit
     # Transformed the arrays of scaled values into a DataFrame
     X_scaled = pd.DataFrame(X_scaled, columns=X.columns, index=X.index)
 
-    # TODO: Optimise this function based on standard clustering See if you can merge with PyCaret or Other low code ML
-
     hier_ward = linkage(X_scaled, method=method, metric=metric)
-    # hier_comp = linkage(X_scaled, method='complete', metric='euclidean')
-    # hier_average = linkage(X_scaled, method='average', metric='euclidean')
-    # hier_ward = linkage(X_scaled, method='ward', metric='euclidean')
 
     plt.figure(figsize=(10, 8))
     plt.title(title, fontsize=14)

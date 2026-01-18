@@ -48,7 +48,7 @@ def data_overview(
 
     df_overview = df
 
-    if type(df_overview.index) == pd.DatetimeIndex:
+    if isinstance(df_overview.index, pd.DatetimeIndex):
         df_overview = df_overview.reset_index()
 
     df_overview[my_date_col_name] = pd.to_datetime(df_overview[my_date_col_name], format="%Y/%m/%d")
@@ -225,28 +225,6 @@ def check_date_index(df):
     """
     if not isinstance(df.index, pd.DatetimeIndex):
         raise ValueError("Index is not a date index")
-
-
-#
-# def _helper_get_stock_info(yahoo_tickers: list = None, data_type: str = 'overview') -> pd.DataFrame:
-#     """
-#
-#     :param yahoo_tickers:
-#     :param data_type:
-#     :return:
-#     """
-#     if data_type == 'all':
-#         funs = openbb.stocks.ca.screener
-#         datatypes = ['overview', 'valuation', 'financial', 'ownership', 'performance', 'technical']
-#         df_list = [funs(similar=yahoo_tickers, data_type=datatype) for datatype in datatypes]
-#         df = pd.concat(df_list, axis=1)
-#         df = ffn.drop_duplicate_cols(df)
-#     else:
-#         df = openbb.stocks.ca.screener(similar=yahoo_tickers, data_type=data_type)
-#
-#     df.set_index('Ticker', inplace=True)
-#     df = _fix_missing(df)
-#     return df
 
 
 def _fix_missing(df):

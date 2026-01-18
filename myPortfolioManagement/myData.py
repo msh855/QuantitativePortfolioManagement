@@ -13,10 +13,6 @@ except ModuleNotFoundError:  # optional dependency
 from myPortfolioManagement.myUtils import _load_stock, _load_fx, _add_stock_info
 
 
-# from openbb import obb
-# obb.user.credentials.fmp_api_key = 'eb50221eaef20292fe4b57f675be8b23'
-
-
 def func_adj_fx(prices: pd.DataFrame, yahoo_tickers: list, base_currency: str = "GBP"):
     col_order_original = prices.columns
     names = "longName"

@@ -45,7 +45,7 @@ def cagr(df_prices: pd.DataFrame or pd.Series):
     if isinstance(df_prices, pd.Series):
         return ffn.core.calc_cagr(df_prices.dropna())
     else:
-        if isinstance(df_prices.index, pd.DatetimeIndex) == False:
+        if not isinstance(df_prices.index, pd.DatetimeIndex):
             raise ValueError("Index is not a date")
         cagr_list = []
         for series in df_prices.columns:
@@ -58,7 +58,7 @@ def cagr(df_prices: pd.DataFrame or pd.Series):
 
 def drawdown_details(prices: pd.Series, top_drawdowns: int = 5):
     prices = pd.Series(prices)
-    if isinstance(prices.index, pd.DatetimeIndex) == False:
+    if not isinstance(prices.index, pd.DatetimeIndex):
         raise ValueError("Index is not a date")
     # calculate drawdown details
     drawdown_details = qs.stats.drawdown_details(qs.stats.to_drawdown_series(prices.pct_change()))
@@ -125,32 +125,28 @@ def alpha_beta_table(
     returns, returns_benchmark, my_date_col_name=None, my_assets_col_name="asset", rf=0.02, period="daily"
 ):
     """
-    # TODO Alpha's and Beta's are often calculated with OLS. For a more general Treatment
-          that account for outliers you can use humbert regressions
-
-    # TODO this whole function needs redesign
+    Calculate alpha and beta statistics for assets against a benchmark.
 
     Args:
-        returns (TYPE): DESCRIPTION.
-        returns_benchmark (TYPE): DESCRIPTION.
-        my_date_col_name (TYPE, optional): DESCRIPTION. Defaults to None.
-        my_assets_col_name (TYPE, optional): DESCRIPTION. Defaults to 'asset'.
-        rf (TYPE, optional): DESCRIPTION. Defaults to 0.02.
-        period (TYPE, optional): DESCRIPTION. Defaults to 'daily'.
+        returns: Asset returns DataFrame.
+        returns_benchmark: Benchmark returns.
+        my_date_col_name: Date column name (optional).
+        my_assets_col_name: Assets column name. Defaults to 'asset'.
+        rf: Risk-free rate. Defaults to 0.02.
+        period: Return period. Defaults to 'daily'.
 
     Returns:
-        TYPE: DESCRIPTION.
-
+        DataFrame with alpha and beta statistics.
     """
 
     # Create a balanced panel
     returns, returns_benchmark = balance_dates(returns, returns_benchmark)
 
     # sanity checks
-    if isinstance(returns, pd.DataFrame) == False:
+    if not isinstance(returns, pd.DataFrame):
         returns = pd.DataFrame(returns)
 
-    if isinstance(returns_benchmark, pd.DataFrame) == False:
+    if not isinstance(returns_benchmark, pd.DataFrame):
         returns_benchmark = pd.DataFrame(returns_benchmark)
 
     myassets = returns.columns.to_list()
@@ -180,10 +176,10 @@ def alpha_beta_bull(
 ):
     returns, returns_benchmark = balance_dates(returns, returns_benchmark)
 
-    if isinstance(returns, pd.DataFrame) == False:
+    if not isinstance(returns, pd.DataFrame):
         returns = pd.DataFrame(returns)
 
-    if isinstance(returns_benchmark, pd.DataFrame) == False:
+    if not isinstance(returns_benchmark, pd.DataFrame):
         returns_benchmark = pd.DataFrame(returns_benchmark)
 
     myassets = returns.columns.to_list()
@@ -208,10 +204,10 @@ def alpha_beta_bear(
 ):
     returns, returns_benchmark = balance_dates(returns, returns_benchmark)
 
-    if isinstance(returns, pd.DataFrame) == False:
+    if not isinstance(returns, pd.DataFrame):
         returns = pd.DataFrame(returns)
 
-    if isinstance(returns_benchmark, pd.DataFrame) == False:
+    if not isinstance(returns_benchmark, pd.DataFrame):
         returns_benchmark = pd.DataFrame(returns_benchmark)
 
     # myassets = returns.drop([benchmark], axis = 1).columns.to_list()
@@ -591,146 +587,3 @@ def get_main_stats(returns: pd.DataFrame = None, rf: float = 0.05, smart: bool =
         metrics = metrics.join(metric6)
 
     return metrics
-
-
-# def get_main_stats(returns: pd.DataFrame = None, rf: float = 0.05, smart: bool = True, add_age=False):
-#     check_date_index(returns)
-#
-#     functions = [qs.stats.comp,
-#                  qs.stats.cagr,
-#                  qs.stats.adjusted_sortino,
-#                  qs.stats.sharpe, qs.stats.calmar, qs.stats.max_drawdown]
-#
-#     metric0 = qs.stats.comp(returns)
-#     metric1 = qs.stats.cagr(returns, periods=365)
-#     metric2 = qs.stats.adjusted_sortino(returns, rf=rf, smart=smart)
-#     metric3 = qs.stats.sharpe(returns, rf=rf, smart=smart)
-#     metric4 = qs.stats.calmar(returns)
-#     metric5 = qs.stats.max_drawdown(returns)
-#
-#     col_order = [x.__name__ for x in functions]
-#
-#     metrics = pd.concat([metric0, metric1, metric2, metric3, metric4, metric5], axis=1)
-#     metrics.columns = col_order
-#     metrics = metrics.rename(columns={'comp': 'total_ret'})
-#
-#     if add_age:
-#         metric6 = pd.Series(returns.p_apply(age, raw=False, executor='processes'), name='age_sample')
-#         metrics = metrics.join(metric6)
-#
-#     return metrics
-
-#
-# def _fun_metrics(func, df, smart, rf):
-#     kwargs = {}
-#     if func in [qs.stats.adjusted_sortino, qs.stats.sharpe]:
-#         kwargs['smart'] = smart
-#         kwargs['rf'] = rf
-#     if func in [qs.stats.cagr]:
-#         kwargs['periods'] = 365
-#
-#     df_func_temp = df.p_apply(func, raw=False, executor='processes', **kwargs)
-#
-#     df_func_temp = pd.DataFrame(df_func_temp)
-#     df_func_temp.columns = ['value']
-#     df_func_temp['metric'] = func.__name__
-#     return df_func_temp
-
-
-#
-# @timebudget
-# def get_main_stats(df: pd.DataFrame = None, rf: float = 0.05, smart: bool = True, add_age=False) -> pd.DataFrame:
-#     '''
-#     @param df: a wide dataframe with either prices or returns of stocks
-#     @param rf: risk-free annualised
-#     @param smart:
-#
-#     an advantage of using qs.stats over ffn library is that the inputs can be either returns or prices as qs.stats
-#
-#     reference for performance metrics
-#
-#     # Gain to Pain Ratio (Daily Data)— 0.30 or higher
-#     # Gain to Pain Ratio (Monthly Data)— 2.0 or higher
-#     # Sortino Ratio/√2—2.0 or higher
-#     # ref: https://archive.is/2rwFW#selection-651.0-669.14
-#
-#     '''
-#
-#     num_cores = multiprocessing.cpu_count()
-#     n_cpu = int(max(num_cores - 1, 1))
-#
-#     check_date_index(df)
-#
-#     functions = [qs.stats.cagr,
-#                  qs.stats.adjusted_sortino,
-#                  qs.stats.sharpe, qs.stats.calmar, qs.stats.max_drawdown]
-#     if add_age:
-#         functions = functions + [age]
-#
-#     df_metrics_list = Parallel(n_jobs=n_cpu, prefer="threads")(
-#         delayed(_fun_metrics)(func=fctn, df=df, smart=smart, rf=rf) for fctn in tqdm(functions))
-#
-#     df_metrics = pd.concat(df_metrics_list)
-#     df_metrics = df_metrics.pivot(columns='metric', values='value')
-#
-#     col_order = [x.__name__ for x in functions]
-#     df_metrics = df_metrics[col_order]
-#
-#     if add_age:
-#         df_metrics = df_metrics.rename(columns={'age': 'age_sample'})
-#
-#     return df_metrics
-#
-# def get_main_stats(df: pd.DataFrame = None, rf: float = 0.05, smart: bool = True, add_age=False) -> pd.DataFrame:
-#     '''
-#     @param df: a wide dataframe with either prices or returns of stocks
-#     @param rf: risk-free annualised
-#     @param smart:
-#     an advantage of using qs.stats over ffn library is that the inputs can be either returns or prices as qs.stats
-#     reference for performance metrics
-#     # Gain to Pain Ratio (Daily Data)— 0.30 or higher
-#     # Gain to Pain Ratio (Monthly Data)— 2.0 or higher
-#     # Sortino Ratio/√2—2.0 or higher
-#     # ref: https://archive.is/2rwFW#selection-651.0-669.14
-#     '''
-#
-#     num_cores = multiprocessing.cpu_count()
-#     n_cpu = int(max(num_cores - 1, 1))
-#
-#     from parallel_pandas import ParallelPandas
-#
-#     ParallelPandas.initialize(n_cpu=n_cpu, disable_pr_bar=False)
-#
-#     check_date_index(df)
-#
-#     functions = [qs.stats.cagr,
-#                  qs.stats.adjusted_sortino,
-#                  qs.stats.sharpe, qs.stats.calmar, qs.stats.max_drawdown]
-#     if add_age:
-#         functions = functions + [age]
-#
-#     df_metrics_list = []
-#     for func in functions:
-#         kwargs = {}
-#         if func in [qs.stats.adjusted_sortino, qs.stats.sharpe]:
-#             kwargs['smart'] = smart
-#             kwargs['rf'] = rf
-#         if func in [qs.stats.cagr]:
-#             kwargs['periods'] = 365
-#
-#         df_func_temp = df.p_apply(func, raw=False, executor='processes', **kwargs)
-#         df_func_temp = pd.DataFrame(df_func_temp)
-#         df_func_temp.columns = ['value']
-#         df_func_temp['metric'] = func.__name__
-#         df_metrics_list.append(df_func_temp)
-#
-#     df_metrics = pd.concat(df_metrics_list)
-#     df_metrics = df_metrics.pivot(columns='metric', values='value')
-#
-#     col_order = [x.__name__ for x in functions]
-#     df_metrics = df_metrics[col_order]
-#
-#     if add_age:
-#         df_metrics = df_metrics.rename(columns={'age': 'age_sample'})
-#
-#     return df_metrics
