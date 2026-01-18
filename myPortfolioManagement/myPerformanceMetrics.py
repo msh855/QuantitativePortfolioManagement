@@ -293,10 +293,11 @@ def beta_Co_Moments(returns, returns_benchmark, p1=1, p2=2):
                           You need too pass pandas series"""
         )
 
+    import warnings
     skewness = skew(returns_benchmark)
 
     if skewness > -0.05 and skewness < 0.05:
-        raise Warning(
+        warnings.warn(
             """skewness is close to zero.
                            The classical definition of the coskewness statistic
                            is not applicable and one should normalize using
@@ -446,7 +447,7 @@ def consistency_rank(
     price_col_name=None,
 ):
     if sum(my_period_weights) > 1 or sum(my_period_weights) < 1:
-        raise "weights inconsistent. Must add up to 1"
+        raise ValueError("weights inconsistent. Must add up to 1")
 
     # loop over different horizons
     df_const = []

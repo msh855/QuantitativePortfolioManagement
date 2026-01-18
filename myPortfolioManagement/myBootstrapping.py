@@ -185,7 +185,7 @@ class GPUBootstrap:
         return df
 
 
-def BootstrapIDD(series: pd.Series = None, n_samples: int = 1000, seed: int = None, use_gpu: bool = None):
+def BootstrapIID(series: pd.Series = None, n_samples: int = 1000, seed: int = None, use_gpu: bool = None):
     """
     IID Bootstrap with automatic GPU detection
 
@@ -222,6 +222,10 @@ def BootstrapIDD(series: pd.Series = None, n_samples: int = 1000, seed: int = No
     # cleaning
     df = _helper(df, series, n_samples)
     return df
+
+
+# Backwards compatibility alias (was misspelled as BootstrapIDD)
+BootstrapIDD = BootstrapIID
 
 
 def BootstrapStationary(
@@ -421,7 +425,7 @@ def bootstrappingTS(
     if isinstance(series, pd.DataFrame):
         series = pd.Series(series.iloc[:, 0], name=series.columns[0])
 
-    func_map = {"nbb": BootstrapIDD, "sb": BootstrapStationary, "mbb": BootstrapMovingBlock, "cbb": BootstrapCircular}
+    func_map = {"nbb": BootstrapIID, "sb": BootstrapStationary, "mbb": BootstrapMovingBlock, "cbb": BootstrapCircular}
 
     BootstrapFunc = func_map.get(bootstrap_type)
 
@@ -429,7 +433,7 @@ def bootstrappingTS(
         raise ValueError(f"Invalid bootstrap type: {bootstrap_type}")
 
     kwargs = {}
-    if BootstrapFunc is not BootstrapIDD:
+    if BootstrapFunc is not BootstrapIID:
         kwargs["block_size"] = block_size
         kwargs["optimal_block"] = optimal_block
 

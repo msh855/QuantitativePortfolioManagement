@@ -21,7 +21,7 @@ from numpy import ndarray
 from timebudget import timebudget
 
 from myPortfolioManagement.myPlots import *
-from myPortfolioManagement.myUtils import balance_dates_robust
+from myPortfolioManagement.myUtils import balance_dates_robust, balance_dates
 
 # Try to import CuPy for GPU acceleration
 try:

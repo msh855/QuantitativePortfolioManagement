@@ -859,10 +859,9 @@ def generate_HRP_portfolios(returns=None, weight_max=None, weight_min=None, rf=0
                 weight_max=weight_max,
                 weight_min=weight_min,
             )
+            portfolios.append(portf_temp)
         except:
-            next
-
-        portfolios.append(portf_temp)
+            continue
 
     portfolios = pd.concat(portfolios, axis=1)
 
@@ -992,7 +991,7 @@ def make_standard_portfolios(
     # min vol portfolio
     port_min_vol_w = port_GMV(returns_training, S=None, weight_min=weight_min, weight_max=weight_max)
 
-    port_min_vol_w = port_min_vol_w.set_index("asset")
+    # port_GMV already returns DataFrame with 'asset' as index
     weight_min_vol = port_min_vol_w
 
     port_min_vol_w = port_min_vol_w.iloc[:, 0].to_dict()
@@ -1039,7 +1038,7 @@ def make_standard_portfolios(
     # max sharpe
     max_sharpe = port_max_sharpe(returns_training, weight_min=weight_min, weight_max=weight_max)
 
-    max_sharpe = max_sharpe.set_index("asset")
+    # port_max_sharpe already returns DataFrame with 'asset' as index
     weight_max_sharpe = max_sharpe
     max_sharpe = max_sharpe.iloc[:, 0].to_dict()
     portfolio_max_sharpe = qs.utils.make_index(
@@ -1048,7 +1047,7 @@ def make_standard_portfolios(
 
     # CVar
     cvar = port_CVAR(returns_training, weight_min=weight_min, weight_max=weight_max)
-    cvar = cvar.set_index("asset")
+    # port_CVAR already returns DataFrame with 'asset' as index
     weight_cvar = cvar
     cvar_weights = cvar.iloc[:, 0].to_dict()
     portfolio_cvar = qs.utils.make_index(

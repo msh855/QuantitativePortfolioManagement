@@ -250,9 +250,9 @@ def check_date_index(df):
 
 
 def _fix_missing(df):
-    df["Sector"].fillna("Unclassified", inplace=True)
-    df["Country"].fillna("Unclassified", inplace=True)
-    df["Industry"].fillna("Unclassified", inplace=True)
+    df["Sector"] = df["Sector"].fillna("Unclassified")
+    df["Country"] = df["Country"].fillna("Unclassified")
+    df["Industry"] = df["Industry"].fillna("Unclassified")
     return df
 
 

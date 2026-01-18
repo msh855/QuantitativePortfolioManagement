@@ -2,7 +2,6 @@ import multiprocessing as mp
 
 import pandas as pd
 import yfinance as yf
-from finvizfinance.screener.overview import Overview
 from joblib import Parallel, delayed
 from timebudget import timebudget
 from tqdm import tqdm
@@ -12,7 +11,6 @@ try:
 except ModuleNotFoundError:  # optional dependency
     Overview = None
 from myPortfolioManagement.myUtils import _load_stock, _load_fx, _add_stock_info
-import yfinance as yf
 
 
 # from openbb import obb

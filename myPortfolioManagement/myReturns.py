@@ -81,8 +81,13 @@ def create_portfolios(returns: pd.DataFrame, weights: pd.DataFrame) -> pd.DataFr
     df_portfolio_returns = pd.DataFrame([])
 
     for portfolio_name in list(weights.columns):
+        # Create a DataFrame with asset names and weights for this portfolio
+        weight_df = pd.DataFrame({
+            'asset': weights.index.to_list(),
+            portfolio_name: weights[portfolio_name].to_list()
+        }).set_index('asset')
         temp = calculate_portfolio_returns(
-            returns, weights.index.to_list(), weights[portfolio_name].to_list(), portfolio_name=portfolio_name
+            returns, weight_df, portfolio_name=portfolio_name
         )
         df_portfolio_returns = pd.concat([df_portfolio_returns, temp], axis=1)
 
@@ -114,7 +119,7 @@ def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
             new_dates[-1] = last_date.strftime("%Y-%m-%d")
             ret["Date"] = new_dates
             ret = ret.set_index("Date")
-            ret.index = pd.to_datetime(ret.index, infer_datetime_format=True)
+            ret.index = pd.to_datetime(ret.index)
 
         elif convert_to == "monthly":
             new_dates = pd.date_range(first_date, periods=len(ret), freq="m")
@@ -122,7 +127,7 @@ def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
             new_dates[-1] = last_date.strftime("%Y-%m-%d")
             ret["Date"] = new_dates
             ret = ret.set_index("Date")
-            ret.index = pd.to_datetime(ret.index, infer_datetime_format=True)
+            ret.index = pd.to_datetime(ret.index)
 
         elif convert_to == "quarterly":
             new_dates = pd.date_range(first_date, periods=len(ret), freq="q")
@@ -130,7 +135,7 @@ def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
             new_dates[-1] = last_date.strftime("%Y-%m-%d")
             ret["Date"] = new_dates
             ret = ret.set_index("Date")
-            ret.index = pd.to_datetime(ret.index, infer_datetime_format=True)
+            ret.index = pd.to_datetime(ret.index)
 
         elif convert_to == "yearly":
             new_dates = pd.date_range(first_date, periods=len(ret), freq="y")
@@ -138,9 +143,9 @@ def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
             new_dates[-1] = last_date.strftime("%Y-%m-%d")
             ret["Date"] = new_dates
             ret = ret.set_index("Date")
-            ret.index = pd.to_datetime(ret.index, infer_datetime_format=True)
+            ret.index = pd.to_datetime(ret.index)
         else:
-            raise "This frequency conversion is not supported"
+            raise ValueError("This frequency conversion is not supported")
 
     return ret
 
