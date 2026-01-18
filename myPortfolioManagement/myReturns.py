@@ -13,10 +13,6 @@ import quantstats_lumi as qs
 from empyrical.stats import aggregate_returns
 from pypfopt.expected_returns import capm_return, ema_historical_return, mean_historical_return, returns_from_prices
 
-# TODO
-# This part here has a function the 'get_stock_returns` that I dropped
-# from myPortfolioManagement.myData import get_stock_returns
-
 
 # calculate portfolio returns
 def calculate_portfolio_returns(
@@ -81,8 +77,13 @@ def create_portfolios(returns: pd.DataFrame, weights: pd.DataFrame) -> pd.DataFr
     df_portfolio_returns = pd.DataFrame([])
 
     for portfolio_name in list(weights.columns):
+        # Create a DataFrame with asset names and weights for this portfolio
+        weight_df = pd.DataFrame({
+            'asset': weights.index.to_list(),
+            portfolio_name: weights[portfolio_name].to_list()
+        }).set_index('asset')
         temp = calculate_portfolio_returns(
-            returns, weights.index.to_list(), weights[portfolio_name].to_list(), portfolio_name=portfolio_name
+            returns, weight_df, portfolio_name=portfolio_name
         )
         df_portfolio_returns = pd.concat([df_portfolio_returns, temp], axis=1)
 
@@ -114,7 +115,7 @@ def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
             new_dates[-1] = last_date.strftime("%Y-%m-%d")
             ret["Date"] = new_dates
             ret = ret.set_index("Date")
-            ret.index = pd.to_datetime(ret.index, infer_datetime_format=True)
+            ret.index = pd.to_datetime(ret.index)
 
         elif convert_to == "monthly":
             new_dates = pd.date_range(first_date, periods=len(ret), freq="m")
@@ -122,7 +123,7 @@ def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
             new_dates[-1] = last_date.strftime("%Y-%m-%d")
             ret["Date"] = new_dates
             ret = ret.set_index("Date")
-            ret.index = pd.to_datetime(ret.index, infer_datetime_format=True)
+            ret.index = pd.to_datetime(ret.index)
 
         elif convert_to == "quarterly":
             new_dates = pd.date_range(first_date, periods=len(ret), freq="q")
@@ -130,7 +131,7 @@ def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
             new_dates[-1] = last_date.strftime("%Y-%m-%d")
             ret["Date"] = new_dates
             ret = ret.set_index("Date")
-            ret.index = pd.to_datetime(ret.index, infer_datetime_format=True)
+            ret.index = pd.to_datetime(ret.index)
 
         elif convert_to == "yearly":
             new_dates = pd.date_range(first_date, periods=len(ret), freq="y")
@@ -138,9 +139,9 @@ def convert_returns_freq(ret: pd.DataFrame, convert_to: str) -> pd.DataFrame:
             new_dates[-1] = last_date.strftime("%Y-%m-%d")
             ret["Date"] = new_dates
             ret = ret.set_index("Date")
-            ret.index = pd.to_datetime(ret.index, infer_datetime_format=True)
+            ret.index = pd.to_datetime(ret.index)
         else:
-            raise "This frequency conversion is not supported"
+            raise ValueError("This frequency conversion is not supported")
 
     return ret
 
@@ -353,38 +354,3 @@ def get_benchmark_returns(choose_bench: str or list = None) -> pd.DataFrame:
     ret_bench = pd.concat(ret_bench, axis=1)
 
     return ret_bench
-
-
-#
-# def get_multi_asset_returns() -> pd.DataFrame:
-#     # - EEM  # iShares Emerging Markets - Emering Markets
-#     # - VNQ  # Vangaurd Real Estate  - Real Estate
-#     # - MDY  # SPDR S&P MIDCAP 400 ETF Trust (MDY) - mid cap
-#     # - SLY  # SPDR S&P 600 Small Cap ETF (SLY) - small cap
-#     # - SPY  # S&P 500   - large cap
-#     # - EFA  # International Stocks iShares MSCI EAFE ETF (EFA)
-#     # - TIP  # iShares TIPS Bond ETF (TIP) - TIPS
-#     # - AGG  # iShares Core U.S. Aggregate Bond ETF (AGG) - Bonds
-#     # - DJP  # iPath Bloomberg Commodity Index Total Return(SM) ETN (DJP) - Commodities
-#     # - BIL  # SPDR Bloomberg Barclays 1-3 Month T-Bill ETF (BIL)         - Cash
-#
-#     multi_asset_tickers = ['EEM',
-#                            'VNQ', 'MDY', 'SLY',
-#                            'SPY', 'EFA',
-#                            'TIP',
-#                            'AGG',
-#                            'DJP', 'BIL']
-#
-#     df_multi_asset = get_stock_returns(multi_asset_tickers)
-#
-#     df_multi_asset = df_multi_asset.dropna()
-#
-#     # naive or equal weight portfolio allocation
-#     from myPortfolioManagement.myPortfolioOptimisation import equal_weight_portfolio
-#     df_naive = equal_weight_portfolio(df_multi_asset)
-#
-#     port_returns = calculate_portfolio_returns(df_multi_asset,
-#                                                myassets_list=multi_asset_tickers,
-#                                                myweights_list=df_naive.port_naive.to_list(),
-#                                                portfolio_name='port_multi_asset')
-#     return port_returns
