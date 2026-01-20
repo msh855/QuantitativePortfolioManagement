@@ -11,6 +11,7 @@ yahoofinancials
 # Portfolio optimization
 riskfolio-lib>=6.0.0
 pyportfolioopt>=1.5.5
+skfolio>=0.15.0  # Schur Complementary Allocation, advanced clustering methods
 
 # Performance metrics
 quantstats-lumi>=0.3.0
