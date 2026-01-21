@@ -45,17 +45,15 @@ print(f"\nFetching data for: {TICKERS}")
 from myPortfolioManagement.myData import get_stock_prices
 from myPortfolioManagement.myReturns import calculate_returns
 
-prices = get_stock_prices(
+prices_long = get_stock_prices(
     yahoo_tickers=TICKERS,
     start_date=START_DATE,
     freq='daily',
-    wide_format=True,
+    wide_format=False,
 )
 
-# Ensure column names are clean strings (handle MultiIndex from yfinance)
-if isinstance(prices.columns, pd.MultiIndex):
-    prices.columns = prices.columns.get_level_values(-1)
-prices.columns = [str(c).strip() for c in prices.columns]
+# Pivot to wide format using ticker symbols as column names
+prices = prices_long.pivot_table(values='adjclose', index=prices_long.index, columns='yahooticker')
 
 # Calculate returns
 returns = calculate_returns(prices, log_returns=False).dropna()
