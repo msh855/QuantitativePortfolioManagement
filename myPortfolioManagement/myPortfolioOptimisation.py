@@ -15,6 +15,27 @@ import riskfolio as rp
 # for portfolio optimisation
 from pypfopt import EfficientCVaR, EfficientFrontier, objective_functions, risk_models
 
+# skfolio for Schur Complementary Allocation and advanced methods
+try:
+    import skfolio
+    from skfolio.optimization import (
+        SchurComplementary,
+        HierarchicalRiskParity as SKF_HRP,
+        HierarchicalEqualRiskContribution as SKF_HERC,
+        NestedClustersOptimization as SKF_NCO,
+        MeanRisk,
+        MaximumDiversification,
+        DistributionallyRobustCVaR,
+    )
+    from skfolio.prior import EmpiricalPrior
+    from skfolio.moments import LedoitWolf, ShrunkCovariance, EmpiricalCovariance
+    from skfolio.distance import PearsonDistance, KendallDistance, SpearmanDistance
+    from skfolio.cluster import HierarchicalClustering, LinkageMethod
+    from skfolio.preprocessing import prices_to_returns
+    SKFOLIO_AVAILABLE = True
+except ImportError:
+    SKFOLIO_AVAILABLE = False
+
 try:
     import ray
 
@@ -1047,3 +1068,411 @@ def risk_contributions(port_weights=None, returns=None, risk_measure="MV", plot=
     else:
         risk_cont = rp.Risk_Contribution(port_weights, cov=cov, returns=returns, rm=risk_measure)
         return np.round(risk_cont, 3)
+
+
+# =============================================================================
+# SKFOLIO INTEGRATION: Schur Complementary Allocation
+# =============================================================================
+
+def schur_complementary(
+    returns_training: pd.DataFrame,
+    gamma: float = 0.5,
+    covariance: str = "ledoit",
+    distance: str = "pearson",
+    linkage: str = "ward",
+    weight_min: float = 0.0,
+    weight_max: float = 1.0,
+    keep_monotonic: bool = True,
+    **kwargs
+) -> pd.DataFrame:
+    """
+    Schur Complementary Allocation - Unifying HRP and Minimum Variance.
+
+    This method uses Schur-complement-inspired augmentation of sub-covariance
+    matrices, revealing a link between Hierarchical Risk Parity (HRP) and
+    minimum-variance portfolios (MVP).
+
+    By tuning the regularization factor `gamma`, the method smoothly
+    interpolates from HRP (gamma=0) to MVP (gamma->1).
+
+    Based on Peter Cotton's 2024 paper: "Schur Complementary Allocation:
+    A Unification of Hierarchical Risk Parity and Minimum Variance Portfolios"
+
+    Parameters
+    ----------
+    returns_training : pd.DataFrame
+        DataFrame of asset returns with assets as columns and dates as index.
+
+    gamma : float, default=0.5
+        Regularization factor in [0, 1].
+        - gamma = 0: equivalent to HRP (no off-diagonal information)
+        - gamma -> 1: approaches minimum variance solution
+        Higher gamma uses more correlation information but requires better
+        conditioned covariance matrix.
+
+    covariance : str, default='ledoit'
+        Covariance estimation method:
+        - 'empirical': Historical covariance
+        - 'ledoit': Ledoit-Wolf shrinkage (recommended)
+        - 'shrunk': Basic shrinkage
+
+    distance : str, default='pearson'
+        Distance measure for hierarchical clustering:
+        - 'pearson': Pearson correlation distance
+        - 'spearman': Spearman rank correlation distance
+        - 'kendall': Kendall tau distance
+
+    linkage : str, default='ward'
+        Linkage method for hierarchical clustering:
+        - 'single', 'complete', 'average', 'ward', 'weighted', 'centroid', 'median'
+
+    weight_min : float, default=0.0
+        Minimum weight constraint for each asset.
+
+    weight_max : float, default=1.0
+        Maximum weight constraint for each asset.
+
+    keep_monotonic : bool, default=True
+        If True, ensures portfolio variance decreases monotonically with gamma.
+        This guarantees variance(Schur) <= variance(HRP).
+
+    **kwargs
+        Additional arguments passed to SchurComplementary.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with asset weights, index is asset names, column is 'port_weight'.
+
+    Raises
+    ------
+    ImportError
+        If skfolio is not installed.
+
+    Examples
+    --------
+    >>> # Basic usage
+    >>> weights = schur_complementary(returns, gamma=0.5)
+    >>>
+    >>> # More aggressive (closer to MVP)
+    >>> weights = schur_complementary(returns, gamma=0.8, covariance='ledoit')
+    >>>
+    >>> # Conservative (closer to HRP)
+    >>> weights = schur_complementary(returns, gamma=0.2)
+    """
+    if not SKFOLIO_AVAILABLE:
+        raise ImportError(
+            "skfolio is required for Schur Complementary Allocation. "
+            "Install it with: pip install skfolio"
+        )
+
+    if not isinstance(returns_training, pd.DataFrame):
+        raise ValueError("returns_training must be a pandas DataFrame")
+
+    # Map covariance estimator
+    cov_estimators = {
+        'empirical': EmpiricalCovariance(),
+        'ledoit': LedoitWolf(),
+        'shrunk': ShrunkCovariance(),
+    }
+    cov_est = cov_estimators.get(covariance.lower(), LedoitWolf())
+
+    # Map distance estimator
+    distance_estimators = {
+        'pearson': PearsonDistance(),
+        'spearman': SpearmanDistance(),
+        'kendall': KendallDistance(),
+    }
+    dist_est = distance_estimators.get(distance.lower(), PearsonDistance())
+
+    # Map linkage method
+    linkage_methods = {
+        'single': LinkageMethod.SINGLE,
+        'complete': LinkageMethod.COMPLETE,
+        'average': LinkageMethod.AVERAGE,
+        'ward': LinkageMethod.WARD,
+        'weighted': LinkageMethod.WEIGHTED,
+        'centroid': LinkageMethod.CENTROID,
+        'median': LinkageMethod.MEDIAN,
+    }
+    link_method = linkage_methods.get(linkage.lower(), LinkageMethod.WARD)
+
+    # Build the model
+    model = SchurComplementary(
+        gamma=gamma,
+        keep_monotonic=keep_monotonic,
+        prior_estimator=EmpiricalPrior(covariance_estimator=cov_est),
+        distance_estimator=dist_est,
+        hierarchical_clustering_estimator=HierarchicalClustering(linkage_method=link_method),
+        min_weights=weight_min,
+        max_weights=weight_max,
+        **kwargs
+    )
+
+    # Fit the model
+    model.fit(returns_training)
+
+    # Extract weights
+    weights = pd.DataFrame(
+        model.weights_,
+        index=returns_training.columns,
+        columns=['port_weight']
+    )
+    weights.index.name = 'asset'
+
+    return weights
+
+
+def conditional_covariance(
+    covariance_matrix: pd.DataFrame,
+    core_assets: list,
+    satellite_assets: list = None,
+) -> pd.DataFrame:
+    """
+    Compute the Schur complement (conditional covariance) of satellite assets
+    given core assets.
+
+    The Schur complement mathematically isolates what satellite assets contribute
+    CONDITIONAL on the core holdings, removing what is already explained by
+    correlations with the core.
+
+    For a covariance matrix partitioned as:
+        Σ = [Σ_CC    Σ_CS ]
+            [Σ_SC    Σ_SS ]
+
+    The Schur complement is:
+        S = Σ_SS - Σ_SC @ inv(Σ_CC) @ Σ_CS
+
+    This S represents the residual covariance of satellites after conditioning
+    on the core.
+
+    Parameters
+    ----------
+    covariance_matrix : pd.DataFrame
+        Full covariance matrix with asset names as index and columns.
+
+    core_assets : list
+        List of asset names that form the "core" holdings (e.g., equity funds).
+
+    satellite_assets : list, optional
+        List of asset names that are potential diversifiers. If None, uses all
+        non-core assets.
+
+    Returns
+    -------
+    pd.DataFrame
+        Conditional covariance matrix of satellite assets given core.
+
+    Examples
+    --------
+    >>> # Define core (equity) and satellite (diversifiers)
+    >>> core = ['SPY', 'QQQ', 'IWM']
+    >>> satellites = ['AGG', 'GLD', 'TIP', 'VNQ']
+    >>>
+    >>> # Get conditional covariance
+    >>> cond_cov = conditional_covariance(cov_matrix, core, satellites)
+    >>>
+    >>> # Assets with high conditional variance provide TRUE diversification
+    >>> # Assets with low conditional variance are redundant given the core
+    """
+    all_assets = covariance_matrix.index.tolist()
+
+    if satellite_assets is None:
+        satellite_assets = [a for a in all_assets if a not in core_assets]
+
+    # Validate assets exist
+    missing_core = [a for a in core_assets if a not in all_assets]
+    missing_sat = [a for a in satellite_assets if a not in all_assets]
+    if missing_core:
+        raise ValueError(f"Core assets not in covariance matrix: {missing_core}")
+    if missing_sat:
+        raise ValueError(f"Satellite assets not in covariance matrix: {missing_sat}")
+
+    # Extract blocks
+    Sigma_CC = covariance_matrix.loc[core_assets, core_assets].values
+    Sigma_SS = covariance_matrix.loc[satellite_assets, satellite_assets].values
+    Sigma_CS = covariance_matrix.loc[core_assets, satellite_assets].values
+    Sigma_SC = covariance_matrix.loc[satellite_assets, core_assets].values
+
+    # Compute Schur complement: S = Σ_SS - Σ_SC @ inv(Σ_CC) @ Σ_CS
+    try:
+        Sigma_CC_inv = np.linalg.inv(Sigma_CC)
+    except np.linalg.LinAlgError:
+        # Use pseudo-inverse if singular
+        Sigma_CC_inv = np.linalg.pinv(Sigma_CC)
+
+    schur_complement = Sigma_SS - Sigma_SC @ Sigma_CC_inv @ Sigma_CS
+
+    return pd.DataFrame(
+        schur_complement,
+        index=satellite_assets,
+        columns=satellite_assets
+    )
+
+
+def redundancy_analysis(
+    returns_training: pd.DataFrame,
+    core_assets: list,
+    satellite_assets: list = None,
+    threshold: float = 0.1,
+) -> pd.DataFrame:
+    """
+    Analyze which satellite assets provide TRUE diversification vs being
+    mathematically redundant given the core holdings.
+
+    Uses the Schur complement to measure the conditional variance of each
+    satellite asset after removing what is explained by correlations with
+    the core.
+
+    Parameters
+    ----------
+    returns_training : pd.DataFrame
+        DataFrame of asset returns.
+
+    core_assets : list
+        List of asset names forming the core holdings (e.g., equity exposure).
+
+    satellite_assets : list, optional
+        List of potential diversifier assets. If None, uses all non-core assets.
+
+    threshold : float, default=0.1
+        Variance retention threshold. Assets retaining less than this fraction
+        of their original variance (after conditioning on core) are flagged
+        as potentially redundant.
+
+    Returns
+    -------
+    pd.DataFrame
+        Analysis results with columns:
+        - 'unconditional_var': Original variance of the asset
+        - 'conditional_var': Variance after conditioning on core
+        - 'variance_retained': Fraction of variance retained (conditional/unconditional)
+        - 'is_redundant': Boolean flag if variance_retained < threshold
+        - 'diversification_value': Score indicating true diversification benefit
+
+    Examples
+    --------
+    >>> # Define your core equity holdings
+    >>> core = ['MSFT', 'NVDA', 'CRWD', 'V', 'JPM']
+    >>>
+    >>> # Analyze which diversifiers are truly independent
+    >>> analysis = redundancy_analysis(returns, core)
+    >>>
+    >>> # Show which assets are redundant
+    >>> print(analysis[analysis['is_redundant']])
+    >>>
+    >>> # Show best diversifiers (highest variance retained)
+    >>> print(analysis.sort_values('variance_retained', ascending=False))
+    """
+    all_assets = returns_training.columns.tolist()
+
+    if satellite_assets is None:
+        satellite_assets = [a for a in all_assets if a not in core_assets]
+
+    if not satellite_assets:
+        raise ValueError("No satellite assets to analyze. All assets are in core.")
+
+    # Compute covariance matrix
+    cov_matrix = returns_training.cov()
+
+    # Get conditional covariance
+    cond_cov = conditional_covariance(cov_matrix, core_assets, satellite_assets)
+
+    # Extract diagonal (variances)
+    unconditional_var = pd.Series(
+        np.diag(cov_matrix.loc[satellite_assets, satellite_assets].values),
+        index=satellite_assets
+    )
+    conditional_var = pd.Series(
+        np.diag(cond_cov.values),
+        index=satellite_assets
+    )
+
+    # Handle numerical issues (small negative values)
+    conditional_var = conditional_var.clip(lower=0)
+
+    # Compute variance retained ratio
+    variance_retained = conditional_var / unconditional_var
+    variance_retained = variance_retained.clip(lower=0, upper=1)
+
+    # Build result DataFrame
+    result = pd.DataFrame({
+        'unconditional_var': unconditional_var,
+        'conditional_var': conditional_var,
+        'variance_retained': variance_retained,
+        'is_redundant': variance_retained < threshold,
+        'diversification_value': variance_retained,  # Higher = better diversifier
+    })
+
+    result.index.name = 'asset'
+    result = result.sort_values('diversification_value', ascending=False)
+
+    return result
+
+
+def compare_schur_vs_hrp(
+    returns_training: pd.DataFrame,
+    gamma_values: list = None,
+    covariance: str = "ledoit",
+    weight_min: float = 0.0,
+    weight_max: float = 1.0,
+) -> pd.DataFrame:
+    """
+    Compare portfolio weights across different gamma values, showing the
+    transition from HRP (gamma=0) to MVP (gamma->1).
+
+    Parameters
+    ----------
+    returns_training : pd.DataFrame
+        DataFrame of asset returns.
+
+    gamma_values : list, optional
+        List of gamma values to compare. Default: [0, 0.25, 0.5, 0.75, 1.0]
+
+    covariance : str, default='ledoit'
+        Covariance estimation method.
+
+    weight_min : float, default=0.0
+        Minimum weight constraint.
+
+    weight_max : float, default=1.0
+        Maximum weight constraint.
+
+    Returns
+    -------
+    pd.DataFrame
+        Comparison of weights across gamma values. Columns are gamma values,
+        rows are assets.
+
+    Examples
+    --------
+    >>> comparison = compare_schur_vs_hrp(returns)
+    >>> print(comparison)
+    >>>
+    >>> # See how gold allocation changes from HRP to MVP
+    >>> print(comparison.loc['GLD'])
+    """
+    if not SKFOLIO_AVAILABLE:
+        raise ImportError("skfolio is required. Install with: pip install skfolio")
+
+    if gamma_values is None:
+        gamma_values = [0.0, 0.25, 0.5, 0.75, 1.0]
+
+    results = {}
+    for gamma in gamma_values:
+        weights = schur_complementary(
+            returns_training,
+            gamma=gamma,
+            covariance=covariance,
+            weight_min=weight_min,
+            weight_max=weight_max,
+        )
+        col_name = f"gamma={gamma}" if gamma < 1 else "gamma≈1 (MVP)"
+        if gamma == 0:
+            col_name = "gamma=0 (HRP)"
+        results[col_name] = weights['port_weight']
+
+    comparison = pd.DataFrame(results)
+    comparison.index.name = 'asset'
+
+    return comparison
