@@ -1284,9 +1284,17 @@ def conditional_covariance(
     missing_core = [a for a in core_assets if a not in all_assets]
     missing_sat = [a for a in satellite_assets if a not in all_assets]
     if missing_core:
-        raise ValueError(f"Core assets not in covariance matrix: {missing_core}")
+        raise ValueError(
+            f"Core assets not in covariance matrix: {missing_core}\n"
+            f"Available columns are: {all_assets}\n"
+            f"Hint: Check your DataFrame column names with: df.columns.tolist()"
+        )
     if missing_sat:
-        raise ValueError(f"Satellite assets not in covariance matrix: {missing_sat}")
+        raise ValueError(
+            f"Satellite assets not in covariance matrix: {missing_sat}\n"
+            f"Available columns are: {all_assets}\n"
+            f"Hint: Check your DataFrame column names with: df.columns.tolist()"
+        )
 
     # Extract blocks
     Sigma_CC = covariance_matrix.loc[core_assets, core_assets].values
