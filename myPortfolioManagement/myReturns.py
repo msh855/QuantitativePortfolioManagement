@@ -248,7 +248,7 @@ def average_returns(
     return mu
 
 
-def get_benchmark_porfolios(rebalance=None):
+def get_benchmark_portfolios(rebalance=None):
     # All-Weather-Porfolio based on weights
     tickers = {
         "VTI": 0.30,
@@ -275,9 +275,14 @@ def get_benchmark_porfolios(rebalance=None):
         print(f"Warning: Could not download 60/40 portfolio: {e}")
         ret_60_40 = pd.Series(dtype=float, name="Port_60/40_BlackRock")
 
-    retun_bench_port = pd.concat([ret_all_weather_dalio, ret_60_40], axis=1)
+    return_bench_port = pd.concat([ret_all_weather_dalio, ret_60_40], axis=1)
 
-    return retun_bench_port
+    return return_bench_port
+
+
+def get_benchmark_porfolios(rebalance=None):
+    """Backward-compatible wrapper for get_benchmark_portfolios."""
+    return get_benchmark_portfolios(rebalance=rebalance)
 
 
 def get_benchmark_returns(choose_bench: str or list = None) -> pd.DataFrame:
