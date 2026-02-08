@@ -76,6 +76,9 @@ def get_stock_prices(
     :param kwarg: any other parameters. See qs.stock.history(
     :return: (dataframe)
     """
+    if not yahoo_tickers:
+        raise ValueError("yahoo_tickers must be a non-empty list of ticker symbols")
+
     ncpus = max(mp.cpu_count() - 1, 1)
     results_temp = Parallel(n_jobs=ncpus, prefer="threads")(
         delayed(_load_stock)(

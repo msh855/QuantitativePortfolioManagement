@@ -310,6 +310,8 @@ def beta_Co_Moments(returns, returns_benchmark, p1=1, p2=2):
         beta_name = "BetaCoKurtosis"
     elif p2 == 2:
         beta_name = "BetaCoSkewness"
+    else:
+        raise ValueError("p2 must be 1 (covariance), 2 (coskewness), or 3 (cokurtosis)")
 
     temp = pd.Series(temp, name=beta_name)
     tem_names = pd.Series(returns.columns, name="asset")
