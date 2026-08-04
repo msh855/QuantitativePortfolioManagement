@@ -30,14 +30,23 @@ def list_branches() -> dict:
     remote_branches = []
 
     for line in result.stdout.splitlines():
-        branch = line.strip().lstrip("* ").strip()
-        if not branch:
+        line = line.strip()
+        if not line:
             continue
-        if branch.startswith("remotes/"):
+        # Drop the "* "/"+ " markers git uses for the current branch and
+        # branches checked out in other worktrees, without touching branch
+        # names that legitimately start with those characters.
+        if line[0] in "*+":
+            line = line[1:].strip()
+        if " -> " in line:
+            # Symbolic refs such as "remotes/origin/HEAD -> origin/main"
+            # aren't real branches; skip them.
+            continue
+        if line.startswith("remotes/"):
             # Strip the leading "remotes/" prefix for readability
-            remote_branches.append(branch.removeprefix("remotes/"))
+            remote_branches.append(line.removeprefix("remotes/"))
         else:
-            local_branches.append(branch)
+            local_branches.append(line)
 
     return {"local": local_branches, "remote": remote_branches}
 

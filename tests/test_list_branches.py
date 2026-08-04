@@ -4,9 +4,13 @@ Unit tests for scripts.list_branches module.
 Tests cover:
 - list_branches returns the expected dict structure
 - local and remote branch lists are non-empty
+- list_branches correctly parses git's "* "/"+ " markers and skips
+  symbolic refs (e.g. "remotes/origin/HEAD -> origin/main")
+- list_branches raises RuntimeError when git is unavailable or fails
 - _print_branches outputs the expected sections
 """
 
+import subprocess
 import sys
 import os
 import pytest
@@ -15,6 +19,15 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "scripts"))
 
 from list_branches import list_branches, _print_branches  # noqa: E402
+
+
+def _fake_run(stdout):
+    """Build a stand-in for subprocess.run that returns fixed branch -a output."""
+
+    def _run(*args, **kwargs):
+        return subprocess.CompletedProcess(args, returncode=0, stdout=stdout, stderr="")
+
+    return _run
 
 
 @pytest.mark.unit
@@ -61,6 +74,46 @@ class TestListBranches:
         result = list_branches()
         for branch in result["remote"]:
             assert not branch.startswith("remotes/")
+
+    def test_skips_symbolic_head_ref(self, monkeypatch):
+        """The 'remotes/origin/HEAD -> origin/main' symbolic ref must be skipped."""
+        stdout = "* main\n  feature/x\n  remotes/origin/main\n  remotes/origin/HEAD -> origin/main\n"
+        monkeypatch.setattr(subprocess, "run", _fake_run(stdout))
+
+        result = list_branches()
+
+        assert result == {"local": ["main", "feature/x"], "remote": ["origin/main"]}
+
+    def test_strips_worktree_marker(self, monkeypatch):
+        """Branches checked out in another worktree (prefixed with '+ ') are parsed correctly."""
+        stdout = "  main\n+ feature/in-other-worktree\n"
+        monkeypatch.setattr(subprocess, "run", _fake_run(stdout))
+
+        result = list_branches()
+
+        assert result == {"local": ["main", "feature/in-other-worktree"], "remote": []}
+
+    def test_raises_runtime_error_when_git_missing(self, monkeypatch):
+        """A missing git executable must surface as RuntimeError."""
+
+        def _raise_not_found(*args, **kwargs):
+            raise FileNotFoundError("git not found")
+
+        monkeypatch.setattr(subprocess, "run", _raise_not_found)
+
+        with pytest.raises(RuntimeError, match="git executable not found"):
+            list_branches()
+
+    def test_raises_runtime_error_when_git_fails(self, monkeypatch):
+        """A non-zero exit from git branch -a must surface as RuntimeError."""
+
+        def _raise_called_process_error(*args, **kwargs):
+            raise subprocess.CalledProcessError(1, ["git", "branch", "-a"], stderr="not a git repository")
+
+        monkeypatch.setattr(subprocess, "run", _raise_called_process_error)
+
+        with pytest.raises(RuntimeError, match="git branch -a failed"):
+            list_branches()
 
 
 @pytest.mark.unit
